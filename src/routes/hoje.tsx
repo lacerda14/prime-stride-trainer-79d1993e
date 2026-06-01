@@ -37,8 +37,16 @@ function ExerciseCard({ exercise, index }: { exercise: RawExercise; index: numbe
                 </span>
               )}
             </div>
-            <div className="num mt-0.5 text-xs text-muted-foreground">
-              {exercise.sets}x{exercise.reps}
+            <div className="num mt-0.5 flex items-center gap-2 text-xs text-muted-foreground">
+              <span>{exercise.sets}x{exercise.reps}</span>
+              {exercise.rest ? (
+                <>
+                  <span className="opacity-40">·</span>
+                  <span className="inline-flex items-center gap-1 text-primary/90">
+                    <Timer className="h-3 w-3" /> {exercise.rest}s
+                  </span>
+                </>
+              ) : null}
             </div>
           </div>
         </div>
@@ -56,17 +64,27 @@ function ExerciseCard({ exercise, index }: { exercise: RawExercise; index: numbe
             {Array.from({ length: setCount }).map((_, i) => (
               <div
                 key={i}
-                className="num grid grid-cols-[40px_1fr_auto] items-center gap-3 rounded-lg border border-border/60 bg-surface/40 px-3 py-2.5"
+                className="num grid grid-cols-[40px_1fr_auto_auto] items-center gap-3 rounded-lg border border-border/60 bg-surface/40 px-3 py-2.5"
               >
                 <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                   Set {i + 1}
                 </div>
                 <div className="text-sm font-semibold">{exercise.reps} reps</div>
+                {exercise.rest ? (
+                  <div className="flex items-center gap-1 rounded-md bg-primary/10 px-2 py-1 text-[10px] font-medium text-primary">
+                    <Timer className="h-3 w-3" /> {exercise.rest}s
+                  </div>
+                ) : <div />}
                 <div className="rounded-md bg-surface-elevated px-2 py-1 text-[10px] font-medium text-muted-foreground">
                   Registrar carga
                 </div>
               </div>
             ))}
+            {exercise.restLabel && (
+              <div className="pt-1 text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+                Descanso: {exercise.restLabel}
+              </div>
+            )}
           </div>
         </div>
       </div>
