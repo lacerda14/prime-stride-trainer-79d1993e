@@ -127,6 +127,13 @@ function HojePage() {
               <Target className="h-4 w-4" /> {today.strength.length} de força · {today.core.length} de core
             </div>
           </div>
+          {today.restProtocol && (
+            <div className="mt-5 flex items-center gap-2 rounded-xl border border-primary/20 bg-primary/5 px-3 py-2 text-[11px]">
+              <Timer className="h-3.5 w-3.5 text-primary" />
+              <span className="font-semibold uppercase tracking-[0.16em] text-primary">Descansos</span>
+              <span className="text-muted-foreground">{today.restProtocol}</span>
+            </div>
+          )}
         </section>
 
         {today.run && (
@@ -165,7 +172,14 @@ function HojePage() {
                   className="num flex items-center justify-between rounded-lg border border-border/60 bg-surface/40 px-3 py-2.5 text-sm"
                 >
                   <span className="font-medium">{c.name}</span>
-                  <span className="text-muted-foreground">{c.sets}x{c.reps}</span>
+                  <div className="flex items-center gap-3 text-muted-foreground">
+                    <span>{c.sets}x{c.reps}</span>
+                    {c.rest ? (
+                      <span className="inline-flex items-center gap-1 rounded-md bg-primary/10 px-1.5 py-0.5 text-[10px] text-primary">
+                        <Timer className="h-3 w-3" /> {c.rest}s
+                      </span>
+                    ) : null}
+                  </div>
                 </div>
               ))}
             </div>
