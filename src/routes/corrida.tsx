@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { AppShell } from "@/components/app-shell";
 import { WEEKS } from "@/lib/mock-data";
+import type { RawRun } from "@/lib/mock-data";
 import { ChevronDown, Footprints, Timer, Gauge } from "lucide-react";
 
 export const Route = createFileRoute("/corrida")({
@@ -14,12 +15,29 @@ export const Route = createFileRoute("/corrida")({
   component: CorridaPage,
 });
 
+interface RunRow {
+  week: number;
+  day: string;
+  session: string;
+  objective: string;
+  run: RawRun;
+}
+
 function CorridaPage() {
-  const runs = WEEKS.flatMap((w) =>
+  const runs: RunRow[] = WEEKS.flatMap((w) =>
     w.days
-      .filter((d) => d.run)
-      .map((d) => ({ week: w.number, day: d.day, run: d.run! })),
+      .filter((d) => d.run !== null && !d.isOff)
+      .map((d) => ({
+        week: w.number,
+        day: d.day,
+        session: d.session,
+        objective: d.objective,
+        run: d.run!,
+      })),
   );
+
+  // Categorize by keyword in session/objective
+  const vo2Count = runs.filter((r) => /vo2|tiro|interval/i.test(r.run.raw + r.session + r.objective)).length;
 
   return (
     <AppShell eyebrow="Corrida" title="Sessões de Running">
@@ -32,19 +50,19 @@ function CorridaPage() {
           </div>
           <div>
             <Gauge className="h-5 w-5 text-primary" />
-            <div className="num mt-3 text-3xl font-semibold">VO2 · Tempo</div>
-            <div className="text-xs text-muted-foreground">tipos predominantes</div>
+            <div className="num mt-3 text-3xl font-semibold">{vo2Count}</div>
+            <div className="text-xs text-muted-foreground">com VO2 / intervalado</div>
           </div>
           <div>
             <Timer className="h-5 w-5 text-primary" />
-            <div className="num mt-3 text-3xl font-semibold">~36h</div>
-            <div className="text-xs text-muted-foreground">tempo total no bloco</div>
+            <div className="num mt-3 text-3xl font-semibold">{WEEKS.length}</div>
+            <div className="text-xs text-muted-foreground">semanas com corrida</div>
           </div>
         </section>
 
         <div className="space-y-3">
-          {runs.slice(0, 20).map((r, i) => (
-            <RunCard key={i} week={r.week} day={r.day} run={r.run} />
+          {runs.map((r, i) => (
+            <RunCard key={i} row={r} />
           ))}
         </div>
       </div>
@@ -52,8 +70,9 @@ function CorridaPage() {
   );
 }
 
-function RunCard({ week, day, run }: { week: number; day: string; run: NonNullable<ReturnType<typeof WEEKS[0]["days"][0]["run"] extends infer T ? () => T : never>> | any }) {
+function RunCard({ row }: { row: RunRow }) {
   const [open, setOpen] = useState(false);
+  const first = row.run.lines[0] || "";
   return (
     <div className="glass overflow-hidden rounded-2xl">
       <button onClick={() => setOpen((v) => !v)} className="flex w-full items-center justify-between p-5 text-left hover:bg-white/[0.02]">
@@ -63,26 +82,21 @@ function RunCard({ week, day, run }: { week: number; day: string; run: NonNullab
           </div>
           <div>
             <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-              Semana {String(week).padStart(2, "0")} · {day}
+              Semana {String(row.week).padStart(2, "0")} · {row.day}
             </div>
-            <div className="mt-0.5 text-base font-semibold tracking-tight">
-              {run.type} · <span className="num text-muted-foreground">{run.totalDuration}</span>
-            </div>
+            <div className="mt-0.5 text-base font-semibold tracking-tight">{row.session}</div>
+            <div className="num mt-0.5 text-xs text-muted-foreground">{first}</div>
           </div>
         </div>
-        <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${open ? "rotate-180" : ""}`} />
+        <ChevronDown className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform ${open ? "rotate-180" : ""}`} />
       </button>
       <div className={`grid transition-[grid-template-rows] duration-300 ease-out ${open ? "grid-rows-[1fr]" : "grid-rows-[0fr]"}`}>
         <div className="overflow-hidden">
           <div className="space-y-2 border-t border-border px-5 pb-5 pt-4">
-            <div className="text-xs text-muted-foreground">{run.objective}</div>
-            {run.blocks.map((b: any, i: number) => (
-              <div key={i} className="num grid grid-cols-[1fr_auto] gap-3 rounded-lg border border-border/60 bg-surface/40 px-4 py-3 text-sm">
-                <span className="font-semibold">{b.reps ? `${b.reps}x ` : ""}{b.label}</span>
-                <span className="text-right text-xs text-muted-foreground">
-                  {b.duration} {b.pace && `@ ${b.pace}`} {b.speed && `@ ${b.speed}`}
-                  {b.rest && <><br />REST {b.rest}</>}
-                </span>
+            <div className="text-xs text-muted-foreground">{row.objective}</div>
+            {row.run.lines.map((line, i) => (
+              <div key={i} className="num rounded-lg border border-border/60 bg-surface/40 px-4 py-2.5 text-sm">
+                {line}
               </div>
             ))}
           </div>

@@ -1,8 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { AppShell } from "@/components/app-shell";
-import { getTodayWorkout } from "@/lib/mock-data";
-import type { Exercise } from "@/lib/mock-data";
+import { getTodayWorkout, getCurrentWeek } from "@/lib/mock-data";
+import type { RawExercise } from "@/lib/mock-data";
 import { ChevronDown, Play, Timer, Target } from "lucide-react";
 
 export const Route = createFileRoute("/hoje")({
@@ -15,8 +15,9 @@ export const Route = createFileRoute("/hoje")({
   component: HojePage,
 });
 
-function ExerciseCard({ exercise, index }: { exercise: Exercise; index: number }) {
+function ExerciseCard({ exercise, index }: { exercise: RawExercise; index: number }) {
   const [open, setOpen] = useState(index === 0);
+  const setCount = exercise.sets || 1;
   return (
     <div className="glass overflow-hidden rounded-2xl">
       <button
@@ -28,10 +29,16 @@ function ExerciseCard({ exercise, index }: { exercise: Exercise; index: number }
             {String(index + 1).padStart(2, "0")}
           </div>
           <div>
-            <div className="text-base font-semibold tracking-tight">{exercise.name}</div>
+            <div className="flex items-center gap-2 text-base font-semibold tracking-tight">
+              {exercise.name}
+              {exercise.superset && (
+                <span className="rounded-full bg-primary/15 px-2 py-0.5 text-[9px] font-medium uppercase tracking-wider text-primary">
+                  {exercise.method || "Biset"} {exercise.superset}
+                </span>
+              )}
+            </div>
             <div className="num mt-0.5 text-xs text-muted-foreground">
-              {exercise.sets.length}x{exercise.sets[0]?.reps} · REST {exercise.sets[0]?.rest}
-              {exercise.method && ` · ${exercise.method}`}
+              {exercise.sets}x{exercise.reps}
             </div>
           </div>
         </div>
@@ -46,24 +53,20 @@ function ExerciseCard({ exercise, index }: { exercise: Exercise; index: number }
       >
         <div className="overflow-hidden">
           <div className="space-y-2 border-t border-border px-5 pb-5 pt-4">
-            {exercise.sets.map((s) => (
+            {Array.from({ length: setCount }).map((_, i) => (
               <div
-                key={s.set}
-                className="num grid grid-cols-[40px_1fr_1fr_auto] items-center gap-3 rounded-lg border border-border/60 bg-surface/40 px-3 py-2.5"
+                key={i}
+                className="num grid grid-cols-[40px_1fr_auto] items-center gap-3 rounded-lg border border-border/60 bg-surface/40 px-3 py-2.5"
               >
                 <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                  Set {s.set}
+                  Set {i + 1}
                 </div>
-                <div className="text-sm font-semibold">{s.reps} reps</div>
-                <div className="text-xs text-muted-foreground">{s.loadTarget ?? "—"}</div>
+                <div className="text-sm font-semibold">{exercise.reps} reps</div>
                 <div className="rounded-md bg-surface-elevated px-2 py-1 text-[10px] font-medium text-muted-foreground">
-                  REST {s.rest}
+                  Registrar carga
                 </div>
               </div>
             ))}
-            {exercise.tempo && (
-              <div className="text-[11px] text-muted-foreground">Tempo: {exercise.tempo}</div>
-            )}
           </div>
         </div>
       </div>
@@ -73,9 +76,10 @@ function ExerciseCard({ exercise, index }: { exercise: Exercise; index: number }
 
 function HojePage() {
   const today = getTodayWorkout();
+  const week = getCurrentWeek();
   return (
     <AppShell
-      eyebrow={today.day}
+      eyebrow={`Semana ${String(week.number).padStart(2, "0")} · ${today.day}`}
       title="Treino de Hoje"
       action={
         <Link
@@ -89,67 +93,61 @@ function HojePage() {
       <div className="mx-auto max-w-4xl space-y-6 p-6 lg:p-10">
         <section className="glass-strong animate-fade-in rounded-3xl p-7">
           <div className="text-[10px] font-medium uppercase tracking-[0.22em] text-muted-foreground">
-            {today.type} · {today.method}
+            {today.session}
           </div>
           <h2 className="mt-2 text-3xl font-semibold tracking-tight">{today.objective}</h2>
+          {today.method && (
+            <p className="mt-2 text-sm text-muted-foreground">Método: {today.method}</p>
+          )}
           <div className="num mt-5 flex flex-wrap gap-6 text-sm">
+            {today.tempo && (
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <Timer className="h-4 w-4" /> {today.tempo}
+              </div>
+            )}
             <div className="flex items-center gap-2 text-muted-foreground">
-              <Timer className="h-4 w-4" /> {today.estimatedMinutes} min
-            </div>
-            <div className="flex items-center gap-2 text-muted-foreground">
-              <Target className="h-4 w-4" /> {today.exercises.length} exercícios
+              <Target className="h-4 w-4" /> {today.strength.length} de força · {today.core.length} de core
             </div>
           </div>
         </section>
 
-        <div className="space-y-3">
-          {today.exercises.map((e, i) => (
-            <ExerciseCard key={e.id} exercise={e} index={i} />
-          ))}
-        </div>
-
-        {today.core && (
+        {today.run && (
           <section className="glass rounded-2xl p-5">
-            <div className="text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">Core</div>
-            <div className="mt-1 text-lg font-semibold tracking-tight">
-              {today.core.name} · {today.core.rounds} rounds
-            </div>
-            <div className="mt-4 space-y-2">
-              {today.core.exercises.map((c) => (
-                <div
-                  key={c.name}
-                  className="num flex items-center justify-between rounded-lg border border-border/60 bg-surface/40 px-3 py-2.5 text-sm"
-                >
-                  <span className="font-medium">{c.name}</span>
-                  <span className="text-muted-foreground">
-                    {c.reps} {c.rest && `· REST ${c.rest}`}
-                  </span>
+            <div className="text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">Corrida</div>
+            <div className="mt-2 space-y-1.5 num">
+              {today.run.lines.map((l, i) => (
+                <div key={i} className="rounded-lg border border-border/60 bg-surface/40 px-3 py-2 text-sm">
+                  {l}
                 </div>
               ))}
             </div>
           </section>
         )}
 
-        {today.run && (
-          <section className="glass rounded-2xl p-5">
-            <div className="text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">Corrida</div>
-            <div className="mt-1 text-lg font-semibold tracking-tight">
-              {today.run.type} · {today.run.totalDuration}
+        {today.strength.length > 0 && (
+          <div>
+            <div className="mb-3 text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
+              Força
             </div>
-            <div className="mt-4 space-y-2">
-              {today.run.blocks.map((b, i) => (
+            <div className="space-y-3">
+              {today.strength.map((e, i) => (
+                <ExerciseCard key={`${e.name}-${i}`} exercise={e} index={i} />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {today.core.length > 0 && (
+          <section className="glass rounded-2xl p-5">
+            <div className="text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">Core</div>
+            <div className="mt-3 space-y-2">
+              {today.core.map((c, i) => (
                 <div
-                  key={i}
+                  key={`${c.name}-${i}`}
                   className="num flex items-center justify-between rounded-lg border border-border/60 bg-surface/40 px-3 py-2.5 text-sm"
                 >
-                  <span className="font-medium">
-                    {b.reps ? `${b.reps}x ` : ""}
-                    {b.label}
-                  </span>
-                  <span className="text-muted-foreground">
-                    {b.duration} {b.pace && `@ ${b.pace}`} {b.speed && `@ ${b.speed}`}
-                    {b.rest && ` · REST ${b.rest}`}
-                  </span>
+                  <span className="font-medium">{c.name}</span>
+                  <span className="text-muted-foreground">{c.sets}x{c.reps}</span>
                 </div>
               ))}
             </div>

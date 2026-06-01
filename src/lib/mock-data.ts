@@ -1,206 +1,120 @@
-// Mock periodization data for PM Hybrid Performance System.
-// Will be replaced by user's real 48-week spreadsheet once provided.
+// PM Hybrid Performance System — Real periodization data
+// Source: PM_V19_CORRECTED_STRUCTURE_LOCKED.xlsx (V18 plan, 48 weeks)
 
-export type SetMethod = "Straight" | "Biset" | "Triset" | "Drop" | "Cluster" | "RestPause" | "AMRAP";
+import raw from "./program-data.json";
 
-export interface ExerciseSet {
-  set: number;
-  reps: string; // e.g. "8" or "8-10" or "AMRAP"
-  loadTarget?: string; // e.g. "RPE 8" or "70% 1RM"
-  rest: string; // e.g. "90s"
-  notes?: string;
+export interface MacroBlock {
+  macro: string;
+  weeks: string;
+  mesociclo: string;
+  volume: string;
+  metodo: string;
+  forca: string;
+  corrida: string;
+  objetivo: string;
+  regra: string;
 }
 
-export interface Exercise {
-  id: string;
+export interface RawExercise {
   name: string;
-  method?: SetMethod;
-  superset?: string; // group id
-  sets: ExerciseSet[];
-  notes?: string;
-  tempo?: string;
+  sets: number;
+  reps: string;
+  method?: string;
+  superset?: string;
 }
 
-export interface CoreBlock {
-  id: string;
-  name: string;
-  rounds: number;
-  exercises: { name: string; reps: string; rest?: string }[];
+export interface RawRun {
+  raw: string;
+  lines: string[];
 }
 
-export interface RunSession {
-  id: string;
-  type: "VO2" | "Threshold" | "Long Run" | "Recovery" | "Tempo" | "Fartlek";
-  objective: string;
-  blocks: {
-    label: string;
-    reps?: number;
-    duration?: string;
-    pace?: string;
-    speed?: string;
-    rest?: string;
-  }[];
-  totalDuration: string;
-}
+export type DayName = "Segunda" | "Terça" | "Quarta" | "Quinta" | "Sexta" | "Sábado" | "Domingo";
 
-export type DayType = "Strength" | "Hypertrophy" | "Power" | "Hybrid" | "Run" | "Recovery";
-
-export interface TrainingDay {
-  id: string;
-  day: "Segunda" | "Terça" | "Quarta" | "Quinta" | "Sexta";
-  type: DayType;
+export interface ProgramDay {
+  day: DayName;
+  session: string;
+  isOff: boolean;
   method: string;
+  methodLabel: string;
   objective: string;
-  estimatedMinutes: number;
-  exercises: Exercise[];
-  core?: CoreBlock;
-  run?: RunSession;
+  tempo: string;
+  strength: RawExercise[];
+  core: RawExercise[];
+  run: RawRun | null;
 }
 
-export interface Week {
+export interface ProgramWeek {
   number: number;
-  macrocycle: string;
-  mesocycle: string;
-  focus: string;
-  volumeLabel: string; // "Acumulação" / "Intensificação" / "Deload"
-  days: TrainingDay[];
+  title: string;
+  macro: string;
+  macroLabel: string;
+  mesociclo: string;
+  methodDominant: string;
+  volume: string;
+  objective: string;
+  forcaTarget: string;
+  corridaTarget: string;
+  rule: string;
+  days: ProgramDay[];
 }
 
-const baseStrengthDay = (day: TrainingDay["day"], focus: string, exercises: Exercise[]): TrainingDay => ({
-  id: `${day}-${focus}`,
-  day,
-  type: "Strength",
-  method: "Biset + Straight",
-  objective: focus,
-  estimatedMinutes: 65,
-  exercises,
-});
+export interface Program {
+  macros: MacroBlock[];
+  weeks: ProgramWeek[];
+}
 
-const ex = (
-  name: string,
-  sets: number,
-  reps: string,
-  rest: string,
-  opts: { method?: SetMethod; loadTarget?: string; notes?: string; tempo?: string; superset?: string } = {},
-): Exercise => ({
-  id: `${name}-${Math.random().toString(36).slice(2, 7)}`,
-  name,
-  method: opts.method,
-  superset: opts.superset,
-  tempo: opts.tempo,
-  notes: opts.notes,
-  sets: Array.from({ length: sets }, (_, i) => ({
-    set: i + 1,
-    reps,
-    rest,
-    loadTarget: opts.loadTarget,
-  })),
-});
+const program = raw as unknown as Program;
 
-const buildWeek = (n: number): Week => {
-  const macro = n <= 16 ? "Base" : n <= 32 ? "Build" : "Peak";
-  const meso = ((Math.floor((n - 1) / 4) % 3) + 1).toString();
-  const isDeload = n % 4 === 0;
-  const volume = isDeload ? "Deload" : n % 4 === 3 ? "Intensificação" : "Acumulação";
+export const MACROS: MacroBlock[] = program.macros;
+export const WEEKS: ProgramWeek[] = program.weeks;
 
-  return {
-    number: n,
-    macrocycle: macro,
-    mesocycle: `Meso ${meso}`,
-    focus: isDeload ? "Recuperação ativa" : macro === "Base" ? "Volume e técnica" : macro === "Build" ? "Força específica" : "Potência e taper",
-    volumeLabel: volume,
-    days: [
-      baseStrengthDay("Segunda", "Upper Push", [
-        ex("Supino Reto Barra", 4, "6-8", "120s", { loadTarget: "RPE 8", tempo: "3-0-1" }),
-        ex("Desenvolvimento Halteres", 3, "8-10", "90s", { method: "Biset", superset: "A" }),
-        ex("Elevação Lateral", 3, "12-15", "60s", { method: "Biset", superset: "A" }),
-        ex("Tríceps Corda", 3, "10-12", "60s", { method: "Drop" }),
-      ]),
-      {
-        id: `terca-${n}`,
-        day: "Terça",
-        type: "Run",
-        method: "Intervalado VO2",
-        objective: "Capacidade aeróbica",
-        estimatedMinutes: 45,
-        exercises: [],
-        run: {
-          id: `run-vo2-${n}`,
-          type: "VO2",
-          objective: "Aumentar VO2max via intervalos curtos de alta intensidade",
-          totalDuration: "45min",
-          blocks: [
-            { label: "Aquecimento", duration: "10min", pace: "6:00/km" },
-            { label: "Série principal", reps: 5, duration: "1min", speed: "9.5 km/h", rest: "1min" },
-            { label: "Desaquecimento", duration: "10min", pace: "6:30/km" },
-          ],
-        },
-      },
-      baseStrengthDay("Quarta", "Lower", [
-        ex("Agachamento Livre", 5, "5", "180s", { loadTarget: "80% 1RM", tempo: "3-1-1" }),
-        ex("RDL", 4, "8", "120s", { loadTarget: "RPE 8" }),
-        ex("Búlgaro", 3, "10", "75s", { method: "Triset", superset: "B" }),
-        ex("Leg Curl", 3, "12", "60s", { method: "Triset", superset: "B" }),
-        ex("Panturrilha em Pé", 3, "15", "45s", { method: "Triset", superset: "B" }),
-      ]),
-      baseStrengthDay("Quinta", "Upper Pull", [
-        ex("Pull-Up", 4, "8", "90s", { loadTarget: "BW + 5kg" }),
-        ex("Remada Curvada", 4, "8-10", "90s", { loadTarget: "RPE 8" }),
-        ex("Remada Sentada", 3, "10-12", "75s", { method: "Biset", superset: "C" }),
-        ex("Face Pull", 3, "15", "60s", { method: "Biset", superset: "C" }),
-        ex("Rosca Direta", 3, "10-12", "60s"),
-      ]),
-      {
-        id: `sexta-${n}`,
-        day: "Sexta",
-        type: "Hybrid",
-        method: "Strength + Tempo Run",
-        objective: "Trabalho híbrido full body + tempo run",
-        estimatedMinutes: 70,
-        exercises: [
-          ex("Levantamento Terra", 4, "5", "180s", { loadTarget: "75% 1RM" }),
-          ex("Supino Inclinado", 3, "8", "90s"),
-          ex("Remada Cavalinho", 3, "10", "75s"),
-        ],
-        core: {
-          id: `core-${n}`,
-          name: "Core Stability",
-          rounds: 3,
-          exercises: [
-            { name: "Plank", reps: "45s", rest: "20s" },
-            { name: "Dead Bug", reps: "10 ea", rest: "20s" },
-            { name: "Pallof Press", reps: "12 ea", rest: "20s" },
-          ],
-        },
-        run: {
-          id: `run-tempo-${n}`,
-          type: "Tempo",
-          objective: "Limiar de lactato",
-          totalDuration: "25min",
-          blocks: [
-            { label: "Aquecimento", duration: "5min", pace: "6:00/km" },
-            { label: "Tempo", duration: "15min", pace: "4:45/km" },
-            { label: "Desaquecimento", duration: "5min", pace: "6:30/km" },
-          ],
-        },
-      },
-    ],
-  };
+// "Today" defaults — week 1 / Monday. Could be wired to a real clock later.
+export const CURRENT_WEEK_NUMBER = 1;
+const dayNames: DayName[] = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
+const todayName = dayNames[new Date().getDay()];
+
+export const getCurrentWeek = (): ProgramWeek =>
+  WEEKS.find((w) => w.number === CURRENT_WEEK_NUMBER) ?? WEEKS[0];
+
+export const getTodayWorkout = (): ProgramDay => {
+  const week = getCurrentWeek();
+  const today = week.days.find((d) => d.day === todayName && !d.isOff);
+  if (today) return today;
+  // fallback: first non-OFF day of the week
+  return week.days.find((d) => !d.isOff) ?? week.days[0];
 };
 
-export const WEEKS: Week[] = Array.from({ length: 48 }, (_, i) => buildWeek(i + 1));
+export const getWeek = (n: number): ProgramWeek =>
+  WEEKS.find((w) => w.number === n) ?? WEEKS[0];
 
-export const CURRENT_WEEK_NUMBER = 7;
-export const CURRENT_DAY_INDEX = 0; // Segunda
+export const getMacroForWeek = (n: number): MacroBlock | undefined => {
+  for (const m of MACROS) {
+    const rng = String(m.weeks);
+    const [a, b] = rng.includes("-") ? rng.split("-").map(Number) : [Number(rng), Number(rng)];
+    if (n >= a && n <= b) return m;
+  }
+  return undefined;
+};
 
-export const getCurrentWeek = () => WEEKS[CURRENT_WEEK_NUMBER - 1];
-export const getTodayWorkout = () => getCurrentWeek().days[CURRENT_DAY_INDEX];
+// Aggregated stats for the dashboard (derived from program structure)
+const totalSessions = WEEKS.reduce((acc, w) => acc + w.days.filter((d) => !d.isOff).length, 0);
+const runSessions = WEEKS.reduce(
+  (acc, w) => acc + w.days.filter((d) => d.run !== null).length,
+  0,
+);
+
+export const PROGRAM_STATS = {
+  totalWeeks: WEEKS.length,
+  totalSessions,
+  runSessions,
+  strengthSessions: totalSessions - runSessions,
+};
 
 export const DASHBOARD_STATS = {
-  weeklyVolume: 18420, // kg
-  weeklyMinutes: 312,
+  weeklyMinutes: 285,
+  weeklyVolume: 0, // not tracked in V18 spreadsheet — populated as user logs
   runsCompleted: 2,
-  adherence: 0.87,
-  nextSession: "Terça · VO2 Intervalado",
-  streak: 12,
+  adherence: 0.9,
+  nextSession: "VO2 + peito/ombro/tríceps",
+  streak: 6,
 };

@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { AppShell } from "@/components/app-shell";
-import { DASHBOARD_STATS, getCurrentWeek, getTodayWorkout } from "@/lib/mock-data";
+import { DASHBOARD_STATS, getCurrentWeek, getTodayWorkout, PROGRAM_STATS } from "@/lib/mock-data";
 import { ArrowUpRight, Flame, Timer, Footprints, Target, TrendingUp } from "lucide-react";
 
 export const Route = createFileRoute("/")({
@@ -42,6 +42,7 @@ function Dashboard() {
   const week = getCurrentWeek();
   const today = getTodayWorkout();
   const adherencePct = Math.round(DASHBOARD_STATS.adherence * 100);
+  const activeDays = week.days.filter((d) => !d.isOff);
 
   return (
     <AppShell eyebrow="Visão Geral" title="Dashboard">
@@ -53,13 +54,13 @@ function Dashboard() {
             <div>
               <div className="flex items-center gap-2 text-[10px] font-medium uppercase tracking-[0.22em] text-muted-foreground">
                 <span className="inline-block h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
-                Semana {String(week.number).padStart(2, "0")} · {week.macrocycle} · {week.mesocycle}
+                Semana {String(week.number).padStart(2, "0")} · {week.macroLabel} · {week.mesociclo}
               </div>
               <h2 className="mt-3 max-w-xl text-4xl font-semibold leading-[1.05] tracking-tight lg:text-5xl">
-                Foco da semana — <span className="text-gradient-primary">{week.focus}</span>
+                <span className="text-gradient-primary">{week.objective}</span>
               </h2>
               <p className="mt-3 max-w-lg text-sm text-muted-foreground">
-                Bloco de {week.volumeLabel.toLowerCase()}. Próximo: {DASHBOARD_STATS.nextSession}.
+                Método dominante: {week.methodDominant}. Volume alvo: {week.volume}.
               </p>
               <div className="mt-6 flex flex-wrap gap-3">
                 <Link
@@ -84,22 +85,22 @@ function Dashboard() {
                   Próximo treino
                 </div>
                 <div className="mt-2 text-lg font-semibold tracking-tight">
-                  {today.day} · {today.type}
+                  {today.day} · {today.session}
                 </div>
                 <div className="mt-1 text-xs text-muted-foreground">{today.objective}</div>
               </div>
               <div className="num mt-6 grid grid-cols-3 gap-3 border-t border-border pt-4">
                 <div>
-                  <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Exercícios</div>
-                  <div className="text-xl font-semibold">{today.exercises.length}</div>
+                  <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Força</div>
+                  <div className="text-xl font-semibold">{today.strength.length}</div>
+                </div>
+                <div>
+                  <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Core</div>
+                  <div className="text-xl font-semibold">{today.core.length}</div>
                 </div>
                 <div>
                   <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Tempo</div>
-                  <div className="text-xl font-semibold">{today.estimatedMinutes}m</div>
-                </div>
-                <div>
-                  <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Método</div>
-                  <div className="truncate text-xl font-semibold">{today.method.split(" ")[0]}</div>
+                  <div className="truncate text-xl font-semibold">{today.tempo || "—"}</div>
                 </div>
               </div>
             </div>
@@ -111,9 +112,9 @@ function Dashboard() {
           <Stat icon={Timer} label="Tempo treinado" value={`${DASHBOARD_STATS.weeklyMinutes}m`} hint="últimos 7 dias" />
           <Stat
             icon={TrendingUp}
-            label="Volume semanal"
-            value={`${(DASHBOARD_STATS.weeklyVolume / 1000).toFixed(1)}t`}
-            hint="tonelagem total"
+            label="Sessões no plano"
+            value={`${PROGRAM_STATS.totalSessions}`}
+            hint={`${PROGRAM_STATS.totalWeeks} semanas`}
           />
           <Stat icon={Footprints} label="Corridas" value={`${DASHBOARD_STATS.runsCompleted}`} hint="completas" />
           <Stat icon={Target} label="Aderência" value={`${adherencePct}%`} hint={`${DASHBOARD_STATS.streak} dias de sequência`} />
@@ -126,16 +127,18 @@ function Dashboard() {
               <div className="text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
                 Semana em andamento
               </div>
-              <div className="mt-1 text-base font-semibold tracking-tight">5 sessões · {week.volumeLabel}</div>
+              <div className="mt-1 text-base font-semibold tracking-tight">
+                {activeDays.length} sessões · {week.volume}
+              </div>
             </div>
             <Link to="/semanas" className="text-xs font-medium text-primary hover:underline">
               Ver todas as 48 semanas →
             </Link>
           </div>
           <div className="grid gap-3 md:grid-cols-5">
-            {week.days.map((d, i) => (
+            {activeDays.map((d, i) => (
               <div
-                key={d.id}
+                key={d.day}
                 className={`rounded-xl border p-4 transition-colors ${
                   i === 0
                     ? "border-primary/40 bg-primary/5"
@@ -143,8 +146,8 @@ function Dashboard() {
                 }`}
               >
                 <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{d.day}</div>
-                <div className="mt-1 text-sm font-semibold tracking-tight">{d.type}</div>
-                <div className="num mt-2 text-[11px] text-muted-foreground">{d.estimatedMinutes}min</div>
+                <div className="mt-1 line-clamp-2 text-sm font-semibold tracking-tight">{d.session}</div>
+                <div className="num mt-2 text-[11px] text-muted-foreground">{d.tempo || "—"}</div>
               </div>
             ))}
           </div>

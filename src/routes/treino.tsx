@@ -13,16 +13,59 @@ export const Route = createFileRoute("/treino")({
   component: TreinoPage,
 });
 
+interface QueueItem {
+  name: string;
+  set: number;
+  totalSets: number;
+  reps: string;
+  rest: number;
+  block: "Força" | "Core";
+}
+
+function parseRest(reps: string, block: "Força" | "Core"): number {
+  // Heuristic: rest depends on rep range. Could be wired to spreadsheet later.
+  if (block === "Core") return 30;
+  const n = parseInt(reps, 10);
+  if (isNaN(n)) return 60;
+  if (n <= 6) return 150;
+  if (n <= 10) return 90;
+  return 60;
+}
+
 function TreinoPage() {
   const navigate = useNavigate();
   const today = getTodayWorkout();
-  const queue = useMemo(
-    () =>
-      today.exercises.flatMap((e) =>
-        e.sets.map((s) => ({ name: e.name, set: s.set, totalSets: e.sets.length, reps: s.reps, rest: s.rest, load: s.loadTarget })),
-      ),
-    [today],
-  );
+
+  const queue = useMemo<QueueItem[]>(() => {
+    const items: QueueItem[] = [];
+    for (const e of today.strength) {
+      const sets = Math.max(1, e.sets);
+      for (let s = 1; s <= sets; s++) {
+        items.push({
+          name: e.name,
+          set: s,
+          totalSets: sets,
+          reps: e.reps,
+          rest: parseRest(e.reps, "Força"),
+          block: "Força",
+        });
+      }
+    }
+    for (const e of today.core) {
+      const sets = Math.max(1, e.sets);
+      for (let s = 1; s <= sets; s++) {
+        items.push({
+          name: e.name,
+          set: s,
+          totalSets: sets,
+          reps: e.reps,
+          rest: parseRest(e.reps, "Core"),
+          block: "Core",
+        });
+      }
+    }
+    return items;
+  }, [today]);
 
   const [idx, setIdx] = useState(0);
   const [phase, setPhase] = useState<"work" | "rest">("work");
@@ -31,7 +74,7 @@ function TreinoPage() {
 
   const current = queue[idx];
   const next = queue[idx + 1];
-  const progress = ((idx + (phase === "rest" ? 0.5 : 0)) / queue.length) * 100;
+  const progress = ((idx + (phase === "rest" ? 0.5 : 0)) / Math.max(queue.length, 1)) * 100;
 
   useEffect(() => {
     if (!running) return;
@@ -39,24 +82,25 @@ function TreinoPage() {
     return () => clearInterval(t);
   }, [running]);
 
-  const restSeconds = current ? parseInt(current.rest) || 60 : 60;
+  const restSeconds = current?.rest ?? 60;
   const remaining = phase === "rest" ? Math.max(0, restSeconds - seconds) : seconds;
 
   useEffect(() => {
     if (phase === "rest" && seconds >= restSeconds) {
-      // auto advance
       setPhase("work");
       setSeconds(0);
       setIdx((i) => Math.min(queue.length - 1, i + 1));
     }
   }, [phase, seconds, restSeconds, queue.length]);
 
-  if (!current) {
+  if (queue.length === 0 || !current) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background p-6 text-center">
         <div>
           <Check className="mx-auto h-12 w-12 text-primary" />
-          <h2 className="mt-4 text-2xl font-semibold tracking-tight">Sessão concluída</h2>
+          <h2 className="mt-4 text-2xl font-semibold tracking-tight">
+            {queue.length === 0 ? "Dia de descanso" : "Sessão concluída"}
+          </h2>
           <button
             onClick={() => navigate({ to: "/" })}
             className="mt-6 rounded-full bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground"
@@ -104,7 +148,7 @@ function TreinoPage() {
           <div className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
             Exercício {idx + 1} / {queue.length}
           </div>
-          <div className="text-xs font-medium">{today.day} · {today.type}</div>
+          <div className="text-xs font-medium">{today.day} · {today.session}</div>
         </div>
         <div className="w-10" />
       </header>
@@ -112,7 +156,7 @@ function TreinoPage() {
       <main className="relative flex flex-1 flex-col items-center justify-center px-6">
         <div className="text-center">
           <div className="text-[10px] font-medium uppercase tracking-[0.28em] text-muted-foreground">
-            {phase === "work" ? "Em execução" : "Descanso"}
+            {phase === "work" ? `Em execução · ${current.block}` : "Descanso"}
           </div>
           <h1 className="mt-3 text-5xl font-semibold leading-tight tracking-tight lg:text-6xl">
             {current.name}
@@ -135,13 +179,8 @@ function TreinoPage() {
             <div>
               Set <span className="text-foreground">{current.set}</span> / {current.totalSets}
             </div>
-            {current.load && (
-              <div>
-                Carga <span className="text-foreground">{current.load}</span>
-              </div>
-            )}
             <div>
-              REST <span className="text-foreground">{current.rest}</span>
+              REST <span className="text-foreground">{current.rest}s</span>
             </div>
           </div>
         </div>
@@ -165,7 +204,7 @@ function TreinoPage() {
         </button>
         <button
           onClick={completeSet}
-          className="flex h-14 flex-1 max-w-xs items-center justify-center gap-2 rounded-full bg-primary text-base font-semibold text-primary-foreground shadow-glow transition-transform active:scale-95"
+          className="flex h-14 max-w-xs flex-1 items-center justify-center gap-2 rounded-full bg-primary text-base font-semibold text-primary-foreground shadow-glow transition-transform active:scale-95"
         >
           {phase === "work" ? (
             <>
