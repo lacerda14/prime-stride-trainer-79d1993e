@@ -21,11 +21,16 @@ export interface RawExercise {
   reps: string;
   method?: string;
   superset?: string;
+  /** Rest in seconds derived from the periodization macro rule */
+  rest?: number;
+  /** Human-readable rest hint (e.g. "75s → próximo biset") */
+  restLabel?: string;
 }
 
 export interface RawRun {
   raw: string;
   lines: string[];
+  restHints?: string[];
 }
 
 export type DayName = "Segunda" | "Terça" | "Quarta" | "Quinta" | "Sexta" | "Sábado" | "Domingo";
@@ -41,6 +46,16 @@ export interface ProgramDay {
   strength: RawExercise[];
   core: RawExercise[];
   run: RawRun | null;
+  /** Macro-level rest protocol label (e.g. "Biset conjugado") */
+  restProtocol?: string;
+}
+
+export interface RestTable {
+  straight: number;
+  biset_inner: number;
+  biset_outer: number;
+  core: number;
+  label: string;
 }
 
 export interface ProgramWeek {
@@ -55,6 +70,8 @@ export interface ProgramWeek {
   forcaTarget: string;
   corridaTarget: string;
   rule: string;
+  restProtocol?: string;
+  restTable?: RestTable;
   days: ProgramDay[];
 }
 
