@@ -22,8 +22,7 @@ interface QueueItem {
   block: "Força" | "Core";
 }
 
-function parseRest(reps: string, block: "Força" | "Core"): number {
-  // Heuristic: rest depends on rep range. Could be wired to spreadsheet later.
+function fallbackRest(reps: string, block: "Força" | "Core"): number {
   if (block === "Core") return 30;
   const n = parseInt(reps, 10);
   if (isNaN(n)) return 60;
@@ -40,26 +39,28 @@ function TreinoPage() {
     const items: QueueItem[] = [];
     for (const e of today.strength) {
       const sets = Math.max(1, e.sets);
+      const rest = e.rest ?? fallbackRest(e.reps, "Força");
       for (let s = 1; s <= sets; s++) {
         items.push({
           name: e.name,
           set: s,
           totalSets: sets,
           reps: e.reps,
-          rest: parseRest(e.reps, "Força"),
+          rest,
           block: "Força",
         });
       }
     }
     for (const e of today.core) {
       const sets = Math.max(1, e.sets);
+      const rest = e.rest ?? fallbackRest(e.reps, "Core");
       for (let s = 1; s <= sets; s++) {
         items.push({
           name: e.name,
           set: s,
           totalSets: sets,
           reps: e.reps,
-          rest: parseRest(e.reps, "Core"),
+          rest,
           block: "Core",
         });
       }
@@ -149,6 +150,11 @@ function TreinoPage() {
             Exercício {idx + 1} / {queue.length}
           </div>
           <div className="text-xs font-medium">{today.day} · {today.session}</div>
+          {today.restProtocol && (
+            <div className="mt-0.5 text-[10px] uppercase tracking-[0.18em] text-primary/80">
+              {today.restProtocol}
+            </div>
+          )}
         </div>
         <div className="w-10" />
       </header>
