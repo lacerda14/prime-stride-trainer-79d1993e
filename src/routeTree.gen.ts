@@ -9,8 +9,50 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as TreinoRouteImport } from './routes/treino'
+import { Route as SemanasRouteImport } from './routes/semanas'
+import { Route as ProgressaoRouteImport } from './routes/progressao'
+import { Route as HojeRouteImport } from './routes/hoje'
+import { Route as HistoricoRouteImport } from './routes/historico'
+import { Route as CorridaRouteImport } from './routes/corrida'
+import { Route as ConfiguracoesRouteImport } from './routes/configuracoes'
 import { Route as IndexRouteImport } from './routes/index'
 
+const TreinoRoute = TreinoRouteImport.update({
+  id: '/treino',
+  path: '/treino',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SemanasRoute = SemanasRouteImport.update({
+  id: '/semanas',
+  path: '/semanas',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProgressaoRoute = ProgressaoRouteImport.update({
+  id: '/progressao',
+  path: '/progressao',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HojeRoute = HojeRouteImport.update({
+  id: '/hoje',
+  path: '/hoje',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HistoricoRoute = HistoricoRouteImport.update({
+  id: '/historico',
+  path: '/historico',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CorridaRoute = CorridaRouteImport.update({
+  id: '/corrida',
+  path: '/corrida',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ConfiguracoesRoute = ConfiguracoesRouteImport.update({
+  id: '/configuracoes',
+  path: '/configuracoes',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -19,28 +61,130 @@ const IndexRoute = IndexRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/configuracoes': typeof ConfiguracoesRoute
+  '/corrida': typeof CorridaRoute
+  '/historico': typeof HistoricoRoute
+  '/hoje': typeof HojeRoute
+  '/progressao': typeof ProgressaoRoute
+  '/semanas': typeof SemanasRoute
+  '/treino': typeof TreinoRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/configuracoes': typeof ConfiguracoesRoute
+  '/corrida': typeof CorridaRoute
+  '/historico': typeof HistoricoRoute
+  '/hoje': typeof HojeRoute
+  '/progressao': typeof ProgressaoRoute
+  '/semanas': typeof SemanasRoute
+  '/treino': typeof TreinoRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/configuracoes': typeof ConfiguracoesRoute
+  '/corrida': typeof CorridaRoute
+  '/historico': typeof HistoricoRoute
+  '/hoje': typeof HojeRoute
+  '/progressao': typeof ProgressaoRoute
+  '/semanas': typeof SemanasRoute
+  '/treino': typeof TreinoRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/configuracoes'
+    | '/corrida'
+    | '/historico'
+    | '/hoje'
+    | '/progressao'
+    | '/semanas'
+    | '/treino'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/configuracoes'
+    | '/corrida'
+    | '/historico'
+    | '/hoje'
+    | '/progressao'
+    | '/semanas'
+    | '/treino'
+  id:
+    | '__root__'
+    | '/'
+    | '/configuracoes'
+    | '/corrida'
+    | '/historico'
+    | '/hoje'
+    | '/progressao'
+    | '/semanas'
+    | '/treino'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  ConfiguracoesRoute: typeof ConfiguracoesRoute
+  CorridaRoute: typeof CorridaRoute
+  HistoricoRoute: typeof HistoricoRoute
+  HojeRoute: typeof HojeRoute
+  ProgressaoRoute: typeof ProgressaoRoute
+  SemanasRoute: typeof SemanasRoute
+  TreinoRoute: typeof TreinoRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/treino': {
+      id: '/treino'
+      path: '/treino'
+      fullPath: '/treino'
+      preLoaderRoute: typeof TreinoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/semanas': {
+      id: '/semanas'
+      path: '/semanas'
+      fullPath: '/semanas'
+      preLoaderRoute: typeof SemanasRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/progressao': {
+      id: '/progressao'
+      path: '/progressao'
+      fullPath: '/progressao'
+      preLoaderRoute: typeof ProgressaoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/hoje': {
+      id: '/hoje'
+      path: '/hoje'
+      fullPath: '/hoje'
+      preLoaderRoute: typeof HojeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/historico': {
+      id: '/historico'
+      path: '/historico'
+      fullPath: '/historico'
+      preLoaderRoute: typeof HistoricoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/corrida': {
+      id: '/corrida'
+      path: '/corrida'
+      fullPath: '/corrida'
+      preLoaderRoute: typeof CorridaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/configuracoes': {
+      id: '/configuracoes'
+      path: '/configuracoes'
+      fullPath: '/configuracoes'
+      preLoaderRoute: typeof ConfiguracoesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -53,17 +197,14 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ConfiguracoesRoute: ConfiguracoesRoute,
+  CorridaRoute: CorridaRoute,
+  HistoricoRoute: HistoricoRoute,
+  HojeRoute: HojeRoute,
+  ProgressaoRoute: ProgressaoRoute,
+  SemanasRoute: SemanasRoute,
+  TreinoRoute: TreinoRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

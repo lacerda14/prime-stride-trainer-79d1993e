@@ -1,0 +1,183 @@
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useEffect, useMemo, useState } from "react";
+import { getTodayWorkout } from "@/lib/mock-data";
+import { Pause, Play, SkipForward, X, Check } from "lucide-react";
+
+export const Route = createFileRoute("/treino")({
+  head: () => ({
+    meta: [
+      { title: "Treino em Execução · PM Hybrid" },
+      { name: "description", content: "Lock screen mode — modo treino focado." },
+    ],
+  }),
+  component: TreinoPage,
+});
+
+function TreinoPage() {
+  const navigate = useNavigate();
+  const today = getTodayWorkout();
+  const queue = useMemo(
+    () =>
+      today.exercises.flatMap((e) =>
+        e.sets.map((s) => ({ name: e.name, set: s.set, totalSets: e.sets.length, reps: s.reps, rest: s.rest, load: s.loadTarget })),
+      ),
+    [today],
+  );
+
+  const [idx, setIdx] = useState(0);
+  const [phase, setPhase] = useState<"work" | "rest">("work");
+  const [seconds, setSeconds] = useState(0);
+  const [running, setRunning] = useState(false);
+
+  const current = queue[idx];
+  const next = queue[idx + 1];
+  const progress = ((idx + (phase === "rest" ? 0.5 : 0)) / queue.length) * 100;
+
+  useEffect(() => {
+    if (!running) return;
+    const t = setInterval(() => setSeconds((s) => s + 1), 1000);
+    return () => clearInterval(t);
+  }, [running]);
+
+  const restSeconds = current ? parseInt(current.rest) || 60 : 60;
+  const remaining = phase === "rest" ? Math.max(0, restSeconds - seconds) : seconds;
+
+  useEffect(() => {
+    if (phase === "rest" && seconds >= restSeconds) {
+      // auto advance
+      setPhase("work");
+      setSeconds(0);
+      setIdx((i) => Math.min(queue.length - 1, i + 1));
+    }
+  }, [phase, seconds, restSeconds, queue.length]);
+
+  if (!current) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background p-6 text-center">
+        <div>
+          <Check className="mx-auto h-12 w-12 text-primary" />
+          <h2 className="mt-4 text-2xl font-semibold tracking-tight">Sessão concluída</h2>
+          <button
+            onClick={() => navigate({ to: "/" })}
+            className="mt-6 rounded-full bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground"
+          >
+            Voltar ao Dashboard
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const completeSet = () => {
+    if (phase === "work") {
+      setPhase("rest");
+      setSeconds(0);
+      setRunning(true);
+    } else {
+      setPhase("work");
+      setSeconds(0);
+      setIdx((i) => Math.min(queue.length - 1, i + 1));
+    }
+  };
+
+  const mins = Math.floor(remaining / 60);
+  const secs = remaining % 60;
+
+  return (
+    <div className="fixed inset-0 z-50 flex flex-col bg-background">
+      <div className="pointer-events-none absolute inset-0 grid-fade opacity-50" />
+      <div className="absolute inset-x-0 top-0 h-0.5 bg-surface-elevated">
+        <div
+          className="h-full bg-primary shadow-glow transition-all duration-500"
+          style={{ width: `${progress}%` }}
+        />
+      </div>
+
+      <header className="relative flex items-center justify-between p-5">
+        <button
+          onClick={() => navigate({ to: "/hoje" })}
+          className="flex h-10 w-10 items-center justify-center rounded-full border border-border bg-surface/60 text-muted-foreground hover:text-foreground"
+        >
+          <X className="h-4 w-4" />
+        </button>
+        <div className="num text-center">
+          <div className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+            Exercício {idx + 1} / {queue.length}
+          </div>
+          <div className="text-xs font-medium">{today.day} · {today.type}</div>
+        </div>
+        <div className="w-10" />
+      </header>
+
+      <main className="relative flex flex-1 flex-col items-center justify-center px-6">
+        <div className="text-center">
+          <div className="text-[10px] font-medium uppercase tracking-[0.28em] text-muted-foreground">
+            {phase === "work" ? "Em execução" : "Descanso"}
+          </div>
+          <h1 className="mt-3 text-5xl font-semibold leading-tight tracking-tight lg:text-6xl">
+            {current.name}
+          </h1>
+
+          {phase === "work" ? (
+            <div className="num mt-10 flex items-end justify-center gap-3">
+              <div className="text-[120px] font-semibold leading-none tracking-tighter text-gradient-primary lg:text-[180px]">
+                {current.reps}
+              </div>
+              <div className="pb-6 text-2xl text-muted-foreground">reps</div>
+            </div>
+          ) : (
+            <div className="num mt-10 text-[140px] font-semibold leading-none tracking-tighter text-gradient-primary lg:text-[200px]">
+              {String(mins).padStart(2, "0")}:{String(secs).padStart(2, "0")}
+            </div>
+          )}
+
+          <div className="num mt-6 flex items-center justify-center gap-6 text-sm text-muted-foreground">
+            <div>
+              Set <span className="text-foreground">{current.set}</span> / {current.totalSets}
+            </div>
+            {current.load && (
+              <div>
+                Carga <span className="text-foreground">{current.load}</span>
+              </div>
+            )}
+            <div>
+              REST <span className="text-foreground">{current.rest}</span>
+            </div>
+          </div>
+        </div>
+
+        {next && (
+          <div className="glass mt-12 w-full max-w-md rounded-2xl px-5 py-3 text-left">
+            <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Próximo</div>
+            <div className="num mt-0.5 text-sm font-semibold tracking-tight">
+              {next.name} · Set {next.set} · {next.reps} reps
+            </div>
+          </div>
+        )}
+      </main>
+
+      <footer className="relative flex items-center justify-center gap-3 p-6">
+        <button
+          onClick={() => setRunning((r) => !r)}
+          className="flex h-14 w-14 items-center justify-center rounded-full border border-border bg-surface/60 text-foreground hover:bg-surface-elevated"
+        >
+          {running ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5 fill-current" />}
+        </button>
+        <button
+          onClick={completeSet}
+          className="flex h-14 flex-1 max-w-xs items-center justify-center gap-2 rounded-full bg-primary text-base font-semibold text-primary-foreground shadow-glow transition-transform active:scale-95"
+        >
+          {phase === "work" ? (
+            <>
+              <Check className="h-5 w-5" /> Concluir Set
+            </>
+          ) : (
+            <>
+              <SkipForward className="h-5 w-5" /> Pular descanso
+            </>
+          )}
+        </button>
+      </footer>
+    </div>
+  );
+}
