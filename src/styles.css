@@ -6,7 +6,7 @@
 
 /*
  * PM Hybrid Performance System — Dark Mode Premium
- * Palette: #050505 / #111111 / #181818 / #F5F5F5 / #D96B1D
+ * Palette: Gunmetal #1A1C1F / Steel #3A3D42 / Champagne Gold #D4BC8A / Ivory #F5F0E6
  */
 
 @theme inline {
@@ -51,63 +51,63 @@
   --font-display: "Inter", "SF Pro Display", system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, monospace;
 
-  --shadow-glow: 0 0 40px -10px oklch(0.66 0.18 45 / 0.45);
+  --shadow-glow: 0 0 40px -10px oklch(0.82 0.06 85 / 0.45);
   --shadow-elevated: 0 10px 40px -10px oklch(0 0 0 / 0.6);
-  --gradient-primary: linear-gradient(135deg, oklch(0.66 0.18 45), oklch(0.74 0.16 55));
-  --gradient-surface: linear-gradient(180deg, oklch(0.16 0 0 / 0.6), oklch(0.10 0 0 / 0.4));
+  --gradient-primary: linear-gradient(135deg, oklch(0.78 0.055 82), oklch(0.88 0.05 90));
+  --gradient-surface: linear-gradient(180deg, oklch(0.18 0.005 250 / 0.6), oklch(0.12 0.005 250 / 0.4));
 }
 
 :root,
 .dark {
   --radius: 1rem;
 
-  /* Core palette in oklch */
-  --background: oklch(0.10 0 0);            /* #050505 */
-  --foreground: oklch(0.97 0 0);            /* #F5F5F5 */
+  /* Core palette in oklch — Gunmetal + Champagne Gold */
+  --background: oklch(0.13 0.005 250);          /* deep gunmetal black */
+  --foreground: oklch(0.96 0.01 80);            /* warm ivory */
 
-  --surface: oklch(0.145 0 0);              /* #111111 */
-  --surface-elevated: oklch(0.185 0 0);     /* #181818 */
+  --surface: oklch(0.17 0.006 250);             /* gunmetal */
+  --surface-elevated: oklch(0.22 0.007 250);    /* steel */
 
-  --card: oklch(0.145 0 0);
-  --card-foreground: oklch(0.97 0 0);
+  --card: oklch(0.17 0.006 250);
+  --card-foreground: oklch(0.96 0.01 80);
 
-  --popover: oklch(0.185 0 0);
-  --popover-foreground: oklch(0.97 0 0);
+  --popover: oklch(0.22 0.007 250);
+  --popover-foreground: oklch(0.96 0.01 80);
 
-  --primary: oklch(0.66 0.18 45);           /* #D96B1D */
-  --primary-foreground: oklch(0.10 0 0);
-  --primary-glow: oklch(0.74 0.16 55);
+  --primary: oklch(0.82 0.06 85);               /* champagne gold */
+  --primary-foreground: oklch(0.15 0.005 250);
+  --primary-glow: oklch(0.88 0.05 90);
 
-  --secondary: oklch(0.185 0 0);
-  --secondary-foreground: oklch(0.97 0 0);
+  --secondary: oklch(0.22 0.007 250);
+  --secondary-foreground: oklch(0.96 0.01 80);
 
-  --muted: oklch(0.185 0 0);
-  --muted-foreground: oklch(0.62 0 0);
+  --muted: oklch(0.22 0.007 250);
+  --muted-foreground: oklch(0.65 0.008 80);
 
-  --accent: oklch(0.66 0.18 45 / 0.15);
-  --accent-foreground: oklch(0.97 0 0);
+  --accent: oklch(0.82 0.06 85 / 0.14);
+  --accent-foreground: oklch(0.96 0.01 80);
 
   --destructive: oklch(0.62 0.22 25);
   --destructive-foreground: oklch(0.97 0 0);
 
   --border: oklch(1 0 0 / 0.08);
   --input: oklch(1 0 0 / 0.10);
-  --ring: oklch(0.66 0.18 45 / 0.5);
+  --ring: oklch(0.82 0.06 85 / 0.5);
 
-  --sidebar: oklch(0.115 0 0);
-  --sidebar-foreground: oklch(0.85 0 0);
-  --sidebar-primary: oklch(0.66 0.18 45);
-  --sidebar-primary-foreground: oklch(0.10 0 0);
-  --sidebar-accent: oklch(0.185 0 0);
-  --sidebar-accent-foreground: oklch(0.97 0 0);
+  --sidebar: oklch(0.145 0.005 250);
+  --sidebar-foreground: oklch(0.86 0.01 80);
+  --sidebar-primary: oklch(0.82 0.06 85);
+  --sidebar-primary-foreground: oklch(0.15 0.005 250);
+  --sidebar-accent: oklch(0.22 0.007 250);
+  --sidebar-accent-foreground: oklch(0.96 0.01 80);
   --sidebar-border: oklch(1 0 0 / 0.06);
-  --sidebar-ring: oklch(0.66 0.18 45 / 0.5);
+  --sidebar-ring: oklch(0.82 0.06 85 / 0.5);
 
-  --chart-1: oklch(0.66 0.18 45);
-  --chart-2: oklch(0.74 0.16 55);
-  --chart-3: oklch(0.55 0.12 40);
-  --chart-4: oklch(0.45 0.08 30);
-  --chart-5: oklch(0.85 0 0);
+  --chart-1: oklch(0.82 0.06 85);
+  --chart-2: oklch(0.88 0.05 90);
+  --chart-3: oklch(0.55 0.02 80);
+  --chart-4: oklch(0.40 0.01 250);
+  --chart-5: oklch(0.70 0.01 80);
 }
 
 @layer base {
@@ -125,7 +125,7 @@
   }
 
   ::selection {
-    background: oklch(0.66 0.18 45 / 0.35);
+    background: oklch(0.82 0.06 85 / 0.35);
     color: var(--color-foreground);
   }
 }
@@ -193,6 +193,6 @@
 }
 
 @keyframes pulse-glow {
-  0%, 100% { box-shadow: 0 0 0 0 oklch(0.66 0.18 45 / 0.5); }
-  50% { box-shadow: 0 0 0 12px oklch(0.66 0.18 45 / 0); }
+  0%, 100% { box-shadow: 0 0 0 0 oklch(0.82 0.06 85 / 0.5); }
+  50% { box-shadow: 0 0 0 12px oklch(0.82 0.06 85 / 0); }
 }

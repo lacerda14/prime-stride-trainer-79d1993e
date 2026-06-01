@@ -7,8 +7,8 @@ import {
   TrendingUp,
   History,
   Settings,
-  Zap,
 } from "lucide-react";
+import pmLogo from "@/assets/pm-logo.png.asset.json";
 
 import {
   Sidebar,
@@ -44,8 +44,8 @@ export function AppSidebar() {
     <Sidebar collapsible="icon" className="border-r border-sidebar-border">
       <SidebarHeader className="border-b border-sidebar-border">
         <div className="flex items-center gap-2.5 px-2 py-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary shadow-glow">
-            <Zap className="h-4 w-4 text-primary-foreground" strokeWidth={2.5} />
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-surface-elevated ring-1 ring-white/10 overflow-hidden">
+            <img src={pmLogo.url} alt="PM Hybrid" className="h-7 w-7 object-contain" />
           </div>
           {!collapsed && (
             <div className="flex flex-col leading-tight">
