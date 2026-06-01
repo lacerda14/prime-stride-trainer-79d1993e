@@ -81,11 +81,12 @@ const ex = (
   sets: number,
   reps: string,
   rest: string,
-  opts: { method?: SetMethod; loadTarget?: string; notes?: string; tempo?: string } = {},
+  opts: { method?: SetMethod; loadTarget?: string; notes?: string; tempo?: string; superset?: string } = {},
 ): Exercise => ({
   id: `${name}-${Math.random().toString(36).slice(2, 7)}`,
   name,
   method: opts.method,
+  superset: opts.superset,
   tempo: opts.tempo,
   notes: opts.notes,
   sets: Array.from({ length: sets }, (_, i) => ({
