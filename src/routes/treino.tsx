@@ -4,8 +4,9 @@ import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { getTodayTraining } from "@/lib/program.queries";
 import { useAuth } from "@/hooks/use-auth";
-import { Pause, Play, SkipForward, X, Check, Loader2 } from "lucide-react";
+import { Pause, Play, SkipForward, X, Check, Loader2, Footprints } from "lucide-react";
 import { RequireAuth } from "@/components/require-auth";
+import { runningHeadline, runningInstructions } from "@/lib/format-running";
 
 export const Route = createFileRoute("/treino")({
   head: () => ({
