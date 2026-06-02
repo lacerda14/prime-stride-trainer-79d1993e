@@ -263,7 +263,7 @@ function OnboardingPage() {
           secondary_goals: d.secondary_goals,
           experience_level: d.experience_level as Experience,
           training_history: d.training_history as never,
-          training_location: d.training_location,
+          training_location: d.gym_setup.location,
           available_days: d.available_days as number,
           available_minutes: d.available_minutes as number,
           sports: d.sports, sports_frequency: d.sports_frequency,
