@@ -272,3 +272,34 @@ export const saveWorkoutLogs = createServerFn({ method: "POST" })
 
     return { ok: true };
   });
+
+// ============================================================
+// Último peso por exercício — usado como sugestão no planejamento
+// ============================================================
+
+export const getLastWeightsForExercises = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) =>
+    z.object({ exercise_ids: z.array(z.string().uuid()) }).parse(input),
+  )
+  .handler(async ({ data, context }): Promise<Record<string, number | null>> => {
+    const { supabase, userId } = context;
+    if (data.exercise_ids.length === 0) return {};
+
+    const { data: rows } = await supabase
+      .from("workout_set_logs")
+      .select("exercise_id, actual_load_kg")
+      .eq("user_id", userId)
+      .in("exercise_id", data.exercise_ids)
+      .not("actual_load_kg", "is", null)
+      .order("created_at", { ascending: false });
+
+    // Para cada exercise_id, pega o weight mais recente
+    const result: Record<string, number | null> = {};
+    for (const row of rows ?? []) {
+      if (row.exercise_id && !(row.exercise_id in result)) {
+        result[row.exercise_id] = row.actual_load_kg;
+      }
+    }
+    return result;
+  });

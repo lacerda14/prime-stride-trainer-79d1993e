@@ -4,6 +4,7 @@ import { AppShell } from "@/components/app-shell";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { getTodayTraining, type SessionExerciseDTO } from "@/lib/program.queries";
+import { getLastWeightsForExercises } from "@/lib/workout-logs.functions";
 import { useAuth } from "@/hooks/use-auth";
 import { ChevronDown, Play, Timer, Target, Loader2, PlayCircle } from "lucide-react";
 import { runningHeadline, runningInstructions } from "@/lib/format-running";
@@ -58,26 +59,36 @@ function setLoad(exerciseId: string, set: number, value: string) {
 
 // ── Sub-components ─────────────────────────────────────────────
 
-function SetRow({ exerciseId, setNum, reps }: { exerciseId: string; setNum: number; reps: string }) {
-  const [load, setLoadState] = useState(() => getLoad(exerciseId, setNum));
+function SetRow({ exerciseId, setNum, reps, lastWeight }: {
+  exerciseId: string;
+  setNum: number;
+  reps: string;
+  lastWeight?: number | null;
+}) {
+  const [peso, setPesoState] = useState(() => getLoad(exerciseId, setNum));
 
   return (
     <div className="num grid grid-cols-[36px_1fr_auto] items-center gap-3 rounded-xl border border-border/60 bg-surface/40 px-3 py-2.5">
       <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
         Set {setNum}
       </div>
-      <div className="text-sm font-semibold">{reps} reps</div>
+      <div>
+        <div className="text-sm font-semibold">{reps} reps</div>
+        {lastWeight != null && !peso && (
+          <div className="text-[10px] text-primary/70">Último: {lastWeight}kg</div>
+        )}
+      </div>
       <input
         type="number"
         min={0}
         step={0.5}
-        value={load}
+        value={peso}
         onChange={(e) => {
-          setLoadState(e.target.value);
+          setPesoState(e.target.value);
           setLoad(exerciseId, setNum, e.target.value);
         }}
-        placeholder="kg"
-        className="num w-16 rounded-lg border border-border/60 bg-surface-elevated px-2 py-1 text-center text-xs font-medium text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none"
+        placeholder={lastWeight != null ? `${lastWeight}` : "kg"}
+        className="num w-16 rounded-lg border border-border/60 bg-surface-elevated px-2 py-1 text-center text-xs font-medium text-foreground placeholder:text-muted-foreground/60 focus:border-primary focus:outline-none"
       />
     </div>
   );
@@ -108,7 +119,12 @@ function ExerciseRows({ exercise, onOpenVideo }: { exercise: SessionExerciseDTO;
 }
 
 // Card de exercício simples
-function SingleCard({ exercise, index, onOpenVideo }: { exercise: SessionExerciseDTO; index: number; onOpenVideo: (id: string) => void }) {
+function SingleCard({ exercise, index, onOpenVideo, lastWeights }: {
+  exercise: SessionExerciseDTO;
+  index: number;
+  onOpenVideo: (id: string) => void;
+  lastWeights: Record<string, number | null>;
+}) {
   const [open, setOpen] = useState(index === 0);
 
   return (
@@ -150,7 +166,7 @@ function SingleCard({ exercise, index, onOpenVideo }: { exercise: SessionExercis
         <div className="overflow-hidden">
           <div className="space-y-2 border-t border-border px-5 pb-5 pt-4">
             {Array.from({ length: exercise.sets || 1 }).map((_, i) => (
-              <SetRow key={i} exerciseId={exercise.id} setNum={i + 1} reps={exercise.reps} />
+              <SetRow key={i} exerciseId={exercise.id} setNum={i + 1} reps={exercise.reps} lastWeight={lastWeights[exercise.exercise.id]} />
             ))}
             {exercise.rest_seconds && (
               <div className="flex items-center justify-center gap-2 rounded-xl border border-primary/20 bg-primary/5 py-2 text-xs font-medium text-primary">
@@ -165,11 +181,12 @@ function SingleCard({ exercise, index, onOpenVideo }: { exercise: SessionExercis
 }
 
 // Card de biset — agrupa todos os exercícios do par
-function BisetCard({ exercises, slot, index, onOpenVideo }: {
+function BisetCard({ exercises, slot, index, onOpenVideo, lastWeights }: {
   exercises: SessionExerciseDTO[];
   slot: number;
   index: number;
   onOpenVideo: (id: string) => void;
+  lastWeights: Record<string, number | null>;
 }) {
   const [open, setOpen] = useState(index === 0);
   const restSeconds = exercises.find((e) => e.rest_seconds)?.rest_seconds;
@@ -218,33 +235,38 @@ function BisetCard({ exercises, slot, index, onOpenVideo }: {
                   Rodada {setIdx + 1}
                 </div>
                 <div className="space-y-2">
-                  {exercises.map((ex) => (
-                    <div
-                      key={ex.id}
-                      className="num grid grid-cols-[1fr_auto] items-center gap-3 rounded-xl border border-border/60 bg-surface/40 px-3 py-2.5"
-                    >
-                      <div>
-                        <button
-                          type="button"
-                          onClick={() => onOpenVideo(ex.exercise.id)}
-                          className="inline-flex items-center gap-1 text-xs font-semibold transition-colors hover:text-primary text-left"
-                        >
-                          {ex.exercise.name}
-                          <PlayCircle className="h-3 w-3 text-muted-foreground" />
-                        </button>
-                        <div className="mt-0.5 text-[11px] text-muted-foreground">{ex.reps} reps</div>
+                  {exercises.map((ex) => {
+                    const lw = lastWeights[ex.exercise.id];
+                    return (
+                      <div
+                        key={ex.id}
+                        className="num grid grid-cols-[1fr_auto] items-center gap-3 rounded-xl border border-border/60 bg-surface/40 px-3 py-2.5"
+                      >
+                        <div>
+                          <button
+                            type="button"
+                            onClick={() => onOpenVideo(ex.exercise.id)}
+                            className="inline-flex items-center gap-1 text-xs font-semibold transition-colors hover:text-primary text-left"
+                          >
+                            {ex.exercise.name}
+                            <PlayCircle className="h-3 w-3 text-muted-foreground" />
+                          </button>
+                          <div className="mt-0.5 text-[11px] text-muted-foreground">
+                            {ex.reps} reps{lw != null ? ` · Último: ${lw}kg` : ""}
+                          </div>
+                        </div>
+                        <input
+                          type="number"
+                          min={0}
+                          step={0.5}
+                          defaultValue={getLoad(ex.id, setIdx + 1)}
+                          onChange={(e) => setLoad(ex.id, setIdx + 1, e.target.value)}
+                          placeholder={lw != null ? `${lw}` : "kg"}
+                          className="num w-16 rounded-lg border border-border/60 bg-surface-elevated px-2 py-1 text-center text-xs font-medium text-foreground placeholder:text-muted-foreground/60 focus:border-primary focus:outline-none"
+                        />
                       </div>
-                      <input
-                        type="number"
-                        min={0}
-                        step={0.5}
-                        value={getLoad(ex.id, setIdx + 1)}
-                        onChange={(e) => setLoad(ex.id, setIdx + 1, e.target.value)}
-                        placeholder="kg"
-                        className="num w-16 rounded-lg border border-border/60 bg-surface-elevated px-2 py-1 text-center text-xs font-medium text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none"
-                      />
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             ))}
@@ -266,13 +288,22 @@ function BisetCard({ exercises, slot, index, onOpenVideo }: {
 
 function HojePage() {
   const { user } = useAuth();
-  const fetchToday = useServerFn(getTodayTraining);
-  const localToday = useLocalToday();
-  const detail = useExerciseDetail();
+  const fetchToday   = useServerFn(getTodayTraining);
+  const fetchWeights = useServerFn(getLastWeightsForExercises);
+  const localToday   = useLocalToday();
+  const detail       = useExerciseDetail();
+
   const { data, isLoading } = useQuery({
     queryKey: ["today-training", user?.id, localToday.local_date, localToday.timezone],
     queryFn: () => fetchToday({ data: localToday }),
     enabled: !!user,
+  });
+
+  const exerciseIds = data?.today?.exercises.map((e) => e.exercise.id) ?? [];
+  const { data: lastWeights = {} } = useQuery({
+    queryKey: ["last-weights", user?.id, exerciseIds.join(",")],
+    queryFn: () => fetchWeights({ data: { exercise_ids: exerciseIds } }),
+    enabled: !!user && exerciseIds.length > 0,
   });
 
   if (isLoading) {
@@ -366,9 +397,9 @@ function HojePage() {
             <div className="space-y-3">
               {groups.map((g) =>
                 g.kind === "single" ? (
-                  <SingleCard key={g.exercise.id} exercise={g.exercise} index={g.index} onOpenVideo={detail.open} />
+                  <SingleCard key={g.exercise.id} exercise={g.exercise} index={g.index} onOpenVideo={detail.open} lastWeights={lastWeights} />
                 ) : (
-                  <BisetCard key={`biset-${g.slot}`} exercises={g.exercises} slot={g.slot} index={g.index} onOpenVideo={detail.open} />
+                  <BisetCard key={`biset-${g.slot}`} exercises={g.exercises} slot={g.slot} index={g.index} onOpenVideo={detail.open} lastWeights={lastWeights} />
                 )
               )}
             </div>
