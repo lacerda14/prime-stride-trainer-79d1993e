@@ -124,14 +124,14 @@ export function buildRunPhases(p: RunningProtocolDTO): RunPhase[] {
   const paceDetail = pace ? `Pace ${pace}` : "";
   const ipb = intervalsCount(p);
 
-  if (p.warmup_minutes && p.warmup_minutes > 0) {
-    phases.push({
-      kind: "warmup",
-      label: "Aquecimento",
-      detail: "Caminhada leve + mobilidade",
-      seconds: p.warmup_minutes * 60,
-    });
-  }
+  // Warm-up SEMPRE obrigatório — default 3 min se o protocolo não definir.
+  const warmupMin = Math.max(p.warmup_minutes ?? 0, 3);
+  phases.push({
+    kind: "warmup",
+    label: "Aquecimento",
+    detail: "Caminhada leve + mobilidade",
+    seconds: warmupMin * 60,
+  });
 
   if (p.blocks && ipb && p.work_duration_seconds) {
     for (let b = 1; b <= p.blocks; b++) {
