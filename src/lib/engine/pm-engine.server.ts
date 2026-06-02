@@ -949,13 +949,21 @@ export async function persistProgram(
         runningRows.push({
           training_day_id: dayId,
           protocol_type: d.running.protocol_type,
+          protocol_name: d.running.protocol_name,
+          goal: d.running.goal,
           total_duration_minutes: d.running.total_duration_minutes,
+          warmup_minutes: d.running.warmup_minutes,
+          cooldown_minutes: d.running.cooldown_minutes,
           blocks: d.running.blocks,
-          intervals: d.running.intervals,
+          intervals: d.running.intervals_per_block, // legado
+          intervals_per_block: d.running.intervals_per_block,
           work_duration_seconds: d.running.work_duration_seconds,
           rest_duration_seconds: d.running.rest_duration_seconds,
-          pace_min: d.running.pace_min,
-          pace_max: d.running.pace_max,
+          between_blocks_rest_seconds: d.running.between_blocks_rest_seconds,
+          target_pace_min: d.running.target_pace_min,
+          target_pace_max: d.running.target_pace_max,
+          pace_min: d.running.target_pace_min, // legado
+          pace_max: d.running.target_pace_max, // legado
           notes: d.running.notes,
         });
       }
