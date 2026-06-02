@@ -19,12 +19,15 @@ export const Route = createFileRoute("/treino")({
 });
 
 interface QueueItem {
+  kind: "strength" | "running";
   name: string;
   set: number;
   totalSets: number;
   reps: string;
   rest: number;
-  block: "Força" | "Core";
+  block: "Força" | "Core" | "Corrida";
+  runningSteps?: string[];
+  runningHead?: string;
 }
 
 function TreinoPage() {
@@ -42,12 +45,25 @@ function TreinoPage() {
   const queue = useMemo<QueueItem[]>(() => {
     if (!today) return [];
     const items: QueueItem[] = [];
+    if (today.running) {
+      items.push({
+        kind: "running",
+        name: "Corrida",
+        set: 1,
+        totalSets: 1,
+        reps: runningHeadline(today.running),
+        rest: 0,
+        block: "Corrida",
+        runningSteps: runningInstructions(today.running),
+        runningHead: runningHeadline(today.running),
+      });
+    }
     for (const e of today.exercises) {
       const block: "Força" | "Core" = e.exercise.category === "core" ? "Core" : "Força";
       const sets = Math.max(1, e.sets);
       const rest = e.rest_seconds ?? (block === "Core" ? 30 : 60);
       for (let s = 1; s <= sets; s++) {
-        items.push({ name: e.exercise.name, set: s, totalSets: sets, reps: e.reps, rest, block });
+        items.push({ kind: "strength", name: e.exercise.name, set: s, totalSets: sets, reps: e.reps, rest, block });
       }
     }
     return items;
