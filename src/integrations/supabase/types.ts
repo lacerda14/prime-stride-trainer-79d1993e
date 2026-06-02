@@ -80,6 +80,95 @@ export type Database = {
         }
         Relationships: []
       }
+      exercise_media: {
+        Row: {
+          channel_name: string | null
+          created_at: string
+          created_by_agent: boolean
+          duration_seconds: number | null
+          embed_allowed: boolean
+          embed_url: string | null
+          exercise_id: string
+          external_id: string | null
+          id: string
+          instructor_name: string | null
+          is_approved: boolean
+          is_primary: boolean
+          media_type: Database["public"]["Enums"]["exercise_media_type"]
+          reason_for_recommendation: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          safety_notes: string | null
+          source: string | null
+          source_quality_score: number | null
+          storage_path: string | null
+          thumbnail_url: string | null
+          title: string | null
+          updated_at: string
+          url: string | null
+        }
+        Insert: {
+          channel_name?: string | null
+          created_at?: string
+          created_by_agent?: boolean
+          duration_seconds?: number | null
+          embed_allowed?: boolean
+          embed_url?: string | null
+          exercise_id: string
+          external_id?: string | null
+          id?: string
+          instructor_name?: string | null
+          is_approved?: boolean
+          is_primary?: boolean
+          media_type: Database["public"]["Enums"]["exercise_media_type"]
+          reason_for_recommendation?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          safety_notes?: string | null
+          source?: string | null
+          source_quality_score?: number | null
+          storage_path?: string | null
+          thumbnail_url?: string | null
+          title?: string | null
+          updated_at?: string
+          url?: string | null
+        }
+        Update: {
+          channel_name?: string | null
+          created_at?: string
+          created_by_agent?: boolean
+          duration_seconds?: number | null
+          embed_allowed?: boolean
+          embed_url?: string | null
+          exercise_id?: string
+          external_id?: string | null
+          id?: string
+          instructor_name?: string | null
+          is_approved?: boolean
+          is_primary?: boolean
+          media_type?: Database["public"]["Enums"]["exercise_media_type"]
+          reason_for_recommendation?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          safety_notes?: string | null
+          source?: string | null
+          source_quality_score?: number | null
+          storage_path?: string | null
+          thumbnail_url?: string | null
+          title?: string | null
+          updated_at?: string
+          url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "exercise_media_exercise_id_fkey"
+            columns: ["exercise_id"]
+            isOneToOne: false
+            referencedRelation: "exercise_pool"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       exercise_pool: {
         Row: {
           allowed_advanced: boolean
@@ -725,6 +814,27 @@ export type Database = {
           },
         ]
       }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
       weeks: {
         Row: {
           created_at: string
@@ -860,8 +970,16 @@ export type Database = {
     }
     Functions: {
       gen_friend_code: { Args: never; Returns: string }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
+      app_role: "admin" | "moderator" | "user"
       exercise_category_enum:
         | "biceps"
         | "triceps"
@@ -876,6 +994,13 @@ export type Database = {
         | "calf"
         | "core"
         | "plyometric"
+      exercise_media_type:
+        | "youtube_embed"
+        | "vimeo_embed"
+        | "external_video"
+        | "uploaded_video"
+        | "gif"
+        | "image"
       experience_level_enum: "beginner" | "intermediate" | "advanced"
       goal_enum:
         | "fat_loss"
@@ -1027,6 +1152,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      app_role: ["admin", "moderator", "user"],
       exercise_category_enum: [
         "biceps",
         "triceps",
@@ -1041,6 +1167,14 @@ export const Constants = {
         "calf",
         "core",
         "plyometric",
+      ],
+      exercise_media_type: [
+        "youtube_embed",
+        "vimeo_embed",
+        "external_video",
+        "uploaded_video",
+        "gif",
+        "image",
       ],
       experience_level_enum: ["beginner", "intermediate", "advanced"],
       goal_enum: [
