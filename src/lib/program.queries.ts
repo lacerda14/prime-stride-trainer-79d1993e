@@ -384,8 +384,7 @@ export const getTodayTraining = createServerFn({ method: "GET" })
     if (!summary) return null;
     const week = await loadWeekDetail(context.supabase, summary.id, summary.active_week);
     if (!week) return null;
-    const today =
-      week.days.find((d) => d.day_number === summary.active_day) ?? week.days[0] ?? null;
+    const today = week.days.find((d) => d.day_number === summary.active_day) ?? null;
 
     await context.supabase
       .from("profiles")
