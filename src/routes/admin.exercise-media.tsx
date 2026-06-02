@@ -356,12 +356,31 @@ function ExerciseDrawer({ exerciseId, exerciseName, onClose }: { exerciseId: str
   );
 }
 
+function formatDuration(sec?: number | null) {
+  if (!sec || sec <= 0) return null;
+  const m = Math.floor(sec / 60);
+  const s = sec % 60;
+  return `${m}:${s.toString().padStart(2, "0")}`;
+}
+
+function qualityLabel(score?: number | null): { label: string; tone: string } {
+  const s = score ?? 0;
+  if (s >= 80) return { label: "Excelente", tone: "bg-primary text-primary-foreground" };
+  if (s >= 65) return { label: "Bom", tone: "bg-primary/15 text-primary" };
+  if (s >= 45) return { label: "Médio", tone: "bg-surface-elevated text-foreground/80" };
+  return { label: "Fraco", tone: "bg-destructive/15 text-destructive" };
+}
+
 function CandidateCard({ c, onApprove, onReject, onSetPrimary, selected, onToggleSelect }: { c: ExerciseMediaDTO; onApprove: (p: boolean) => void; onReject: () => void; onSetPrimary: () => void; selected?: boolean; onToggleSelect?: () => void }) {
-  const [preview, setPreview] = useState(false);
+  const [playing, setPlaying] = useState(false);
   const selectable = !c.is_approved && c.embed_allowed && !!onToggleSelect;
+  const duration = formatDuration(c.duration_seconds);
+  const quality = qualityLabel(c.source_quality_score);
+  const canEmbed = c.embed_allowed && !!c.embed_url;
+
   return (
     <div className={`space-y-2 rounded-2xl border p-3 transition ${selected ? "border-primary bg-primary/5" : "border-border/60 bg-surface/40"}`}>
-      <div className="flex items-start gap-3">
+      <div className="flex items-start gap-2">
         {selectable && (
           <input
             type="checkbox"
@@ -371,29 +390,62 @@ function CandidateCard({ c, onApprove, onReject, onSetPrimary, selected, onToggl
             aria-label="Selecionar candidato"
           />
         )}
-        <button onClick={() => setPreview((p) => !p)} className="relative h-16 w-24 shrink-0 overflow-hidden rounded-lg bg-surface-elevated">
-          {c.thumbnail_url ? <img src={c.thumbnail_url} alt="" className="h-full w-full object-cover" /> : <PlayCircle className="m-auto h-6 w-6 text-muted-foreground" />}
-          <PlayCircle className="absolute inset-0 m-auto h-5 w-5 text-white drop-shadow" />
-        </button>
         <div className="min-w-0 flex-1">
           <div className="line-clamp-2 text-xs font-semibold leading-snug">{c.title}</div>
-          <div className="mt-1 text-[11px] text-muted-foreground">
-            {c.channel_name ?? c.source}{c.duration_seconds ? ` · ${Math.round(c.duration_seconds / 60)}min` : ""}
-          </div>
-          <div className="mt-1 flex flex-wrap items-center gap-2">
-            <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${(c.source_quality_score ?? 0) >= 70 ? "bg-primary/15 text-primary" : "bg-surface-elevated text-muted-foreground"}`}>{c.source_quality_score ?? 0}/100</span>
-            {c.is_approved && <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">aprovado</span>}
-            {c.is_primary && <span className="rounded-full bg-primary px-2 py-0.5 text-[10px] font-semibold text-primary-foreground">primário</span>}
-            {!c.embed_allowed && <span className="rounded-full bg-destructive/15 px-2 py-0.5 text-[10px] font-semibold text-destructive">sem embed</span>}
-          </div>
-          {c.reason_for_recommendation && <p className="mt-1.5 text-[11px] text-muted-foreground">{c.reason_for_recommendation}</p>}
+          <div className="mt-0.5 text-[11px] text-muted-foreground truncate">{c.channel_name ?? c.source}</div>
         </div>
       </div>
-      {preview && c.embed_allowed && c.embed_url && (
-        <div className="aspect-video w-full overflow-hidden rounded-lg bg-black">
-          <iframe src={c.embed_url} className="h-full w-full" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen />
+
+      {canEmbed ? (
+        <div className="relative aspect-video w-full overflow-hidden rounded-lg bg-black">
+          {playing ? (
+            <iframe
+              src={`${c.embed_url}${c.embed_url!.includes("?") ? "&" : "?"}autoplay=1`}
+              className="h-full w-full"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
+            />
+          ) : (
+            <button onClick={() => setPlaying(true)} className="group relative h-full w-full">
+              {c.thumbnail_url && (
+                <img src={c.thumbnail_url} alt="" className="h-full w-full object-cover opacity-90 transition group-hover:opacity-100" />
+              )}
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-black/70 backdrop-blur transition group-hover:scale-110">
+                  <PlayCircle className="h-7 w-7 text-white" />
+                </div>
+              </div>
+              {duration && (
+                <span className="absolute bottom-2 right-2 rounded bg-black/80 px-1.5 py-0.5 text-[10px] font-semibold text-white">
+                  {duration}
+                </span>
+              )}
+            </button>
+          )}
+        </div>
+      ) : (
+        <div className="flex items-center justify-center gap-2 rounded-lg border border-dashed border-destructive/40 bg-destructive/5 p-3 text-[11px] text-destructive">
+          <X className="h-3.5 w-3.5" /> Vídeo não permite embed — student não verá
         </div>
       )}
+
+      <div className="flex flex-wrap items-center gap-1.5">
+        <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${quality.tone}`}>
+          {quality.label} · {c.source_quality_score ?? 0}/100
+        </span>
+        {duration && (
+          <span className="rounded-full bg-surface-elevated px-2 py-0.5 text-[10px] font-semibold text-foreground/80">
+            {duration}
+          </span>
+        )}
+        {c.is_approved && <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">aprovado</span>}
+        {c.is_primary && <span className="rounded-full bg-primary px-2 py-0.5 text-[10px] font-semibold text-primary-foreground">primário</span>}
+      </div>
+
+      {c.reason_for_recommendation && (
+        <p className="text-[11px] leading-relaxed text-muted-foreground">{c.reason_for_recommendation}</p>
+      )}
+
       <div className="flex flex-wrap gap-2">
         {!c.is_approved ? (
           <>
@@ -408,6 +460,7 @@ function CandidateCard({ c, onApprove, onReject, onSetPrimary, selected, onToggl
     </div>
   );
 }
+
 
 function CuesEditor({ exerciseId, onSaved }: { exerciseId: string; onSaved: () => void }) {
   const [open, setOpen] = useState(false);
