@@ -200,14 +200,28 @@ export const updateProfile = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
 
-    const patch: Record<string, unknown> = {};
-    for (const k of [
-      "name", "phone", "weight_kg", "height_cm", "goal",
-      "available_days", "available_minutes",
-      "sports", "preferences", "motivations",
-    ] as const) {
-      if (data[k] !== undefined) patch[k] = data[k];
-    }
+    const patch: Partial<{
+      name: string;
+      phone: string | null;
+      weight_kg: number;
+      height_cm: number;
+      goal: (typeof GOAL_VALUES)[number];
+      available_days: 3 | 4 | 5;
+      available_minutes: 30 | 45 | 60 | 90;
+      sports: string[];
+      preferences: string[];
+      motivations: string[];
+    }> = {};
+    if (data.name !== undefined) patch.name = data.name;
+    if (data.phone !== undefined) patch.phone = data.phone;
+    if (data.weight_kg !== undefined) patch.weight_kg = data.weight_kg;
+    if (data.height_cm !== undefined) patch.height_cm = data.height_cm;
+    if (data.goal !== undefined) patch.goal = data.goal;
+    if (data.available_days !== undefined) patch.available_days = data.available_days;
+    if (data.available_minutes !== undefined) patch.available_minutes = data.available_minutes;
+    if (data.sports !== undefined) patch.sports = data.sports;
+    if (data.preferences !== undefined) patch.preferences = data.preferences;
+    if (data.motivations !== undefined) patch.motivations = data.motivations;
 
     if (Object.keys(patch).length > 0) {
       const { error } = await supabase.from("profiles").update(patch).eq("id", userId);
