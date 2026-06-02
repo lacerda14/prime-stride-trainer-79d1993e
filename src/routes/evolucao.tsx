@@ -324,6 +324,51 @@ function EvolucaoPage() {
             )}
           </section>
 
+          {/* ── Recordes Pessoais (PRs) ── */}
+          <section className="animate-fade-in">
+            <SectionHeader icon={<Trophy className="h-4 w-4" />} title="Recordes pessoais" />
+            {evo?.personalRecords && evo.personalRecords.length > 0 ? (
+              <div className="space-y-2">
+                {evo.personalRecords.slice(0, 10).map((pr) => (
+                  <div
+                    key={pr.exercise_name}
+                    className="flex items-center gap-3 rounded-2xl border border-primary/20 bg-primary/5 p-3.5"
+                  >
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/15 text-primary">
+                      <Trophy className="h-5 w-5" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate text-[13px] font-semibold">{pr.exercise_name}</div>
+                      <div className="text-[11px] text-muted-foreground">
+                        {new Date(pr.achieved_at).toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric" })}
+                        {pr.reps ? ` · ${pr.reps} reps` : ""}
+                      </div>
+                    </div>
+                    <div className="num shrink-0 text-[14px] font-semibold text-primary">
+                      {pr.load_kg.toLocaleString("pt-BR")}
+                      <span className="ml-1 text-[10px] text-muted-foreground">kg</span>
+                    </div>
+                  </div>
+                ))}
+                {evo.personalRecords.length > 10 && (
+                  <div className="text-center text-[11px] text-muted-foreground pt-1">
+                    +{evo.personalRecords.length - 10} outros recordes
+                  </div>
+                )}
+              </div>
+            ) : (
+              <PlaceholderCard
+                icon={<Trophy className="h-5 w-5" />}
+                title="Sem PRs registrados"
+                description="Registre cargas durante seus treinos para começar a contabilizar recordes pessoais."
+                ctaLabel="Ir para treino"
+                ctaHref="/hoje"
+              />
+            )}
+          </section>
+
+
+
           {/* ── Medidas ── */}
           <section className="animate-fade-in">
             <SectionHeader icon={<Ruler className="h-4 w-4" />} title="Medidas corporais" />
