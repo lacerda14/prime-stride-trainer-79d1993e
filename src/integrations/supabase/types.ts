@@ -88,14 +88,19 @@ export type Database = {
           banned_weeks_1_to_12: boolean
           category: Database["public"]["Enums"]["exercise_category_enum"]
           code: string
+          common_mistakes: string | null
           created_at: string
           equipment: string | null
+          gif_url: string | null
           id: string
+          instructions: string | null
           lower_body_pattern: string | null
           movement_pattern: string | null
           name: string
           notes: string | null
+          primary_muscles: string[]
           shoulder_safe: boolean
+          video_url: string | null
         }
         Insert: {
           allowed_advanced?: boolean
@@ -104,14 +109,19 @@ export type Database = {
           banned_weeks_1_to_12?: boolean
           category: Database["public"]["Enums"]["exercise_category_enum"]
           code: string
+          common_mistakes?: string | null
           created_at?: string
           equipment?: string | null
+          gif_url?: string | null
           id?: string
+          instructions?: string | null
           lower_body_pattern?: string | null
           movement_pattern?: string | null
           name: string
           notes?: string | null
+          primary_muscles?: string[]
           shoulder_safe?: boolean
+          video_url?: string | null
         }
         Update: {
           allowed_advanced?: boolean
@@ -120,14 +130,19 @@ export type Database = {
           banned_weeks_1_to_12?: boolean
           category?: Database["public"]["Enums"]["exercise_category_enum"]
           code?: string
+          common_mistakes?: string | null
           created_at?: string
           equipment?: string | null
+          gif_url?: string | null
           id?: string
+          instructions?: string | null
           lower_body_pattern?: string | null
           movement_pattern?: string | null
           name?: string
           notes?: string | null
+          primary_muscles?: string[]
           shoulder_safe?: boolean
+          video_url?: string | null
         }
         Relationships: []
       }
@@ -300,6 +315,7 @@ export type Database = {
         Row: {
           age: number | null
           available_days: number | null
+          available_minutes: number | null
           avatar_url: string | null
           created_at: string
           current_week: number
@@ -311,14 +327,19 @@ export type Database = {
           height_cm: number | null
           id: string
           level: number
+          motivations: string[]
           name: string | null
           onboarding_completed: boolean
           phone: string | null
+          preferences: string[]
           program_start_date: string
           sex: Database["public"]["Enums"]["sex_enum"] | null
+          sports: string[]
           streak_current: number
           streak_last_date: string | null
           streak_longest: number
+          training_history: string | null
+          training_location: string | null
           updated_at: string
           username: string | null
           weight_kg: number | null
@@ -327,6 +348,7 @@ export type Database = {
         Insert: {
           age?: number | null
           available_days?: number | null
+          available_minutes?: number | null
           avatar_url?: string | null
           created_at?: string
           current_week?: number
@@ -338,14 +360,19 @@ export type Database = {
           height_cm?: number | null
           id: string
           level?: number
+          motivations?: string[]
           name?: string | null
           onboarding_completed?: boolean
           phone?: string | null
+          preferences?: string[]
           program_start_date?: string
           sex?: Database["public"]["Enums"]["sex_enum"] | null
+          sports?: string[]
           streak_current?: number
           streak_last_date?: string | null
           streak_longest?: number
+          training_history?: string | null
+          training_location?: string | null
           updated_at?: string
           username?: string | null
           weight_kg?: number | null
@@ -354,6 +381,7 @@ export type Database = {
         Update: {
           age?: number | null
           available_days?: number | null
+          available_minutes?: number | null
           avatar_url?: string | null
           created_at?: string
           current_week?: number
@@ -365,14 +393,19 @@ export type Database = {
           height_cm?: number | null
           id?: string
           level?: number
+          motivations?: string[]
           name?: string | null
           onboarding_completed?: boolean
           phone?: string | null
+          preferences?: string[]
           program_start_date?: string
           sex?: Database["public"]["Enums"]["sex_enum"] | null
+          sports?: string[]
           streak_current?: number
           streak_last_date?: string | null
           streak_longest?: number
+          training_history?: string | null
+          training_location?: string | null
           updated_at?: string
           username?: string | null
           weight_kg?: number | null
@@ -844,7 +877,14 @@ export type Database = {
         | "core"
         | "plyometric"
       experience_level_enum: "beginner" | "intermediate" | "advanced"
-      goal_enum: "fat_loss" | "hypertrophy" | "endurance" | "hybrid"
+      goal_enum:
+        | "fat_loss"
+        | "hypertrophy"
+        | "endurance"
+        | "hybrid"
+        | "general_health"
+        | "conditioning"
+        | "run_5k"
       running_protocol_enum:
         | "z2"
         | "vo2"
@@ -1003,7 +1043,15 @@ export const Constants = {
         "plyometric",
       ],
       experience_level_enum: ["beginner", "intermediate", "advanced"],
-      goal_enum: ["fat_loss", "hypertrophy", "endurance", "hybrid"],
+      goal_enum: [
+        "fat_loss",
+        "hypertrophy",
+        "endurance",
+        "hybrid",
+        "general_health",
+        "conditioning",
+        "run_5k",
+      ],
       running_protocol_enum: [
         "z2",
         "vo2",
