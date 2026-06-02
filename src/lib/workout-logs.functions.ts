@@ -133,7 +133,7 @@ export const getCompletedSession = createServerFn({ method: "GET" })
         finished_at: sess.finished_at,
         duration_seconds: durationSec,
         estimated_calories: (sess as { estimated_calories?: number | null }).estimated_calories ?? null,
-        completed_summary: ((sess as { completed_summary?: Record<string, unknown> }).completed_summary ?? {}),
+        completed_summary: ((sess as { completed_summary?: CompletedSessionDTO["session"]["completed_summary"] }).completed_summary ?? null),
       },
       set_logs: setRowsArr,
       running_log: (runRow ?? null) as RunningLogDTO | null,
