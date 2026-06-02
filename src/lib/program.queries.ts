@@ -142,6 +142,19 @@ async function getActiveProgramId(
   return data?.id ?? null;
 }
 
+function daysBetweenLocalDates(start: string, end: string): number {
+  const [sy, sm, sd] = start.split("-").map(Number);
+  const [ey, em, ed] = end.split("-").map(Number);
+  const startMs = Date.UTC(sy, sm - 1, sd);
+  const endMs = Date.UTC(ey, em - 1, ed);
+  return Math.floor((endMs - startMs) / 86_400_000);
+}
+
+function weekFromStartDate(startDate: string, localDate: string, totalWeeks: number): number {
+  const elapsedDays = Math.max(0, daysBetweenLocalDates(startDate, localDate));
+  return Math.min(totalWeeks, Math.floor(elapsedDays / 7) + 1);
+}
+
 // ============================================================
 // loadProgramSummary (helper interno) + getProgramSummary (RPC)
 // ============================================================
@@ -149,6 +162,7 @@ async function getActiveProgramId(
 async function loadProgramSummary(
   supabase: any,
   userId: string,
+  calendar?: z.infer<typeof localTodaySchema>,
 ): Promise<ProgramSummary | null> {
   const { data: prog, error: pErr } = await supabase
     .from("training_programs")
@@ -162,6 +176,19 @@ async function loadProgramSummary(
     .maybeSingle();
   if (pErr) throw new Error(pErr.message);
   if (!prog) return null;
+
+  const { data: profile, error: profileErr } = await supabase
+    .from("profiles")
+    .select("program_start_date,current_week")
+    .eq("id", userId)
+    .maybeSingle();
+  if (profileErr) throw new Error(profileErr.message);
+
+  const programStartDate = profile?.program_start_date ?? calendar?.local_date ?? null;
+  const computedWeek = programStartDate && calendar
+    ? weekFromStartDate(programStartDate, calendar.local_date, prog.total_weeks)
+    : (profile?.current_week ?? prog.active_week);
+  const activeDay = calendar?.day_number ?? prog.active_day;
 
   const [{ data: macros, error: mErr }, { data: mesos, error: msErr }, { data: weeks, error: wErr }] =
     await Promise.all([
@@ -226,8 +253,10 @@ async function loadProgramSummary(
   return {
     id: prog.id,
     total_weeks: prog.total_weeks,
-    active_week: prog.active_week,
-    active_day: prog.active_day,
+    active_week: computedWeek,
+    active_day: activeDay,
+    program_start_date: programStartDate,
+    current_week: computedWeek,
     goal: prog.goal,
     experience_level: prog.experience_level,
     available_days: prog.available_days,
