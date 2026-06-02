@@ -42,7 +42,7 @@ export interface CompletedSessionDTO {
     finished_at: string | null;
     duration_seconds: number | null;
     estimated_calories: number | null;
-    completed_summary: Record<string, unknown>;
+    completed_summary: { perceived_effort?: number | null; general_notes?: string | null; saved_at?: string | null } | null;
   };
   set_logs: SetLogDTO[];
   running_log: RunningLogDTO | null;
