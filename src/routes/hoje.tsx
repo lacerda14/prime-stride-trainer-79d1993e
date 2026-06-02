@@ -20,7 +20,7 @@ export const Route = createFileRoute("/hoje")({
   component: HojePage,
 });
 
-function ExerciseCard({ exercise, index }: { exercise: SessionExerciseDTO; index: number }) {
+function ExerciseCard({ exercise, index, onOpenVideo }: { exercise: SessionExerciseDTO; index: number; onOpenVideo: (id: string) => void }) {
   const [open, setOpen] = useState(index === 0);
   const setCount = exercise.sets || 1;
   return (
