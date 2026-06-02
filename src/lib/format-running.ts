@@ -158,13 +158,18 @@ export function buildRunPhases(p: RunningProtocolDTO): RunPhase[] {
         }
       }
       const isLastBlock = b === p.blocks;
-      if (!isLastBlock && p.between_blocks_rest_seconds) {
+      if (!isLastBlock && p.blocks > 1) {
         phases.push({
           kind: "between",
-          label: `Descanso entre blocos`,
-          detail: "Trote leve / caminhada",
-          seconds: p.between_blocks_rest_seconds,
+          label: "DESCANSO ENTRE BLOCOS",
+          detail: p.between_blocks_rest_seconds
+            ? `Prepare-se para o bloco ${b + 1}`
+            : "Descanso obrigatório não configurado",
+          seconds: p.between_blocks_rest_seconds ?? 1,
           block: b,
+          completedBlock: b,
+          nextBlock: b + 1,
+          totalBlocks: p.blocks,
         });
       }
     }
