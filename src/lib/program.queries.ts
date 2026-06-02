@@ -367,23 +367,46 @@ export const getWeekDetail = createServerFn({ method: "GET" })
   });
 
 // ============================================================
-// getTodayTraining — usa active_week + active_day
+// getTodayTraining — usa data local do dispositivo + program_start_date
 // ============================================================
 
 export const getTodayTraining = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
+  .inputValidator((input) => localTodaySchema.parse(input))
   .handler(async ({ context }): Promise<{
     program: ProgramSummary;
     week: WeekDetailDTO;
     today: TrainingDayDTO | null;
+    calendar: TodayTrainingCalendarDTO;
   } | null> => {
-    const summary = await loadProgramSummary(context.supabase, context.userId);
+    const calendarInput = localTodaySchema.parse(arguments[0].data);
+    const summary = await loadProgramSummary(context.supabase, context.userId, calendarInput);
     if (!summary) return null;
     const week = await loadWeekDetail(context.supabase, summary.id, summary.active_week);
     if (!week) return null;
     const today =
       week.days.find((d) => d.day_number === summary.active_day) ?? week.days[0] ?? null;
-    return { program: summary, week, today };
+
+    await context.supabase
+      .from("profiles")
+      .update({ current_week: summary.current_week })
+      .eq("id", context.userId)
+      .neq("current_week", summary.current_week);
+
+    return {
+      program: summary,
+      week,
+      today,
+      calendar: {
+        local_date: calendarInput.local_date,
+        day_number: calendarInput.day_number,
+        day_name: calendarInput.day_name,
+        timezone: calendarInput.timezone ?? null,
+        program_start_date: summary.program_start_date ?? calendarInput.local_date,
+        current_week: summary.current_week,
+        total_weeks: summary.total_weeks,
+      },
+    };
   });
 
 // ============================================================
