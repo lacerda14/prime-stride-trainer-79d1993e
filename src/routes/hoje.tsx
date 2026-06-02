@@ -210,7 +210,14 @@ function HojePage() {
             <div className="mt-3 space-y-2">
               {core.map((c) => (
                 <div key={c.id} className="num flex items-center justify-between rounded-lg border border-border/60 bg-surface/40 px-3 py-2.5 text-sm">
-                  <span className="font-medium">{c.exercise.name}</span>
+                  <button
+                    type="button"
+                    onClick={() => detail.open(c.exercise.id)}
+                    className="inline-flex items-center gap-1.5 font-medium text-left transition-colors hover:text-primary"
+                  >
+                    {c.exercise.name}
+                    <PlayCircle className="h-3 w-3 text-muted-foreground" />
+                  </button>
                   <div className="flex items-center gap-3 text-muted-foreground">
                     <span>{c.sets}x{c.reps}</span>
                     {c.rest_seconds && (
