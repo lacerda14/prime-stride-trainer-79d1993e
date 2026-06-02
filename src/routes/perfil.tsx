@@ -164,6 +164,20 @@ function PerfilPage() {
           <Multi label="Motivação" items={MOTIVATIONS} selected={form.motivations} onToggle={(v) => toggle("motivations", v)} />
         </Card>
 
+        {isAdmin && (
+          <Card icon={Shield} title="Admin">
+            <Link
+              to="/admin/exercise-media"
+              className="flex items-center justify-between rounded-xl border border-border bg-surface/40 px-4 py-3 text-[14px] font-medium text-foreground transition-colors hover:bg-surface/60"
+            >
+              <span>Curador de Vídeos</span>
+              <ChevronRight className="h-4 w-4 text-muted-foreground" />
+            </Link>
+          </Card>
+        )}
+
+
+
         {regen && (
           <div className="rounded-2xl border border-primary/40 bg-primary/[0.06] p-4 text-[13px] text-foreground">
             Você mudou o objetivo ou a agenda — seu programa será regenerado ao salvar.
