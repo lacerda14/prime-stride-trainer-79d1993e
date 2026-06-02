@@ -15,9 +15,90 @@ import {
   SPORTS_OPTIONS, RUNNING_MODES, RUNNING_LEVEL, RUNNING_CONTINUOUS,
   RUNNING_GOALS_OPTIONS, WEEK_DAYS, CARDIO_OPTIONS, PREFERRED_TIMES,
   MEDICAL_CONDITIONS, PAIN_REGIONS, PAST_INJURIES, UNCOMFORTABLE_MOVEMENTS,
-  EQUIPMENT_OPTIONS, PREFERENCES_OPTIONS, TRAINING_STYLES,
+  PREFERENCES_OPTIONS, TRAINING_STYLES,
   MOTIVATIONS_OPTIONS, LIFTS_DONE, EXPERIENCE_OPTIONS,
+  FULL_GYM_COMPLETENESS, FULL_GYM_MISSING_OPTIONS,
+  CONDO_GYM_EQUIPMENT, HOME_EQUIPMENT,
+  BOX_COMPLETENESS, BOX_EQUIPMENT, MIXED_PRIMARY_LOCATIONS,
 } from "@/lib/onboarding-options";
+
+interface GymSetup {
+  location: string;
+  // Academia completa
+  full_gym_completeness: string;
+  full_gym_missing: string[];
+  full_gym_missing_other: string;
+  // Condomínio
+  condo_equipment: string[];
+  condo_other: string;
+  // Casa
+  home_equipment: string[];
+  home_other: string;
+  // Box
+  box_completeness: string;
+  box_equipment: string[];
+  box_other: string;
+  // Misto
+  mixed_primary: string;
+  mixed_other_locations: string[];
+}
+
+const EMPTY_GYM_SETUP: GymSetup = {
+  location: "",
+  full_gym_completeness: "", full_gym_missing: [], full_gym_missing_other: "",
+  condo_equipment: [], condo_other: "",
+  home_equipment: [], home_other: "",
+  box_completeness: "", box_equipment: [], box_other: "",
+  mixed_primary: "", mixed_other_locations: [],
+};
+
+/** Compõe a lista plana de equipamentos para o engine a partir do gym_setup. */
+function deriveEquipment(g: GymSetup): string[] {
+  const set = new Set<string>();
+  switch (g.location) {
+    case "Academia Completa": {
+      if (g.full_gym_completeness === "Algumas máquinas não existem") {
+        // adiciona tudo padrão e remove ausentes
+        ["Rack", "Barra olímpica", "Anilhas", "Halteres", "Banco ajustável",
+         "Leg Press", "Máquina de cabos", "Barra fixa", "Smith", "Hack Squat",
+         "Cadeira Extensora", "Mesa Flexora", "Esteira", "Bicicleta"].forEach((e) => set.add(e));
+        g.full_gym_missing.forEach((m) => set.delete(m));
+      } else {
+        ["Academia completa", "Rack", "Barra olímpica", "Anilhas", "Halteres",
+         "Banco ajustável", "Leg Press", "Máquina de cabos", "Barra fixa",
+         "Smith", "Esteira", "Bicicleta"].forEach((e) => set.add(e));
+      }
+      break;
+    }
+    case "Academia de Condomínio / Prédio":
+      g.condo_equipment.forEach((e) => set.add(e));
+      break;
+    case "Casa":
+      g.home_equipment.forEach((e) => set.add(e));
+      break;
+    case "Box de CrossFit":
+      if (g.box_completeness === "Sim") {
+        ["Remo", "Bike", "SkiErg", "Barra olímpica", "Anilhas bumper",
+         "Caixa de salto", "Kettlebells", "Dumbbells", "Corda", "Argolas",
+         "Barra fixa", "GHD", "Wall Ball"].forEach((e) => set.add(e));
+      } else {
+        g.box_equipment.forEach((e) => set.add(e));
+      }
+      break;
+    case "Misto": {
+      const pickFor = (loc: string) => {
+        if (loc === "Academia") ["Rack", "Barra olímpica", "Halteres", "Máquina de cabos", "Leg Press", "Banco ajustável"].forEach((e) => set.add(e));
+        if (loc === "Condomínio") g.condo_equipment.forEach((e) => set.add(e));
+        if (loc === "Casa") g.home_equipment.forEach((e) => set.add(e));
+        if (loc === "Box") g.box_equipment.forEach((e) => set.add(e));
+      };
+      if (g.mixed_primary) pickFor(g.mixed_primary);
+      g.mixed_other_locations.forEach(pickFor);
+      break;
+    }
+  }
+  return Array.from(set);
+}
 
 export const Route = createFileRoute("/onboarding")({
   head: () => ({ meta: [{ title: "Avaliação · PM Hybrid" }] }),
