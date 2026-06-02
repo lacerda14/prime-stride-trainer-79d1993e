@@ -6,14 +6,18 @@ export function useLocalToday(): LocalToday {
 
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout>;
-    const refresh = () => {
-      setToday(getLocalToday());
+    const schedule = () => {
+      clearTimeout(timer);
       timer = setTimeout(refresh, msUntilNextLocalMidnight());
     };
+    const refresh = () => {
+      setToday(getLocalToday());
+      schedule();
+    };
 
-    timer = setTimeout(refresh, msUntilNextLocalMidnight());
+    schedule();
     const onVisibility = () => {
-      if (document.visibilityState === "visible") setToday(getLocalToday());
+      if (document.visibilityState === "visible") refresh();
     };
     window.addEventListener("focus", refresh);
     document.addEventListener("visibilitychange", onVisibility);
