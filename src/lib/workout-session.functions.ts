@@ -154,7 +154,7 @@ export const updateWorkoutSessionState = createServerFn({ method: "POST" })
         current_interval: data.current_interval ?? null,
         elapsed_seconds: data.elapsed_seconds,
         total_elapsed_seconds: data.total_elapsed_seconds,
-        session_data: data.session_data ?? {},
+        session_data: (data.session_data ?? {}) as Json,
         status: data.status ?? "active",
         updated_at: new Date().toISOString(),
       })
