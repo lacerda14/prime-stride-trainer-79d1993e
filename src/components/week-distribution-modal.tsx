@@ -65,13 +65,32 @@ export function WeekDistributionModal({ weekNumber }: { weekNumber: number }) {
   });
 
   const setDay = (programDay: string, weekday: number) => {
-    setAssignments((prev) => ({ ...prev, [programDay]: weekday }));
+    setAssignments((prev) => {
+      // clicar novamente no dia ativo → desatribui
+      if (prev[programDay] === weekday) {
+        const next = { ...prev };
+        delete next[programDay];
+        return next;
+      }
+      return { ...prev, [programDay]: weekday };
+    });
   };
 
   const usedDays = Object.values(assignments);
-  const hasDuplicates = new Set(usedDays).size !== usedDays.length;
   const allAssigned = trainingDays.every((d) => assignments[d.day] !== undefined);
   const plannedCount = trainingDays.filter((d) => assignments[d.day] !== undefined).length;
+  const missingDays = trainingDays.filter((d) => assignments[d.day] === undefined);
+
+  // dias da semana com mais de uma sessão atribuída
+  const weekdayCounts = usedDays.reduce<Record<number, number>>((acc, v) => {
+    acc[v] = (acc[v] ?? 0) + 1;
+    return acc;
+  }, {});
+  const duplicateWeekdays = Object.entries(weekdayCounts)
+    .filter(([, c]) => c > 1)
+    .map(([v]) => Number(v));
+  const hasDuplicates = duplicateWeekdays.length > 0;
+
   const summary = trainingDays
     .filter((d) => assignments[d.day] !== undefined)
     .map((d) => {
@@ -79,10 +98,35 @@ export function WeekDistributionModal({ weekNumber }: { weekNumber: number }) {
       return { day: d.day, session: d.session, weekday: wd };
     })
     .sort((a, b) => {
-      // Segunda primeiro, Domingo por último
       const order = (v: number) => (v === 0 ? 7 : v);
       return order(a.weekday.v) - order(b.weekday.v);
     });
+
+  const handleReview = () => {
+    if (missingDays.length > 0) {
+      toast.error(
+        `${missingDays.length} sessão(ões) sem dia atribuído: ${missingDays.map((d) => d.day).join(", ")}`,
+      );
+      return;
+    }
+    if (hasDuplicates) {
+      const labels = duplicateWeekdays
+        .map((v) => WEEKDAYS.find((w) => w.v === v)?.long)
+        .filter(Boolean)
+        .join(", ");
+      toast.error(`Mais de um treino em ${labels}. Cada dia aceita só um treino.`);
+      return;
+    }
+    setStep("review");
+  };
+
+  const handleSave = () => {
+    if (!allAssigned || hasDuplicates) {
+      toast.error("Resolva os avisos antes de salvar.");
+      return;
+    }
+    mutation.mutate();
+  };
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
