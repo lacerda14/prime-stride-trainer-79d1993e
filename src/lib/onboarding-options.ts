@@ -1,0 +1,137 @@
+// Shared onboarding/profile option catalogs (pt-BR)
+
+export const PRIMARY_GOAL_OPTIONS = [
+  { v: "emagrecimento", label: "Emagrecimento", hint: "Perda de gordura" },
+  { v: "hipertrofia", label: "Hipertrofia", hint: "Ganho de massa muscular" },
+  { v: "ganho_forca", label: "Ganho de força", hint: "Mais força em levantamentos" },
+  { v: "condicionamento", label: "Melhorar condicionamento", hint: "Capacidade física geral" },
+  { v: "correr_5k", label: "Correr 5 km", hint: "Foco em corrida de 5 km" },
+  { v: "correr_10k", label: "Correr 10 km", hint: "Foco em corrida de 10 km" },
+  { v: "saude_geral", label: "Saúde geral", hint: "Bem-estar e longevidade" },
+  { v: "performance_hibrida", label: "Performance híbrida", hint: "Força + corrida" },
+  { v: "outro", label: "Outro", hint: "Tenho outro objetivo" },
+] as const;
+
+export const SECONDARY_GOALS = [
+  "Ganhar massa muscular", "Perder gordura", "Melhorar postura", "Melhorar mobilidade",
+  "Melhorar cardio", "Melhorar desempenho esportivo", "Aumentar disposição",
+  "Reduzir dores", "Melhorar indicadores de saúde",
+];
+
+export const TRAINING_HISTORY_OPTIONS = [
+  { v: "none", label: "Nunca treinei" },
+  { v: "lt_6m", label: "Menos de 6 meses" },
+  { v: "6m_2y", label: "Entre 6 meses e 2 anos" },
+  { v: "2_5y", label: "Entre 2 e 5 anos" },
+  { v: "gt_5y", label: "Mais de 5 anos" },
+] as const;
+
+export const TRAINING_LOCATION_OPTIONS = [
+  "Academia", "Box de CrossFit", "Academia de condomínio",
+  "Academia do trabalho", "Casa", "Home Gym",
+];
+
+export const DAYS_PER_WEEK = [3, 4, 5, 6] as const;
+export const MINUTES_PER_SESSION = [30, 45, 60, 75, 90] as const;
+
+export const EXPERIENCE_OPTIONS = [
+  { v: "beginner", label: "Iniciante" },
+  { v: "intermediate", label: "Intermediário" },
+  { v: "advanced", label: "Avançado" },
+] as const;
+
+export const SPORTS_OPTIONS = [
+  "Corrida", "CrossFit", "Futebol", "Basquete", "Jiu-Jitsu", "Muay Thai",
+  "Natação", "Ciclismo", "Tênis", "Triathlon", "Vôlei", "Outro",
+];
+
+export const RUNNING_MODES = [
+  {
+    v: "desabilitado", label: "Não quero corrida",
+    hint: "O plano será composto apenas por musculação.",
+  },
+  {
+    v: "opcional", label: "Quero corrida apenas como sugestão",
+    hint: "Sessões de cardio sugeridas, não obrigatórias.",
+  },
+  {
+    v: "integrado", label: "Quero corrida integrada ao plano",
+    hint: "A corrida fará parte do programa semanal.",
+  },
+  {
+    v: "principal", label: "Meu principal objetivo envolve corrida",
+    hint: "Corrida prioridade, musculação complementar.",
+  },
+] as const;
+
+export const RUNNING_LEVEL = ["Nunca corri", "Iniciante", "Intermediário", "Avançado"];
+
+export const RUNNING_CONTINUOUS = [
+  "Menos de 5 minutos", "Entre 5 e 15 minutos", "Entre 15 e 30 minutos",
+  "Entre 30 e 60 minutos", "Mais de 60 minutos",
+];
+
+export const RUNNING_GOALS_OPTIONS = [
+  "Completar meus primeiros 5 km", "Melhorar meu tempo nos 5 km",
+  "Completar 10 km", "Melhorar meu tempo nos 10 km",
+  "Melhorar resistência", "Melhorar condicionamento",
+  "Emagrecer", "Não possuo objetivo com corrida",
+];
+
+export const WEEK_DAYS = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado", "Domingo"];
+
+export const CARDIO_OPTIONS = [
+  "Caminhada", "Bicicleta", "Remo", "Air Bike",
+  "Elíptico", "Escada", "Não gosto de cardio",
+];
+
+export const PREFERRED_TIMES = ["Manhã", "Almoço", "Tarde", "Noite"];
+
+export const MEDICAL_CONDITIONS = [
+  "Hipertensão", "Diabetes", "Doença cardíaca", "Asma",
+  "Bronquite", "Colesterol elevado", "Obesidade", "Nenhuma",
+];
+
+export const PAIN_REGIONS = [
+  "Pescoço", "Ombros", "Cotovelos", "Punhos", "Coluna torácica",
+  "Lombar", "Quadril", "Joelhos", "Tornozelos", "Pés",
+];
+
+export const PAST_INJURIES = [
+  "Hérnia de disco", "Lesão do manguito rotador", "Lesão de LCA",
+  "Lesão de menisco", "Tendinite", "Fascite plantar", "Outra",
+];
+
+export const UNCOMFORTABLE_MOVEMENTS = [
+  "Agachamento", "Corrida", "Saltos", "Exercícios acima da cabeça",
+  "Puxadas", "Empurradas", "Nenhum",
+];
+
+export const EQUIPMENT_OPTIONS = [
+  "Academia completa", "Rack", "Barra olímpica", "Anilhas", "Halteres",
+  "Banco ajustável", "Leg Press", "Máquina de cabos", "Barra fixa",
+  "Kettlebells", "Faixas elásticas", "Esteira", "Remo", "Air Bike",
+  "Bicicleta ergométrica", "Apenas peso corporal",
+];
+
+export const PREFERENCES_OPTIONS = [
+  "Força", "Hipertrofia", "Cardio", "Mobilidade", "Corrida", "Treino misto",
+];
+
+export const TRAINING_STYLES = ["Curto e intenso", "Equilibrado", "Mais longo"];
+
+export const MOTIVATIONS_OPTIONS = [
+  "Estética", "Saúde", "Performance", "Competição", "Consistência",
+];
+
+export const LIFTS_DONE = [
+  "Back Squat", "Front Squat", "Deadlift", "Bench Press",
+  "Pull Up", "Programas de corrida", "Nenhum",
+];
+
+// keys that, when changed, suggest the plan should be regenerated.
+export const PLAN_IMPACTING_KEYS = [
+  "primary_goal", "secondary_goals", "running_mode", "available_days",
+  "available_minutes", "equipment", "training_location", "experience_level",
+  "pain_regions", "past_injuries", "uncomfortable_movements",
+] as const;

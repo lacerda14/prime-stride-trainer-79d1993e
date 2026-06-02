@@ -1,121 +1,93 @@
-# Migração para o Motor de Personalização PM Hybrid v1.0
+# PM HYBRID — Onboarding Inteligente v2
 
-## Contexto
+Este é um plano grande. Vou implementar em **3 entregas sequenciais** para manter qualidade e te permitir validar etapa por etapa.
 
-A app hoje roda em cima de `src/lib/program-data.json` (planilha fixa) com schema já estabelecido em Supabase (`profiles`, `workout_sessions`, `xp_events`, `achievements`, `friendships`, `week_plans`, etc.).
+---
 
-O novo modelo exige:
-- 8+ tabelas novas (`training_programs`, `macrocycles`, `mesocycles`, `weeks`, `training_days`, `exercise_pool`, `session_exercises`, `running_protocols`)
-- Um engine de geração que aplique ~30 regras (universais, por objetivo, por disponibilidade, regra de ouro, manguito, panturrilha, etc.)
-- Pool de exercícios extraído das 2 planilhas anexas + documento PM Motor
-- Onboarding atualizado (campos novos: `sex` em vez de `gender`, enums novos para `goal` e `experience_level`, `available_days` agora discreto 3/4/5)
-- Renderização dinâmica em todas as telas (hoje, semanas, treino, corrida, progressão)
+## Entrega 1 — Banco de dados (migração)
 
-Implementar isso num único turno quebra a app inteira. Proponho 5 fases, cada uma entregável e reversível.
+Expandir `profiles` com todos os novos campos e criar tabelas auxiliares.
 
-## Decisões que preciso confirmar antes de começar
+**Novos campos em `profiles`:**
+- `first_name`, `last_name`, `birth_date` (date), `sex` (já existe)
+- `waist_cm`, `hip_cm`, `chest_cm`, `arm_cm`, `thigh_cm` (numeric, opcionais)
+- `primary_goal` (text — substitui semanticamente `goal`, mas mantemos `goal` para compat com engine atual; primary_goal é mapeado para goal)
+- `secondary_goals` (text[])
+- `training_history` (já existe), `training_location` (já existe), `available_minutes` (já existe), `available_days` (já existe)
+- `sports` (já existe), `sports_frequency` (jsonb — `{ corrida: 2, futebol: 1 }`)
+- `running_mode` (text: desabilitado | opcional | integrado | principal)
+- `running_level` (text), `running_continuous_minutes` (text bucket), `running_goals` (text[]), `running_preferred_days` (text[])
+- `cardio_preference` (text)
+- `available_days_list` (text[] — dias da semana), `preferred_time` (text)
+- `medical_conditions` (text[]), `medications` (text), `surgeries` (jsonb), `medical_restrictions` (text)
+- `current_pain_level` (int 0-10), `pain_regions` (text[]), `past_injuries` (text[]), `uncomfortable_movements` (text[])
+- `equipment` (text[])
+- `preferences` (já existe — favoritos), `training_style` (text), `motivations` (já existe)
+- `perf_max_pushups`, `perf_max_squats`, `perf_max_plank_seconds`, `perf_max_run_minutes` (int, opcionais)
+- `perf_lifts_done` (text[])
 
-1. **Compatibilidade com dados existentes**: usuários já cadastrados têm `gender` (4 valores) e `main_goal` (5 valores). O novo schema usa `sex` e `goal` com enums diferentes. Posso (a) renomear colunas via migration e mapear valores, ou (b) manter as antigas e adicionar as novas em paralelo, ou (c) limpar tudo (drop & recreate) — você está em dev então isso é viável.
+**Nova tabela `progress_photos`:**
+- `id`, `user_id`, `photo_type` (frente/lado/costas), `storage_path`, `uploaded_at`
+- RLS: usuário só vê/insere/deleta as suas
+- Storage bucket `progress-photos` (privado)
 
-2. **Pool de exercícios**: vou extrair de `PM_INICIANTES_48S.xlsx` e `PM_IDOSOS_60-70_48S.xlsx` e popular `exercise_pool` via seed. Confirma que essas planilhas são a fonte canônica do pool?
+**Mapeamento `primary_goal → goal` (engine atual):**
+- emagrecimento → fat_loss
+- hipertrofia, ganho_forca → hypertrophy
+- correr_5k, correr_10k → run_5k
+- condicionamento → conditioning
+- saude_geral → general_health
+- performance_hibrida → hybrid
+- outro → general_health
 
-3. **Tela `/semanas` e `WeekDistributionModal`**: a distribuição manual de dias que acabamos de construir vira incompatível — o novo motor gera dias já atribuídos. Tudo bem remover esse modal?
+---
 
-4. **Gamificação (Fase 1 atual)**: XP/streak/achievements ficam intactos; só mudam as funções de "recordWorkout" para apontar para `training_days` em vez de `workout_sessions` legado.
+## Entrega 2 — Fluxo de onboarding (13 seções)
 
-## Fases
+Reescrever `src/routes/onboarding.tsx` como um **wizard premium mobile-first**:
 
-### Fase A — Schema base (1 migration)
-- Drop colunas antigas `gender`, `main_goal` em `profiles`; cria `sex`, `goal` com novos enums; renomeia `available_days` para aceitar 3/4/5; adiciona `name`, `onboarding_completed` (boolean) substituindo `display_name`/`onboarding_completed_at`.
-- Cria tabelas: `training_programs`, `macrocycles`, `mesocycles`, `weeks`, `training_days`, `exercise_pool`, `session_exercises`, `running_protocols`.
-- RLS por `auth.uid()` via `training_programs.user_id`.
-- Mantém `workout_sessions`, `xp_events`, `achievements`, `user_achievements`, `friendships`, `weight_history` (gamificação não muda).
-- Remove `week_plans` (não faz mais sentido com geração dinâmica).
+**Estrutura:**
+- Container `max-w-[480px]`, barra de progresso fixa no topo (13 passos)
+- Animações suaves de transição entre seções (framer-motion já no projeto? verificar; senão CSS transitions)
+- Cards grandes, botões thumb-friendly, ícones lucide-react para perguntas visuais
+- Cada seção é um componente local: `SectionProfile`, `SectionPrimaryGoal`, ..., `SectionPhotos`
+- Estado central via `useState` com o objeto completo; persistência só no submit final (e parcial em localStorage como rascunho)
+- Validação leve por seção; obrigatórios marcados, opcionais com botão "Pular"
+- Botões "Voltar" / "Continuar"; último passo "Finalizar e gerar meu programa"
 
-### Fase B — Seed do exercise_pool
-- Script Python lê as 2 planilhas + tabelas do PM Motor (seção 6).
-- Insere ~80–120 exercícios com `category`, `equipment`, `movement_pattern`, flags `allowed_beginner/intermediate/advanced`, `shoulder_safe`, `lower_body_pattern`.
-- Migration de seed (INSERT bulk).
+**Seções implementadas exatamente como especificado** (1–13). Idade calculada da data de nascimento. Upload de fotos em Storage no passo 13.
 
-### Fase C — ProgramGenerationEngine (servidor)
-Arquivo: `src/lib/program-engine.server.ts` + `src/lib/program-engine.functions.ts`.
+**No submit:**
+1. UPDATE em `profiles` com todos os campos
+2. Marca `onboarding_completed = true`
+3. Chama `generateProgramForCurrentUser()` (engine atual respeita goal/available_days)
+4. Redireciona para `/hoje` com toast de sucesso
 
-Funções principais:
-- `calcReferenceVelocity(profile)` — V_ref baseado em peso/idade/sexo (doc seção 8).
-- `buildMacroPlan(goal, available_days)` — devolve os 6 mesos com modificadores de objetivo (seções 5.1–5.4) e disponibilidade (seção 9).
-- `selectExercisesForDay(week, dayType, pool, history)` — rotação indexada respeitando: Regra de Ouro (≤2x/meso), SEG≠QUA≠SEX, TER≠QUI, Back≠Front Squat, manguito ≤1/sessão e ≤3/semana, panturrilha 2–3x/semana, core ao final, proibidos sem 1–12.
-- `generateProgram(userId)` — orquestra: cria `training_programs` + 4 macros + 6 mesos + 48 weeks + ~240 training_days + session_exercises + running_protocols.
-- `validateProgram(program)` — checklist seção 10; rejeita e regera se falhar.
+---
 
-Server fn exposta: `generateProgramForCurrentUser()` (auth-protected).
+## Entrega 3 — Perfil editável + recálculo
 
-### Fase D — Onboarding atualizado
-- Reescreve `src/routes/onboarding.tsx` com as 9 etapas exatas (Nome → Telefone → Idade → Sexo → Peso → Altura → Experiência → Objetivo → Dias).
-- Ao concluir: `completeOnboarding(...)` → `generateProgramForCurrentUser()` → redirect para `/`.
-- Validação Zod por etapa.
+**Reescrever `/perfil`** (ou criar `/perfil/editar`) em formato de seções/accordions com os mesmos blocos do onboarding.
 
-### Fase E — Migração das telas para leitura dinâmica
-Cada tela troca `program-data.json` por queries no programa gerado:
-- `src/routes/index.tsx` (home gamificada): lê `active_week`/`active_day` do `training_programs`.
-- `src/routes/hoje.tsx`: lê `training_days` + `session_exercises` + `running_protocols` do dia ativo.
-- `src/routes/semanas.tsx`: lista `weeks` agrupadas por meso/macro.
-- `src/routes/treino.tsx`, `/corrida`, `/progressao`, `/historico`: consomem o programa gerado.
-- Deleta `src/lib/mock-data.ts` e `src/lib/program-data.json` (ou move para `_legacy/`).
-- Remove `WeekDistributionModal`.
+- Cada bloco pode ser editado isoladamente (botão "Editar" → modal/sheet com os campos)
+- Quando o usuário edita campos que impactam o plano (`primary_goal`, `secondary_goals`, `running_mode`, `available_days`, `available_minutes`, `equipment`, `training_location`, `experience_level`, `pain_regions`, `past_injuries`, `uncomfortable_movements`), exibir banner:
+  > "Alterar estas informações poderá gerar uma nova periodização."
+  
+  Com botão **"Recalcular meu programa"** que chama `generateProgramForCurrentUser()`.
 
-## Detalhes técnicos
+---
 
-### Enums (Postgres)
-```sql
-create type experience_level as enum ('beginner','intermediate','advanced');
-create type goal as enum ('fat_loss','hypertrophy','endurance','hybrid');
-create type session_type as enum ('full_body','run_upper','run','rest');
-create type week_type as enum ('A','B');
-create type exercise_category as enum (
-  'biceps','triceps','chest','lats','back','trap','shoulder',
-  'rotator_cuff','posterior_chain','anterior_chain','calf','core','plyometric'
-);
-```
+## Observações técnicas
 
-### Tabela `training_programs` (single active per user)
-- Unique constraint: `(user_id) where archived_at is null` para garantir 1 ativo.
-- Coluna `active_week int` + `active_day int` cacheia o progresso atual (atualizada por trigger ao completar treino).
+- **Engine PM**: não vou alterar `pm-engine.server.ts` agora. As novas dimensões (running_mode, equipment, injuries, sports_frequency) ficam salvas no perfil e prontas para a próxima evolução do engine. O engine atual continua consumindo `goal` + `available_days` + `experience_level`.
+- **Português BR**: todos os textos, opções e mensagens 100% em pt-BR.
+- **Paleta PM Hybrid v2** mantida (preto/grafite/titânio, sem dourado/laranja).
+- Não vou tocar em `client.ts`, `types.ts`, `auth-middleware.ts`, `client.server.ts`.
 
-### Engine de geração
-- Determinístico com seed `user_id + created_at` para reprodutibilidade.
-- Roda inteiro em server function (não edge function) — sob nosso runtime TanStack.
-- ~500–800 linhas de TS. Vou organizar em módulos: `pools.ts`, `rules.ts`, `progression.ts`, `validators.ts`, `generator.ts`.
+---
 
-### Migration de dados existentes
-Como estamos em dev e o schema muda muito, recomendo `TRUNCATE` de `profiles` e tabelas dependentes — usuários precisarão refazer onboarding. Confirma?
+## Próximo passo
 
-## Estrutura final de arquivos (novos)
-```text
-src/lib/
-  engine/
-    pools.ts            // pool queries + filtros
-    rules.ts            // validadores universais
-    progression.ts      // prescrições por meso
-    generator.ts        // generateProgram()
-    validators.ts       // checklist seção 10
-  program-engine.functions.ts   // server fns expostas
-  program.queries.ts            // queries para telas
-supabase/migrations/
-  <ts>_motor_v1_schema.sql      // Fase A
-  <ts>_motor_v1_exercise_pool_seed.sql  // Fase B
-```
+Se aprovado, começo pela **Entrega 1 (migração)** — ela precisa do teu OK no diff SQL antes de rodar. Depois sigo direto com Entrega 2 e 3.
 
-## O que NÃO faço nesta migração
-- XP/streak/achievements (já implementados, ficam)
-- Amigos/ranking/desafios (arquitetura já existe via `friendships`, sem UI)
-- PRs (preparar coluna em `session_exercises.pr_at` mas sem UI)
-
-## Próximos passos
-
-Preciso da sua confirmação em 3 pontos antes de tocar no schema:
-
-1. **OK para drop+recreate de `profiles` e tabelas dependentes?** (Você perde os usuários atuais — em dev é só refazer onboarding.)
-2. **As 2 planilhas anexas são a fonte canônica do exercise_pool?** Ou existe uma 3ª lista mestre?
-3. **Tudo bem remover `weekplans` + `WeekDistributionModal` agora?** O engine gera os dias atribuídos.
-
-Respondendo essas 3, começo pela Fase A na próxima mensagem.
+Posso seguir?
