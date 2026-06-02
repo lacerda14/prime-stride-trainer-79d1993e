@@ -373,13 +373,13 @@ export const getWeekDetail = createServerFn({ method: "GET" })
 export const getTodayTraining = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => localTodaySchema.parse(input))
-  .handler(async ({ context }): Promise<{
+  .handler(async ({ data, context }): Promise<{
     program: ProgramSummary;
     week: WeekDetailDTO;
     today: TrainingDayDTO | null;
     calendar: TodayTrainingCalendarDTO;
   } | null> => {
-    const calendarInput = localTodaySchema.parse(arguments[0].data);
+    const calendarInput = data;
     const summary = await loadProgramSummary(context.supabase, context.userId, calendarInput);
     if (!summary) return null;
     const week = await loadWeekDetail(context.supabase, summary.id, summary.active_week);
