@@ -403,6 +403,7 @@ export type Database = {
       profiles: {
         Row: {
           age: number | null
+          alcohol_frequency: string | null
           arm_cm: number | null
           available_days: number | null
           available_days_list: string[]
@@ -414,6 +415,8 @@ export type Database = {
           created_at: string
           current_pain_level: number | null
           current_week: number
+          emergency_contact_name: string | null
+          emergency_contact_phone: string | null
           equipment: string[]
           experience_level:
             | Database["public"]["Enums"]["experience_level_enum"]
@@ -422,20 +425,27 @@ export type Database = {
           friend_code: string | null
           goal: Database["public"]["Enums"]["goal_enum"] | null
           gym_setup: Json
+          had_structured_program: string | null
+          had_surgery: string | null
           height_cm: number | null
           hip_cm: number | null
           id: string
+          last_medical_checkup: string | null
           last_name: string | null
           level: number
+          limitations_notes: string | null
           medical_conditions: string[]
           medical_restrictions: string | null
           medications: string | null
           motivations: string[]
           name: string | null
           onboarding_completed: boolean
+          onboarding_step: number | null
+          pain_intensity: Json | null
           pain_regions: string[]
           past_injuries: string[]
           perf_lifts_done: string[]
+          perf_longest_run_km: number | null
           perf_max_plank_seconds: number | null
           perf_max_pushups: number | null
           perf_max_run_minutes: number | null
@@ -444,6 +454,7 @@ export type Database = {
           preferences: string[]
           preferred_time: string | null
           primary_goal: string | null
+          professional_activity: string | null
           program_start_date: string
           running_continuous_minutes: string | null
           running_goals: string[]
@@ -452,8 +463,12 @@ export type Database = {
           running_preferred_days: string[]
           secondary_goals: string[]
           sex: Database["public"]["Enums"]["sex_enum"] | null
+          sleep_hours: number | null
+          smokes: boolean | null
           sports: string[]
           sports_frequency: Json
+          sports_frequency_week: number | null
+          sports_notes: string | null
           streak_current: number
           streak_last_date: string | null
           streak_longest: number
@@ -462,15 +477,18 @@ export type Database = {
           training_history: string | null
           training_location: string | null
           training_style: string | null
+          training_years: string | null
           uncomfortable_movements: string[]
           updated_at: string
           username: string | null
           waist_cm: number | null
+          water_intake: string | null
           weight_kg: number | null
           xp_total: number
         }
         Insert: {
           age?: number | null
+          alcohol_frequency?: string | null
           arm_cm?: number | null
           available_days?: number | null
           available_days_list?: string[]
@@ -482,6 +500,8 @@ export type Database = {
           created_at?: string
           current_pain_level?: number | null
           current_week?: number
+          emergency_contact_name?: string | null
+          emergency_contact_phone?: string | null
           equipment?: string[]
           experience_level?:
             | Database["public"]["Enums"]["experience_level_enum"]
@@ -490,20 +510,27 @@ export type Database = {
           friend_code?: string | null
           goal?: Database["public"]["Enums"]["goal_enum"] | null
           gym_setup?: Json
+          had_structured_program?: string | null
+          had_surgery?: string | null
           height_cm?: number | null
           hip_cm?: number | null
           id: string
+          last_medical_checkup?: string | null
           last_name?: string | null
           level?: number
+          limitations_notes?: string | null
           medical_conditions?: string[]
           medical_restrictions?: string | null
           medications?: string | null
           motivations?: string[]
           name?: string | null
           onboarding_completed?: boolean
+          onboarding_step?: number | null
+          pain_intensity?: Json | null
           pain_regions?: string[]
           past_injuries?: string[]
           perf_lifts_done?: string[]
+          perf_longest_run_km?: number | null
           perf_max_plank_seconds?: number | null
           perf_max_pushups?: number | null
           perf_max_run_minutes?: number | null
@@ -512,6 +539,7 @@ export type Database = {
           preferences?: string[]
           preferred_time?: string | null
           primary_goal?: string | null
+          professional_activity?: string | null
           program_start_date?: string
           running_continuous_minutes?: string | null
           running_goals?: string[]
@@ -520,8 +548,12 @@ export type Database = {
           running_preferred_days?: string[]
           secondary_goals?: string[]
           sex?: Database["public"]["Enums"]["sex_enum"] | null
+          sleep_hours?: number | null
+          smokes?: boolean | null
           sports?: string[]
           sports_frequency?: Json
+          sports_frequency_week?: number | null
+          sports_notes?: string | null
           streak_current?: number
           streak_last_date?: string | null
           streak_longest?: number
@@ -530,15 +562,18 @@ export type Database = {
           training_history?: string | null
           training_location?: string | null
           training_style?: string | null
+          training_years?: string | null
           uncomfortable_movements?: string[]
           updated_at?: string
           username?: string | null
           waist_cm?: number | null
+          water_intake?: string | null
           weight_kg?: number | null
           xp_total?: number
         }
         Update: {
           age?: number | null
+          alcohol_frequency?: string | null
           arm_cm?: number | null
           available_days?: number | null
           available_days_list?: string[]
@@ -550,6 +585,8 @@ export type Database = {
           created_at?: string
           current_pain_level?: number | null
           current_week?: number
+          emergency_contact_name?: string | null
+          emergency_contact_phone?: string | null
           equipment?: string[]
           experience_level?:
             | Database["public"]["Enums"]["experience_level_enum"]
@@ -558,20 +595,27 @@ export type Database = {
           friend_code?: string | null
           goal?: Database["public"]["Enums"]["goal_enum"] | null
           gym_setup?: Json
+          had_structured_program?: string | null
+          had_surgery?: string | null
           height_cm?: number | null
           hip_cm?: number | null
           id?: string
+          last_medical_checkup?: string | null
           last_name?: string | null
           level?: number
+          limitations_notes?: string | null
           medical_conditions?: string[]
           medical_restrictions?: string | null
           medications?: string | null
           motivations?: string[]
           name?: string | null
           onboarding_completed?: boolean
+          onboarding_step?: number | null
+          pain_intensity?: Json | null
           pain_regions?: string[]
           past_injuries?: string[]
           perf_lifts_done?: string[]
+          perf_longest_run_km?: number | null
           perf_max_plank_seconds?: number | null
           perf_max_pushups?: number | null
           perf_max_run_minutes?: number | null
@@ -580,6 +624,7 @@ export type Database = {
           preferences?: string[]
           preferred_time?: string | null
           primary_goal?: string | null
+          professional_activity?: string | null
           program_start_date?: string
           running_continuous_minutes?: string | null
           running_goals?: string[]
@@ -588,8 +633,12 @@ export type Database = {
           running_preferred_days?: string[]
           secondary_goals?: string[]
           sex?: Database["public"]["Enums"]["sex_enum"] | null
+          sleep_hours?: number | null
+          smokes?: boolean | null
           sports?: string[]
           sports_frequency?: Json
+          sports_frequency_week?: number | null
+          sports_notes?: string | null
           streak_current?: number
           streak_last_date?: string | null
           streak_longest?: number
@@ -598,10 +647,12 @@ export type Database = {
           training_history?: string | null
           training_location?: string | null
           training_style?: string | null
+          training_years?: string | null
           uncomfortable_movements?: string[]
           updated_at?: string
           username?: string | null
           waist_cm?: number | null
+          water_intake?: string | null
           weight_kg?: number | null
           xp_total?: number
         }
