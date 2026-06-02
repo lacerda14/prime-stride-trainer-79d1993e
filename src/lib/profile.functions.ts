@@ -274,6 +274,9 @@ export const completeOnboarding = createServerFn({ method: "POST" })
 // ============================================================
 
 const partialSchema = onboardingV2Schema.partial().extend({
+  // Legacy fields kept for the existing /perfil page.
+  name: z.string().trim().min(1).max(120).optional(),
+  goal: z.enum(ENGINE_DB_GOALS).optional(),
   regenerate_plan: z.boolean().optional(),
 });
 
