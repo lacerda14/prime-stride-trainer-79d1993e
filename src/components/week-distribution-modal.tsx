@@ -6,7 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { getWeekPlan, saveWeekPlan } from "@/lib/training.functions";
 import { WEEKS, type DayName } from "@/lib/mock-data";
 import { useAuth } from "@/hooks/use-auth";
-import { CheckCircle2, Calendar } from "lucide-react";
+import { CheckCircle2, Calendar, Circle, ArrowLeft, Sparkles } from "lucide-react";
 
 // 0 = Domingo … 6 = Sábado
 const WEEKDAYS: { v: number; short: string; long: string }[] = [
