@@ -305,6 +305,29 @@ function scoreVideo(detail: YouTubeVideoDetail, durationSec: number): number {
   return Math.max(0, Math.min(100, score));
 }
 
+export interface SearchVideosResultDTO {
+  saved: number;
+  candidates: ExerciseMediaDTO[];
+  error?: {
+    code: "quota_exceeded" | "youtube_unavailable";
+    message: string;
+  };
+}
+
+function youtubeApiError(status: number, body: string): SearchVideosResultDTO["error"] {
+  const normalized = body.toLowerCase();
+  if (status === 429 || normalized.includes("quota exceeded") || normalized.includes("ratelimitexceeded")) {
+    return {
+      code: "quota_exceeded",
+      message: "A cota diária de buscas do YouTube acabou. Os candidatos já salvos continuam disponíveis; tente novas buscas amanhã ou adicione um vídeo manualmente.",
+    };
+  }
+  return {
+    code: "youtube_unavailable",
+    message: "O YouTube não respondeu como esperado agora. Tente novamente em alguns minutos ou adicione o vídeo manualmente.",
+  };
+}
+
 export const searchVideosForExercise = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) =>
@@ -315,7 +338,7 @@ export const searchVideosForExercise = createServerFn({ method: "POST" })
       })
       .parse(input),
   )
-  .handler(async ({ data, context }): Promise<{ saved: number; candidates: ExerciseMediaDTO[] }> => {
+  .handler(async ({ data, context }): Promise<SearchVideosResultDTO> => {
     const { supabase, userId } = context;
     await ensureAdmin(supabase, userId);
 
@@ -335,7 +358,8 @@ export const searchVideosForExercise = createServerFn({ method: "POST" })
     const searchRes = await fetch(searchUrl);
     if (!searchRes.ok) {
       const txt = await searchRes.text();
-      throw new Error(`YouTube search failed: ${searchRes.status} ${txt}`);
+      console.warn(`YouTube search failed: ${searchRes.status} ${txt}`);
+      return { saved: 0, candidates: [], error: youtubeApiError(searchRes.status, txt) };
     }
     const searchJson = (await searchRes.json()) as { items: YouTubeItem[] };
     const ids = (searchJson.items ?? []).map((it) => it.id.videoId).filter(Boolean);
@@ -346,7 +370,8 @@ export const searchVideosForExercise = createServerFn({ method: "POST" })
     const detailRes = await fetch(detailUrl);
     if (!detailRes.ok) {
       const txt = await detailRes.text();
-      throw new Error(`YouTube details failed: ${detailRes.status} ${txt}`);
+      console.warn(`YouTube details failed: ${detailRes.status} ${txt}`);
+      return { saved: 0, candidates: [], error: youtubeApiError(detailRes.status, txt) };
     }
     const detailJson = (await detailRes.json()) as { items: YouTubeVideoDetail[] };
 
