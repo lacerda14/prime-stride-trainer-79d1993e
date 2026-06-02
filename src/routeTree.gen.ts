@@ -21,6 +21,7 @@ import { Route as ConfiguracoesRouteImport } from './routes/configuracoes'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminExerciseMediaRouteImport } from './routes/admin.exercise-media'
+import { Route as TreinoConcluidoSessionIdRouteImport } from './routes/treino.concluido.$sessionId'
 
 const TreinoRoute = TreinoRouteImport.update({
   id: '/treino',
@@ -82,6 +83,12 @@ const AdminExerciseMediaRoute = AdminExerciseMediaRouteImport.update({
   path: '/admin/exercise-media',
   getParentRoute: () => rootRouteImport,
 } as any)
+const TreinoConcluidoSessionIdRoute =
+  TreinoConcluidoSessionIdRouteImport.update({
+    id: '/concluido/$sessionId',
+    path: '/concluido/$sessionId',
+    getParentRoute: () => TreinoRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -94,8 +101,9 @@ export interface FileRoutesByFullPath {
   '/perfil': typeof PerfilRoute
   '/progressao': typeof ProgressaoRoute
   '/semanas': typeof SemanasRoute
-  '/treino': typeof TreinoRoute
+  '/treino': typeof TreinoRouteWithChildren
   '/admin/exercise-media': typeof AdminExerciseMediaRoute
+  '/treino/concluido/$sessionId': typeof TreinoConcluidoSessionIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -108,8 +116,9 @@ export interface FileRoutesByTo {
   '/perfil': typeof PerfilRoute
   '/progressao': typeof ProgressaoRoute
   '/semanas': typeof SemanasRoute
-  '/treino': typeof TreinoRoute
+  '/treino': typeof TreinoRouteWithChildren
   '/admin/exercise-media': typeof AdminExerciseMediaRoute
+  '/treino/concluido/$sessionId': typeof TreinoConcluidoSessionIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -123,8 +132,9 @@ export interface FileRoutesById {
   '/perfil': typeof PerfilRoute
   '/progressao': typeof ProgressaoRoute
   '/semanas': typeof SemanasRoute
-  '/treino': typeof TreinoRoute
+  '/treino': typeof TreinoRouteWithChildren
   '/admin/exercise-media': typeof AdminExerciseMediaRoute
+  '/treino/concluido/$sessionId': typeof TreinoConcluidoSessionIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -141,6 +151,7 @@ export interface FileRouteTypes {
     | '/semanas'
     | '/treino'
     | '/admin/exercise-media'
+    | '/treino/concluido/$sessionId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -155,6 +166,7 @@ export interface FileRouteTypes {
     | '/semanas'
     | '/treino'
     | '/admin/exercise-media'
+    | '/treino/concluido/$sessionId'
   id:
     | '__root__'
     | '/'
@@ -169,6 +181,7 @@ export interface FileRouteTypes {
     | '/semanas'
     | '/treino'
     | '/admin/exercise-media'
+    | '/treino/concluido/$sessionId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -182,7 +195,7 @@ export interface RootRouteChildren {
   PerfilRoute: typeof PerfilRoute
   ProgressaoRoute: typeof ProgressaoRoute
   SemanasRoute: typeof SemanasRoute
-  TreinoRoute: typeof TreinoRoute
+  TreinoRoute: typeof TreinoRouteWithChildren
   AdminExerciseMediaRoute: typeof AdminExerciseMediaRoute
 }
 
@@ -272,8 +285,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminExerciseMediaRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/treino/concluido/$sessionId': {
+      id: '/treino/concluido/$sessionId'
+      path: '/concluido/$sessionId'
+      fullPath: '/treino/concluido/$sessionId'
+      preLoaderRoute: typeof TreinoConcluidoSessionIdRouteImport
+      parentRoute: typeof TreinoRoute
+    }
   }
 }
+
+interface TreinoRouteChildren {
+  TreinoConcluidoSessionIdRoute: typeof TreinoConcluidoSessionIdRoute
+}
+
+const TreinoRouteChildren: TreinoRouteChildren = {
+  TreinoConcluidoSessionIdRoute: TreinoConcluidoSessionIdRoute,
+}
+
+const TreinoRouteWithChildren =
+  TreinoRoute._addFileChildren(TreinoRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
@@ -286,7 +317,7 @@ const rootRouteChildren: RootRouteChildren = {
   PerfilRoute: PerfilRoute,
   ProgressaoRoute: ProgressaoRoute,
   SemanasRoute: SemanasRoute,
-  TreinoRoute: TreinoRoute,
+  TreinoRoute: TreinoRouteWithChildren,
   AdminExerciseMediaRoute: AdminExerciseMediaRoute,
 }
 export const routeTree = rootRouteImport
