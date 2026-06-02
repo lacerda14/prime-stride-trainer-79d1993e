@@ -386,15 +386,18 @@ function TreinoPage() {
   useEffect(() => {
     if (!finished || finishing) return;
     setFinishing(true);
-    syncComplete({ session_id: sessionId!, total_elapsed_seconds: totalElapsedSeconds })
+    const sid = sessionId!;
+    syncComplete({ session_id: sid, total_elapsed_seconds: totalElapsedSeconds })
       .then(() => {
-        // sempre limpa o snapshot local — se ficou enfileirado,
-        // o offline-sync já guardou a operação separadamente
-        try { localStorage.removeItem(lsKey(sessionId!)); } catch { /* noop */ }
+        try { localStorage.removeItem(lsKey(sid)); } catch { /* noop */ }
         qc.invalidateQueries({ queryKey: ["active-workout-session", user?.id] });
         qc.invalidateQueries({ queryKey: ["workout-history", user?.id] });
+      })
+      .finally(() => {
+        navigate({ to: "/treino/concluido/$sessionId", params: { sessionId: sid }, replace: true });
       });
-  }, [finished, finishing, sessionId, totalElapsedSeconds, qc, user?.id]);
+  }, [finished, finishing, sessionId, totalElapsedSeconds, qc, user?.id, navigate]);
+
 
   // drena a fila ao montar (caso tenha sobrado de uma sessão anterior)
   useEffect(() => {
