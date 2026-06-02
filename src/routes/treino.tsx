@@ -74,9 +74,11 @@ function TreinoPage() {
   const { user } = useAuth();
   const fetchToday = useServerFn(getTodayTraining);
   const fetchActive = useServerFn(getActiveWorkoutSession);
+  const fetchCompletedForDay = useServerFn(getCompletedSessionForDay);
   const startSession = useServerFn(startWorkoutSession);
   const abandonSession = useServerFn(abandonWorkoutSession);
   const localToday = useLocalToday();
+
 
   const todayQ = useQuery({
     queryKey: ["today-training", user?.id, localToday.local_date, localToday.timezone],
