@@ -27,11 +27,23 @@ export interface SessionExerciseDTO {
 export interface RunningProtocolDTO {
   id: string;
   protocol_type: string;
+  protocol_name: string | null;
+  goal: string | null;
   total_duration_minutes: number | null;
+  warmup_minutes: number | null;
+  cooldown_minutes: number | null;
   blocks: number | null;
+  /** tiros por bloco (campo novo) */
+  intervals_per_block: number | null;
+  /** legado — fallback se intervals_per_block estiver null */
   intervals: number | null;
   work_duration_seconds: number | null;
   rest_duration_seconds: number | null;
+  between_blocks_rest_seconds: number | null;
+  /** novos campos de pace alvo */
+  target_pace_min: number | null;
+  target_pace_max: number | null;
+  /** legado */
   pace_min: number | null;
   pace_max: number | null;
   notes: string | null;
