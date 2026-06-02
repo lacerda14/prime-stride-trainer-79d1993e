@@ -4,7 +4,7 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { levelFromXp, XP_REWARDS } from "@/lib/gamification";
 import type { Json } from "@/integrations/supabase/types";
 
-type JsonObject = { [k: string]: Json | undefined };
+type JsonObject = { [k: string]: Json };
 
 // ============================================================
 // Tipos públicos
