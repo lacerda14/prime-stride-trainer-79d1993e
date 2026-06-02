@@ -7,8 +7,11 @@ import {
   TrendingUp,
   History,
   Settings,
+  LogOut,
 } from "lucide-react";
 import pmLogo from "@/assets/pm-logo.png.asset.json";
+import { useAuth } from "@/hooks/use-auth";
+import { Button } from "@/components/ui/button";
 
 import {
   Sidebar,
@@ -37,8 +40,14 @@ export function AppSidebar() {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
   const currentPath = useRouterState({ select: (r) => r.location.pathname });
+  const { user, signOut } = useAuth();
   const isActive = (path: string) =>
     path === "/" ? currentPath === "/" : currentPath.startsWith(path);
+  const displayName =
+    (user?.user_metadata?.display_name as string | undefined) ||
+    (user?.user_metadata?.full_name as string | undefined) ||
+    user?.email?.split("@")[0] ||
+    "Atleta";
 
   return (
     <Sidebar collapsible="icon" className="border-r border-sidebar-border">
@@ -97,13 +106,30 @@ export function AppSidebar() {
             <div className="text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
               Atleta
             </div>
-            <div className="mt-0.5 text-sm font-semibold tracking-tight">PM Athlete</div>
-            <div className="num mt-1 text-[11px] text-muted-foreground">
-              Semana 07 · Build · Meso 2
-            </div>
+            <div className="mt-0.5 truncate text-sm font-semibold tracking-tight">{displayName}</div>
+            {user?.email && (
+              <div className="num mt-0.5 truncate text-[11px] text-muted-foreground">{user.email}</div>
+            )}
+            <Button
+              variant="ghost"
+              size="sm"
+              className="mt-2 h-8 w-full justify-start gap-2 px-2 text-[12px] text-muted-foreground hover:text-foreground"
+              onClick={() => signOut()}
+            >
+              <LogOut className="h-3.5 w-3.5" />
+              Sair
+            </Button>
           </div>
         ) : (
-          <div className="mx-auto h-8 w-8 rounded-full bg-primary/20 ring-1 ring-primary/40" />
+          <Button
+            variant="ghost"
+            size="icon"
+            className="mx-auto h-8 w-8 rounded-full bg-primary/10 ring-1 ring-primary/30"
+            onClick={() => signOut()}
+            aria-label="Sair"
+          >
+            <LogOut className="h-3.5 w-3.5" />
+          </Button>
         )}
       </SidebarFooter>
     </Sidebar>
