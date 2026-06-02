@@ -1,0 +1,1 @@
+DROP FUNCTION IF EXISTS public.admin_update_exercise_content(uuid, text[], text, text);
