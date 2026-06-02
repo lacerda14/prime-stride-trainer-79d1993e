@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState, useMemo } from "react";
 import { AppShell } from "@/components/app-shell";
+import { WEEKS } from "@/lib/mock-data";
 import { TrendingUp } from "lucide-react";
 
 export const Route = createFileRoute("/progressao")({
@@ -13,7 +14,22 @@ export const Route = createFileRoute("/progressao")({
   component: ProgressaoPage,
 });
 
-const EXERCISES = ["Supino Reto", "Agachamento", "Levantamento Terra", "Pull-Up", "Desenvolvimento"];
+// Derived from the actual periodization spreadsheet (V19 audited)
+const EXERCISES: string[] = (() => {
+  const counts = new Map<string, number>();
+  for (const w of WEEKS) {
+    for (const d of w.days) {
+      for (const ex of d.strength) {
+        if (!ex.name) continue;
+        counts.set(ex.name, (counts.get(ex.name) ?? 0) + ex.sets);
+      }
+    }
+  }
+  return [...counts.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 12)
+    .map(([n]) => n);
+})();
 
 interface Row {
   week: number;
@@ -24,12 +40,13 @@ interface Row {
 }
 
 function ProgressaoPage() {
-  const [selected, setSelected] = useState("Agachamento");
+  const [selected, setSelected] = useState(EXERCISES[0] ?? "");
   const [base, setBase] = useState<{ load: number; reps: number; rpe: number }>({
     load: 100,
     reps: 5,
     rpe: 7,
   });
+
 
   // Auto-project loads based on RPE & progressive overload (~2.5% per week, deload every 4th)
   const rows = useMemo<Row[]>(() => {

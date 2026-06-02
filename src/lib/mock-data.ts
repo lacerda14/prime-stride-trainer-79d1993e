@@ -1,7 +1,8 @@
 // PM Hybrid Performance System — Real periodization data
-// Source: PM_V19_CORRECTED_STRUCTURE_LOCKED.xlsx (V18 plan, 48 weeks)
+// Source: PM_V19_AUDITADO_CORRIGIDO.xlsx (V18 plan, 48 weeks) — única fonte oficial
 
 import raw from "./program-data.json";
+
 
 export interface MacroBlock {
   macro: string;
@@ -128,10 +129,11 @@ export const PROGRAM_STATS = {
 };
 
 export const DASHBOARD_STATS = {
-  weeklyMinutes: 285,
-  weeklyVolume: 0, // not tracked in V18 spreadsheet — populated as user logs
-  runsCompleted: 2,
-  adherence: 0.9,
-  nextSession: "VO2 + peito/ombro/tríceps",
-  streak: 6,
+  weeklyMinutes: 0,
+  weeklyVolume: 0,
+  runsCompleted: 0,
+  adherence: 0,
+  nextSession: getTodayWorkout().session,
+  streak: 0,
 };
+
