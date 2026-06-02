@@ -5,9 +5,10 @@ import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { getTodayTraining, type SessionExerciseDTO } from "@/lib/program.queries";
 import { useAuth } from "@/hooks/use-auth";
-import { ChevronDown, Play, Timer, Target, Loader2 } from "lucide-react";
+import { ChevronDown, Play, Timer, Target, Loader2, PlayCircle } from "lucide-react";
 import { runningHeadline, runningInstructions } from "@/lib/format-running";
 import { useLocalToday } from "@/hooks/use-local-today";
+import { ExerciseDetailModal, useExerciseDetail } from "@/components/exercise-detail-modal";
 
 export const Route = createFileRoute("/hoje")({
   head: () => ({
