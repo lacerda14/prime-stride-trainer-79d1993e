@@ -40,14 +40,15 @@ export function WeekDistributionModal({ weekNumber }: { weekNumber: number }) {
 
   const [assignments, setAssignments] = useState<Record<string, number>>({});
   const [open, setOpen] = useState(false);
+  const [step, setStep] = useState<"plan" | "review">("plan");
 
   useEffect(() => {
     if (isLoading || !user) return;
     if (!plan) {
-      // inicializa com mapeamento natural
       const init: Record<string, number> = {};
       trainingDays.forEach((d) => (init[d.day] = PROGRAM_TO_WEEKDAY[d.day]));
       setAssignments(init);
+      setStep("plan");
       setOpen(true);
     }
   }, [plan, isLoading, user, trainingDays]);
