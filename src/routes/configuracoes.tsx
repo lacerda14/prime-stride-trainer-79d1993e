@@ -1,6 +1,11 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { AppShell } from "@/components/app-shell";
-import { Watch, Bell, User, Database, Smartphone } from "lucide-react";
+import { Watch, Bell, User, Database, Smartphone, RotateCcw, Loader2 } from "lucide-react";
+import { useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
+import { useQueryClient } from "@tanstack/react-query";
+import { resetOnboarding } from "@/lib/profile.functions";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/configuracoes")({
   head: () => ({
@@ -61,8 +66,59 @@ function ConfigPage() {
           <Row label="Versão" value="1.0.0" />
           <Row label="Tema" value="Dark Premium" />
         </Section>
+
+        <DevSection />
       </div>
     </AppShell>
+  );
+}
+
+function DevSection() {
+  const navigate = useNavigate();
+  const qc = useQueryClient();
+  const reset = useServerFn(resetOnboarding);
+  const [loading, setLoading] = useState(false);
+
+  const handleReset = async () => {
+    if (!confirm("Refazer o onboarding? Seu programa atual será arquivado.")) return;
+    setLoading(true);
+    try {
+      await reset();
+      await qc.invalidateQueries({ queryKey: ["profile"] });
+      toast.success("Onboarding resetado.");
+      navigate({ to: "/onboarding", replace: true });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Erro ao resetar.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <section className="glass animate-fade-in rounded-2xl p-6">
+      <div className="flex items-start gap-3 border-b border-border pb-4">
+        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/15">
+          <RotateCcw className="h-4 w-4 text-primary" />
+        </div>
+        <div>
+          <div className="text-sm font-semibold tracking-tight">Admin / Dev</div>
+          <div className="mt-0.5 text-xs text-muted-foreground">Ferramentas de teste — use com cautela.</div>
+        </div>
+      </div>
+      <div className="mt-4">
+        <button
+          onClick={handleReset}
+          disabled={loading}
+          className="inline-flex items-center gap-2 rounded-xl border border-border bg-surface/60 px-4 py-2.5 text-[13px] font-medium hover:bg-surface-elevated disabled:opacity-60"
+        >
+          {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4" />}
+          Reset Onboarding
+        </button>
+        <p className="mt-2 text-[11px] text-muted-foreground">
+          Marca <code>onboarding_completed = false</code> e arquiva o programa atual, forçando o fluxo novamente.
+        </p>
+      </div>
+    </section>
   );
 }
 

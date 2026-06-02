@@ -121,3 +121,28 @@ export const completeOnboarding = createServerFn({ method: "POST" })
 
     return { ok: true, program_id };
   });
+
+// ============================================================
+// ADMIN/DEV: reset onboarding for current user
+// ============================================================
+
+export const resetOnboarding = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { supabase, userId } = context;
+
+    // arquiva programas atuais (não apaga histórico)
+    await supabase
+      .from("training_programs")
+      .update({ archived_at: new Date().toISOString() })
+      .eq("user_id", userId)
+      .is("archived_at", null);
+
+    const { error } = await supabase
+      .from("profiles")
+      .update({ onboarding_completed: false })
+      .eq("id", userId);
+    if (error) throw new Error(error.message);
+
+    return { ok: true };
+  });
