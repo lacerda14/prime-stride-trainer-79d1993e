@@ -126,74 +126,216 @@ function CuratorBoard() {
 
   const missingCount = (data ?? []).filter((e) => !e.has_primary).length;
 
+  const [tab, setTab] = useState<"exercises" | "queue">("exercises");
+  const fetchQueue = useServerFn(listPendingQueue);
+  const queueQ = useQuery({
+    queryKey: ["pending-queue"],
+    queryFn: () => fetchQueue(),
+    enabled: tab === "queue",
+  });
+  const pendingCount = queueQ.data?.length ?? 0;
+
   return (
     <AppShell title="Curador de Vídeos" eyebrow="Admin">
       <div className="space-y-4 px-4 pb-8 pt-3">
-        <div className="flex gap-2">
+        <div className="flex gap-1 rounded-full bg-surface/40 p-1">
           <button
-            onClick={() => setFilter("missing")}
-            className={`flex-1 rounded-full px-3 py-2 text-xs font-semibold ${filter === "missing" ? "bg-primary text-primary-foreground" : "bg-surface/60 text-muted-foreground"}`}
+            onClick={() => setTab("exercises")}
+            className={`flex-1 rounded-full px-3 py-2 text-xs font-semibold transition ${tab === "exercises" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}
           >
-            Sem vídeo
+            Exercícios
           </button>
           <button
-            onClick={() => setFilter("all")}
-            className={`flex-1 rounded-full px-3 py-2 text-xs font-semibold ${filter === "all" ? "bg-primary text-primary-foreground" : "bg-surface/60 text-muted-foreground"}`}
+            onClick={() => setTab("queue")}
+            className={`flex-1 rounded-full px-3 py-2 text-xs font-semibold transition ${tab === "queue" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}
           >
-            Todos
+            Fila {pendingCount > 0 && <span className="ml-1 rounded-full bg-background/20 px-1.5 text-[10px]">{pendingCount}</span>}
           </button>
         </div>
-        <Input placeholder="Buscar exercício..." value={search} onChange={(e) => setSearch(e.target.value)} className="h-10" />
 
-        <div className="space-y-2 rounded-2xl border border-border/60 bg-surface/40 p-3">
-          <Button
-            onClick={() => searchAll.mutate()}
-            disabled={searchAll.isPending || missingCount === 0}
-            className="w-full"
-          >
-            {searchAll.isPending
-              ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Rodando agente...</>
-              : <><Search className="mr-2 h-4 w-4" /> Rodar agente em massa ({missingCount} sem vídeo)</>}
-          </Button>
-          {bulkProgress && (
-            <div>
-              <div className="mb-1 flex justify-between text-[11px] text-muted-foreground">
-                <span>{bulkProgress.done} / {bulkProgress.total} exercícios</span>
-                <span>{bulkProgress.saved} candidatos salvos</span>
-              </div>
-              <div className="h-1.5 w-full overflow-hidden rounded-full bg-surface-elevated">
-                <div
-                  className="h-full bg-primary transition-all"
-                  style={{ width: `${(bulkProgress.done / Math.max(bulkProgress.total, 1)) * 100}%` }}
-                />
-              </div>
+        {tab === "exercises" ? (
+          <>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setFilter("missing")}
+                className={`flex-1 rounded-full px-3 py-2 text-xs font-semibold ${filter === "missing" ? "bg-primary text-primary-foreground" : "bg-surface/60 text-muted-foreground"}`}
+              >
+                Sem vídeo
+              </button>
+              <button
+                onClick={() => setFilter("all")}
+                className={`flex-1 rounded-full px-3 py-2 text-xs font-semibold ${filter === "all" ? "bg-primary text-primary-foreground" : "bg-surface/60 text-muted-foreground"}`}
+              >
+                Todos
+              </button>
             </div>
-          )}
-          <p className="text-[10px] leading-relaxed text-muted-foreground">
-            O agente vai buscar até 3 candidatos por exercício no YouTube. Pode levar alguns minutos. Não feche esta aba.
-          </p>
-        </div>
+            <Input placeholder="Buscar exercício..." value={search} onChange={(e) => setSearch(e.target.value)} className="h-10" />
 
+            <div className="space-y-2 rounded-2xl border border-border/60 bg-surface/40 p-3">
+              <Button
+                onClick={() => searchAll.mutate()}
+                disabled={searchAll.isPending || missingCount === 0}
+                className="w-full"
+              >
+                {searchAll.isPending
+                  ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Rodando agente...</>
+                  : <><Search className="mr-2 h-4 w-4" /> Rodar agente em massa ({missingCount} sem vídeo)</>}
+              </Button>
+              {bulkProgress && (
+                <div>
+                  <div className="mb-1 flex justify-between text-[11px] text-muted-foreground">
+                    <span>{bulkProgress.done} / {bulkProgress.total} exercícios</span>
+                    <span>{bulkProgress.saved} candidatos salvos</span>
+                  </div>
+                  <div className="h-1.5 w-full overflow-hidden rounded-full bg-surface-elevated">
+                    <div
+                      className="h-full bg-primary transition-all"
+                      style={{ width: `${(bulkProgress.done / Math.max(bulkProgress.total, 1)) * 100}%` }}
+                    />
+                  </div>
+                </div>
+              )}
+              <p className="text-[10px] leading-relaxed text-muted-foreground">
+                O agente vai buscar até 3 candidatos por exercício no YouTube. Pode levar alguns minutos. Não feche esta aba.
+              </p>
+            </div>
 
-        {isLoading ? (
-          <div className="flex h-32 items-center justify-center"><Loader2 className="h-4 w-4 animate-spin text-muted-foreground" /></div>
+            {isLoading ? (
+              <div className="flex h-32 items-center justify-center"><Loader2 className="h-4 w-4 animate-spin text-muted-foreground" /></div>
+            ) : (
+              <ul className="space-y-2">
+                {exercises.map((e) => (
+                  <ExerciseRow
+                    key={e.id}
+                    row={e}
+                    onPick={() => setSelectedId(e.id)}
+                    onSearch={() => search1.mutate(e.id)}
+                    searching={search1.isPending && search1.variables === e.id}
+                  />
+                ))}
+              </ul>
+            )}
+          </>
         ) : (
-          <ul className="space-y-2">
-            {exercises.map((e) => (
-              <ExerciseRow
-                key={e.id}
-                row={e}
-                onPick={() => setSelectedId(e.id)}
-                onSearch={() => search1.mutate(e.id)}
-                searching={search1.isPending && search1.variables === e.id}
-              />
-            ))}
-          </ul>
+          <PendingQueue
+            items={queueQ.data ?? []}
+            isLoading={queueQ.isLoading}
+            onChanged={() => {
+              qc.invalidateQueries({ queryKey: ["pending-queue"] });
+              qc.invalidateQueries({ queryKey: ["admin-exercises"] });
+            }}
+            onOpenExercise={(id) => { setTab("exercises"); setSelectedId(id); }}
+          />
         )}
       </div>
 
       <ExerciseDrawer exerciseId={selected?.id ?? null} exerciseName={selected?.name ?? ""} onClose={() => setSelectedId(null)} />
     </AppShell>
+  );
+}
+
+function PendingQueue({
+  items,
+  isLoading,
+  onChanged,
+  onOpenExercise,
+}: {
+  items: PendingQueueItemDTO[];
+  isLoading: boolean;
+  onChanged: () => void;
+  onOpenExercise: (exerciseId: string) => void;
+}) {
+  const approve = useServerFn(approveCandidate);
+  const reject = useServerFn(rejectCandidate);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [busy, setBusy] = useState(false);
+
+  const toggle = (id: string) =>
+    setSelected((s) => {
+      const n = new Set(s);
+      if (n.has(id)) n.delete(id); else n.add(id);
+      return n;
+    });
+
+  const runBatch = async (ids: string[]) => {
+    if (ids.length === 0) return;
+    setBusy(true);
+    const primaryGiven = new Set<string>();
+    for (const it of items) if (it.exercise_has_primary) primaryGiven.add(it.exercise_id);
+    let ok = 0;
+    for (const id of ids) {
+      const item = items.find((i) => i.media.id === id);
+      if (!item) continue;
+      const set_primary = !primaryGiven.has(item.exercise_id);
+      try {
+        await approve({ data: { media_id: id, set_primary } });
+        if (set_primary) primaryGiven.add(item.exercise_id);
+        ok++;
+      } catch (e) { console.error(e); }
+    }
+    setBusy(false);
+    setSelected(new Set());
+    toast.success(`${ok} aprovado(s)`);
+    onChanged();
+  };
+
+  if (isLoading) {
+    return <div className="flex h-32 items-center justify-center"><Loader2 className="h-4 w-4 animate-spin text-muted-foreground" /></div>;
+  }
+  if (items.length === 0) {
+    return (
+      <div className="rounded-2xl border border-dashed border-border/60 p-6 text-center">
+        <Check className="mx-auto h-6 w-6 text-primary" />
+        <p className="mt-2 text-sm font-semibold">Fila vazia</p>
+        <p className="mt-1 text-[11px] text-muted-foreground">Nenhum candidato pendente. Rode o agente para buscar mais.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      <div className="sticky top-0 z-10 flex items-center gap-2 rounded-2xl border border-border/60 bg-surface/80 p-2 backdrop-blur">
+        <span className="text-[11px] text-muted-foreground">
+          {selected.size > 0 ? `${selected.size} de ${items.length}` : `${items.length} pendentes`}
+        </span>
+        <div className="ml-auto flex gap-2">
+          <Button size="sm" variant="outline" disabled={busy || selected.size === 0} onClick={() => runBatch(Array.from(selected))}>
+            {busy ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <Check className="mr-1 h-3.5 w-3.5" />}
+            Aprovar selecionados
+          </Button>
+          <Button size="sm" disabled={busy} onClick={() => runBatch(items.map((i) => i.media.id))}>
+            {busy ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <Check className="mr-1 h-3.5 w-3.5" />}
+            Aprovar todos
+          </Button>
+        </div>
+      </div>
+
+      {items.map((it) => (
+        <div key={it.media.id} className="space-y-1">
+          <button
+            onClick={() => onOpenExercise(it.exercise_id)}
+            className="flex w-full items-center justify-between px-1 text-left"
+          >
+            <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">{it.exercise_name}</span>
+            <span className="text-[10px] text-muted-foreground/70">abrir</span>
+          </button>
+          <CandidateCard
+            c={it.media}
+            selected={selected.has(it.media.id)}
+            onToggleSelect={() => toggle(it.media.id)}
+            onApprove={async (set_primary) => {
+              try { await approve({ data: { media_id: it.media.id, set_primary } }); toast.success("Aprovado"); onChanged(); }
+              catch (e) { toast.error((e as Error).message); }
+            }}
+            onReject={async () => {
+              try { await reject({ data: { media_id: it.media.id } }); toast.success("Removido"); onChanged(); }
+              catch (e) { toast.error((e as Error).message); }
+            }}
+            onSetPrimary={() => {}}
+          />
+        </div>
+      ))}
+    </div>
   );
 }
 
