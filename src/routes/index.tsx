@@ -2,6 +2,8 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { AppShell } from "@/components/app-shell";
 import { DASHBOARD_STATS, getCurrentWeek, getTodayWorkout, PROGRAM_STATS } from "@/lib/mock-data";
 import { ArrowUpRight, Calendar, Timer, Footprints, Target, TrendingUp } from "lucide-react";
+import { useAuth } from "@/hooks/use-auth";
+import { firstName, inferGender, welcomeWord, timeOfDayGreeting } from "@/lib/greeting";
 
 export const Route = createFileRoute("/")({
   head: () => ({
