@@ -30,7 +30,13 @@ export const saveWeekPlan = createServerFn({ method: "POST" })
     z
       .object({
         week_number: z.number().int().min(1).max(60),
-        days_distribution: z.record(z.string(), z.number().int().min(0).max(6)),
+        days_distribution: z
+          .record(z.string(), z.number().int().min(0).max(6))
+          .refine((d) => Object.keys(d).length > 0, "Plano vazio.")
+          .refine(
+            (d) => new Set(Object.values(d)).size === Object.values(d).length,
+            "Dois treinos no mesmo dia da semana.",
+          ),
       })
       .parse(i),
   )
