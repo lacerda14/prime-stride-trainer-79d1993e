@@ -251,15 +251,35 @@ export function WeekDistributionModal({ weekNumber }: { weekNumber: number }) {
         )}
 
         <div className="border-t border-border/60 bg-surface/30 px-5 py-3">
-          {hasDuplicates && (
-            <p className="mb-2 text-center text-[11px] font-medium text-destructive">
-              Dois treinos no mesmo dia. Ajuste antes de salvar.
-            </p>
+          {(missingDays.length > 0 || hasDuplicates) && (
+            <div className="mb-3 space-y-1.5 rounded-xl border border-destructive/40 bg-destructive/10 p-2.5 text-[11px] text-destructive">
+              {missingDays.length > 0 && (
+                <p className="flex items-start gap-1.5">
+                  <span className="mt-0.5">⚠</span>
+                  <span>
+                    <strong>{missingDays.length}</strong> sessão(ões) sem dia:{" "}
+                    {missingDays.map((d) => d.day).join(", ")}
+                  </span>
+                </p>
+              )}
+              {hasDuplicates && (
+                <p className="flex items-start gap-1.5">
+                  <span className="mt-0.5">⚠</span>
+                  <span>
+                    Mais de um treino em{" "}
+                    {duplicateWeekdays
+                      .map((v) => WEEKDAYS.find((w) => w.v === v)?.long)
+                      .filter(Boolean)
+                      .join(", ")}
+                  </span>
+                </p>
+              )}
+            </div>
           )}
           {step === "plan" ? (
             <button
+              onClick={handleReview}
               disabled={!allAssigned || hasDuplicates}
-              onClick={() => setStep("review")}
               className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-primary px-4 py-3.5 text-[14px] font-semibold text-primary-foreground shadow-glow transition active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50"
             >
               Revisar plano
@@ -277,7 +297,7 @@ export function WeekDistributionModal({ weekNumber }: { weekNumber: number }) {
               </button>
               <button
                 disabled={!allAssigned || hasDuplicates || mutation.isPending}
-                onClick={() => mutation.mutate()}
+                onClick={handleSave}
                 className="inline-flex flex-1 items-center justify-center gap-2 rounded-2xl bg-primary px-4 py-3.5 text-[14px] font-semibold text-primary-foreground shadow-glow transition active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <CheckCircle2 className="h-4 w-4" />
