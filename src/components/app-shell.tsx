@@ -67,7 +67,7 @@ export function AppShell({ children, title, eyebrow, action }: AppShellProps) {
         </header>
 
         <main className="relative flex-1 pb-[88px]">
-          <div className="pointer-events-none absolute inset-0 grid-fade opacity-60" />
+          <div className="pointer-events-none absolute inset-0 grid-fade opacity-25" />
           <div className="relative">{children}</div>
 
           {currentPath.startsWith("/configuracoes") && (
@@ -88,7 +88,7 @@ export function AppShell({ children, title, eyebrow, action }: AppShellProps) {
           )}
         </main>
 
-        <nav className="fixed bottom-0 left-1/2 z-40 w-full max-w-[480px] -translate-x-1/2 border-t border-border/60 bg-background/90 backdrop-blur-xl pb-[env(safe-area-inset-bottom)]">
+        <nav className="fixed bottom-0 left-1/2 z-40 w-full max-w-[480px] -translate-x-1/2 border-t border-border/60 bg-background/95 backdrop-blur-xl pb-[env(safe-area-inset-bottom)]">
           <ul className="grid grid-cols-5">
             {tabs.map((t) => {
               const active = isActive(t.url);
@@ -96,12 +96,16 @@ export function AppShell({ children, title, eyebrow, action }: AppShellProps) {
                 <li key={t.url}>
                   <Link
                     to={t.url}
-                    className={`flex flex-col items-center justify-center gap-1 py-2.5 text-[10px] font-medium tracking-tight transition-colors ${
-                      active ? "text-primary" : "text-muted-foreground hover:text-foreground"
-                    }`}
+                    className="relative flex flex-col items-center justify-center gap-1 py-2.5 text-[10px] font-medium tracking-tight"
                   >
-                    <t.icon className="h-5 w-5" strokeWidth={active ? 2.25 : 1.75} />
-                    <span>{t.title}</span>
+                    {active && (
+                      <span className="absolute top-0 h-[2px] w-8 rounded-full bg-primary" />
+                    )}
+                    <t.icon
+                      className={`h-5 w-5 transition-colors ${active ? "text-primary" : "text-muted-foreground"}`}
+                      strokeWidth={active ? 2.25 : 1.75}
+                    />
+                    <span className={active ? "text-foreground" : "text-muted-foreground"}>{t.title}</span>
                   </Link>
                 </li>
               );
