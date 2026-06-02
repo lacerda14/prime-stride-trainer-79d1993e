@@ -46,7 +46,7 @@ function Dashboard() {
 
   return (
     <AppShell eyebrow="Visão Geral" title="Dashboard">
-      <div className="mx-auto max-w-7xl space-y-8 p-6 lg:p-10">
+      <div className="mx-auto max-w-7xl space-y-8 p-4 sm:p-6">
         {/* Hero */}
         <section className="animate-fade-in glass-strong relative overflow-hidden rounded-3xl p-8 lg:p-10">
           <div className="absolute -right-24 -top-24 h-72 w-72 rounded-full bg-primary/20 blur-3xl" />

@@ -108,7 +108,7 @@ function HojePage() {
         </Link>
       }
     >
-      <div className="mx-auto max-w-4xl space-y-6 p-6 lg:p-10">
+      <div className="mx-auto max-w-4xl space-y-6 p-4 sm:p-6">
         <section className="glass-strong animate-fade-in rounded-3xl p-7">
           <div className="text-[10px] font-medium uppercase tracking-[0.22em] text-muted-foreground">
             {today.session}

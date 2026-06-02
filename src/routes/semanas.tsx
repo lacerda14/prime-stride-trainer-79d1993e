@@ -121,7 +121,7 @@ function SemanasPage() {
 
   return (
     <AppShell eyebrow="Periodização" title="Semanas">
-      <div className="mx-auto max-w-4xl space-y-6 p-6 lg:p-10">
+      <div className="mx-auto max-w-4xl space-y-6 p-4 sm:p-6">
         <div className="relative">
           <button
             onClick={() => setPickerOpen((v) => !v)}
