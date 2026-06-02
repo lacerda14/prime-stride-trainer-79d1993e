@@ -245,38 +245,137 @@ function ConcluidoPage() {
   const completedExercises = planned?.exercises.length ?? 0;
   const completedSets = setRows.length;
 
+  // Volume total calculado dos logs
+  const totalVolume = setRows.reduce((acc, r) => {
+    const kg = r.actual_load_kg !== "" ? Number(r.actual_load_kg) : 0;
+    const reps = r.actual_reps !== "" ? Number(r.actual_reps) : 0;
+    return acc + kg * reps;
+  }, 0);
+
+  // Agrupar séries por exercício para o breakdown
+  const exerciseBreakdown = useMemo(() => {
+    const map = new Map<string, { name: string; sets: SetRow[] }>();
+    for (const row of setRows) {
+      if (!map.has(row.exercise_name)) map.set(row.exercise_name, { name: row.exercise_name, sets: [] });
+      map.get(row.exercise_name)!.sets.push(row);
+    }
+    return Array.from(map.values());
+  }, [setRows]);
+
+  const avgRpe = useMemo(() => {
+    const rows = setRows.filter((r) => r.actual_rpe !== "");
+    if (rows.length === 0) return null;
+    return (rows.reduce((a, r) => a + Number(r.actual_rpe), 0) / rows.length).toFixed(1);
+  }, [setRows]);
+
   return (
     <div className="min-h-screen bg-background pb-32 safe-pad">
       <div className="mx-auto w-full max-w-[480px] px-5 pt-8">
+
         {/* Header */}
         <div className="text-center">
-          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-primary/15 text-primary">
-            <Check className="h-7 w-7" />
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-primary/15 text-primary shadow-glow">
+            <Check className="h-8 w-8" />
           </div>
-          <h1 className="mt-4 text-2xl font-semibold tracking-tight">Treino concluído com sucesso</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Revise os dados do seu treino abaixo.</p>
+          <h1 className="mt-4 text-2xl font-semibold tracking-tight">Treino concluído</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {sess.day_key} · Semana {String(sess.week_number).padStart(2, "0")}
+          </p>
         </div>
 
-        {/* Resumo */}
-        <Section title="Resumo" defaultOpen icon={<Clock className="h-4 w-4" />}>
-          <div className="grid grid-cols-2 gap-3">
-            <Stat label="Início" value={formatClock(sess.started_at)} />
-            <Stat label="Fim" value={formatClock(sess.finished_at)} />
-            <Stat label="Duração" value={formatHMS(sess.duration_seconds ?? 0)} />
-            <Stat
-              label="Calorias estimadas"
-              value={`${estimatedCal} kcal`}
-              icon={<Flame className="h-3.5 w-3.5 text-primary" />}
-            />
-            <Stat label="Exercícios" value={String(completedExercises)} />
-            <Stat label="Séries" value={String(completedSets)} />
-            <Stat label="Streak" value={`${prof.streak_current} dias`} />
-            <Stat label="Nível" value={`Nv. ${prof.level}`} />
+        {/* Stats principais — hero cards */}
+        <div className="mt-6 grid grid-cols-2 gap-3">
+          <div className="col-span-2 flex items-center justify-between rounded-2xl border border-primary/30 bg-primary/8 px-5 py-4">
+            <div>
+              <div className="text-[10px] font-medium uppercase tracking-widest text-primary/70">Duração</div>
+              <div className="num mt-1 text-3xl font-semibold text-foreground">{formatHMS(sess.duration_seconds ?? 0)}</div>
+            </div>
+            <div className="text-right">
+              <div className="text-[10px] font-medium uppercase tracking-widest text-primary/70">Calorias</div>
+              <div className="num mt-1 text-3xl font-semibold text-foreground">{estimatedCal} <span className="text-base font-normal text-muted-foreground">kcal</span></div>
+            </div>
           </div>
-          <p className="mt-3 text-xs text-muted-foreground">
-            Estimativa baseada no seu peso, duração e intensidade do treino.
-          </p>
-        </Section>
+
+          <div className="rounded-2xl border border-border/60 bg-surface/50 px-4 py-3">
+            <div className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground">Volume total</div>
+            <div className="num mt-1 text-xl font-semibold">
+              {totalVolume >= 1000 ? `${(totalVolume / 1000).toFixed(1)}t` : `${Math.round(totalVolume)}kg`}
+            </div>
+          </div>
+          <div className="rounded-2xl border border-border/60 bg-surface/50 px-4 py-3">
+            <div className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground">RPE médio</div>
+            <div className="num mt-1 text-xl font-semibold">{avgRpe ?? "—"}</div>
+          </div>
+          <div className="rounded-2xl border border-border/60 bg-surface/50 px-4 py-3">
+            <div className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground">Exercícios</div>
+            <div className="num mt-1 text-xl font-semibold">{completedExercises}</div>
+          </div>
+          <div className="rounded-2xl border border-border/60 bg-surface/50 px-4 py-3">
+            <div className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground">Séries</div>
+            <div className="num mt-1 text-xl font-semibold">{completedSets}</div>
+          </div>
+        </div>
+
+        {/* XP + Streak */}
+        <div className="mt-3 flex gap-3">
+          <div className="flex flex-1 items-center gap-3 rounded-2xl border border-border/60 bg-surface/50 px-4 py-3">
+            <Sparkles className="h-5 w-5 shrink-0 text-primary" />
+            <div>
+              <div className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground">XP total</div>
+              <div className="num text-lg font-semibold text-primary">{prof.xp_total} XP</div>
+            </div>
+          </div>
+          <div className="flex flex-1 items-center gap-3 rounded-2xl border border-border/60 bg-surface/50 px-4 py-3">
+            <Flame className="h-5 w-5 shrink-0 text-orange-400" />
+            <div>
+              <div className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground">Sequência</div>
+              <div className="num text-lg font-semibold">{prof.streak_current} dias</div>
+            </div>
+          </div>
+        </div>
+
+        {/* Breakdown por exercício */}
+        {exerciseBreakdown.length > 0 && (
+          <Section title="O que você fez" defaultOpen icon={<Trophy className="h-4 w-4" />}>
+            <div className="space-y-3">
+              {exerciseBreakdown.map((ex) => {
+                const vol = ex.sets.reduce((a, s) => {
+                  const kg = s.actual_load_kg !== "" ? Number(s.actual_load_kg) : 0;
+                  const reps = s.actual_reps !== "" ? Number(s.actual_reps) : 0;
+                  return a + kg * reps;
+                }, 0);
+                const bestLoad = Math.max(...ex.sets.map((s) => s.actual_load_kg !== "" ? Number(s.actual_load_kg) : 0));
+                return (
+                  <div key={ex.name} className="rounded-xl border border-border/50 bg-background/30 px-4 py-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="font-semibold text-sm">{ex.name}</div>
+                      {vol > 0 && (
+                        <div className="num shrink-0 text-xs text-primary font-medium">
+                          {Math.round(vol)}kg vol.
+                        </div>
+                      )}
+                    </div>
+                    <div className="num mt-2 flex flex-wrap gap-1.5">
+                      {ex.sets.map((s) => (
+                        <div key={s.set_number} className="rounded-lg border border-border/40 bg-surface/60 px-2 py-1 text-[11px] text-muted-foreground">
+                          S{s.set_number}
+                          {s.actual_reps ? ` · ${s.actual_reps}r` : ""}
+                          {s.actual_load_kg ? ` · ${s.actual_load_kg}kg` : ""}
+                          {s.actual_rpe ? ` · RPE ${s.actual_rpe}` : ""}
+                        </div>
+                      ))}
+                    </div>
+                    {bestLoad > 0 && (
+                      <div className="num mt-1.5 text-[10px] text-muted-foreground">
+                        Melhor carga: {bestLoad}kg
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </Section>
+        )}
 
         {/* Avaliação geral */}
         <Section title="Avaliação" defaultOpen icon={<Sparkles className="h-4 w-4" />}>
@@ -343,10 +442,10 @@ function ConcluidoPage() {
           </Section>
         )}
 
-        {/* Cargas usadas */}
+        {/* Registrar pesos */}
         {setRows.length > 0 && (
-          <Section title="Cargas usadas" defaultOpen={false} icon={<Trophy className="h-4 w-4" />} highlight>
-            <p className="mb-3 text-xs text-muted-foreground">Informe as cargas usadas em cada série.</p>
+          <Section title="Registrar pesos" defaultOpen={false} icon={<Trophy className="h-4 w-4" />} highlight>
+            <p className="mb-3 text-xs text-muted-foreground">Informe os pesos usados em cada série para acompanhar sua progressão.</p>
             <SetLogList rows={setRows} onChange={setSetRows} />
           </Section>
         )}
