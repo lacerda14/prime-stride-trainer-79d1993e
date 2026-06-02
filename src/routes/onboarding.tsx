@@ -65,7 +65,7 @@ function OnboardingPage() {
   }, [loading, user, navigate]);
 
   useEffect(() => {
-    if (profileQ.data?.onboarding_completed) {
+    if (profileQ.data?.onboarding_completed === true) {
       navigate({ to: "/", replace: true });
     }
     if (profileQ.data && !data.name && profileQ.data.name) {
@@ -73,7 +73,8 @@ function OnboardingPage() {
     }
   }, [profileQ.data, navigate, data.name]);
 
-  if (loading || profileQ.isLoading) {
+  // Não rendera nada enquanto carrega ou se já completou (evita flash do onboarding)
+  if (loading || !user || profileQ.isPending || profileQ.data?.onboarding_completed === true) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
         <Loader2 className="h-6 w-6 animate-spin text-primary" />
