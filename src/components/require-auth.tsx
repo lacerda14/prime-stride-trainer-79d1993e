@@ -18,25 +18,32 @@ export function RequireAuth({ children }: { children: ReactNode }) {
     queryFn: () => fetchProfile(),
     enabled: !!user,
     staleTime: 60_000,
+    retry: 1,
   });
-  const profileChecking = profileQ.isLoading || profileQ.isFetching;
-  const onboardingCompleted = profileQ.data?.onboarding_completed === true;
 
+  // só sabemos o status quando o query terminou com sucesso e devolveu uma row
+  const profileLoaded = profileQ.isSuccess && profileQ.data != null;
+  void profileLoaded;
+  const onboardingMissing = profileLoaded && profileQ.data!.onboarding_completed !== true;
+
+  // 1) não autenticado → /auth
   useEffect(() => {
     if (!loading && !user) {
       navigate({ to: "/auth", search: { redirect: pathname } as never, replace: true });
     }
   }, [loading, user, navigate, pathname]);
 
+  // 2) autenticado mas onboarding ainda não foi feito → /onboarding
+  //    só redireciona quando temos CERTEZA (query terminou e retornou row com flag false)
   useEffect(() => {
     if (!user) return;
-    if (profileChecking) return;
-    if (!onboardingCompleted && !isOnboarding) {
-      navigate({ to: "/onboarding", replace: true });
-    }
-  }, [user, profileChecking, onboardingCompleted, isOnboarding, navigate]);
+    if (!onboardingMissing) return;
+    if (isOnboarding) return;
+    navigate({ to: "/onboarding", replace: true });
+  }, [user, onboardingMissing, isOnboarding, navigate]);
 
-  if (loading || !user || profileChecking || !onboardingCompleted) {
+  // enquanto carrega sessão ou primeira carga do perfil → spinner
+  if (loading || !user || profileQ.isPending) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
         <Loader2 className="h-6 w-6 animate-spin text-primary" />
@@ -44,5 +51,16 @@ export function RequireAuth({ children }: { children: ReactNode }) {
     );
   }
 
+  // perfil carregado mas onboarding pendente → spinner enquanto o redirect acontece
+  if (onboardingMissing && !isOnboarding) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <Loader2 className="h-6 w-6 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  // Em qualquer outro caso (onboarding completo, ou query com erro/null mas usuário autenticado)
+  // renderiza os filhos — não trava o app por causa de um refetch em background.
   return <>{children}</>;
 }
