@@ -356,8 +356,9 @@ function ExerciseDrawer({ exerciseId, exerciseName, onClose }: { exerciseId: str
   );
 }
 
-function CandidateCard({ c, onApprove, onReject, onSetPrimary }: { c: ExerciseMediaDTO; onApprove: (p: boolean) => void; onReject: () => void; onSetPrimary: () => void }) {
+function CandidateCard({ c, onApprove, onReject, onSetPrimary, selected, onToggleSelect }: { c: ExerciseMediaDTO; onApprove: (p: boolean) => void; onReject: () => void; onSetPrimary: () => void; selected?: boolean; onToggleSelect?: () => void }) {
   const [preview, setPreview] = useState(false);
+  const selectable = !c.is_approved && c.embed_allowed && !!onToggleSelect;
   return (
     <div className="space-y-2 rounded-2xl border border-border/60 bg-surface/40 p-3">
       <div className="flex items-start gap-3">
