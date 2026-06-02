@@ -4,6 +4,20 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Loader2, VideoOff } from "lucide-react";
 import { getExerciseDetail } from "@/lib/exercise-media.functions";
 
+// Remove link externo e branding do YouTube no embed
+function sanitizeEmbedUrl(url: string): string {
+  try {
+    const u = new URL(url);
+    u.searchParams.set("rel", "0");
+    u.searchParams.set("modestbranding", "1");
+    u.searchParams.set("playsinline", "1");
+    u.searchParams.delete("autoplay");
+    return u.toString();
+  } catch {
+    return url;
+  }
+}
+
 interface Props {
   exerciseId: string | null;
   open: boolean;
@@ -28,7 +42,7 @@ export function ExerciseDetailModal({ exerciseId, open, onOpenChange }: Props) {
         ) : (
           <div>
             {/* Video */}
-            <div className="aspect-video w-full bg-surface-elevated">
+            <div className="relative aspect-video w-full bg-surface-elevated">
               {data.primary_media && data.primary_media.embed_allowed && data.primary_media.embed_url ? (
                 data.primary_media.media_type === "uploaded_video" ? (
                   <video
@@ -39,10 +53,10 @@ export function ExerciseDetailModal({ exerciseId, open, onOpenChange }: Props) {
                   />
                 ) : (
                   <iframe
-                    src={data.primary_media.embed_url}
+                    src={sanitizeEmbedUrl(data.primary_media.embed_url)}
                     title={data.primary_media.title ?? data.exercise.name}
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                    allowFullScreen
+                    allow="accelerometer; autoplay; encrypted-media; gyroscope"
+                    sandbox="allow-scripts allow-same-origin allow-presentation"
                     className="h-full w-full"
                   />
                 )
@@ -52,6 +66,17 @@ export function ExerciseDetailModal({ exerciseId, open, onOpenChange }: Props) {
                   <p className="text-xs">Vídeo de execução em breve</p>
                 </div>
               )}
+
+              {/* Botão fechar — grande, no canto superior direito do vídeo */}
+              <button
+                onClick={() => onOpenChange(false)}
+                className="absolute right-2 top-2 flex h-9 w-9 items-center justify-center rounded-full bg-black/70 text-white backdrop-blur-sm transition-opacity hover:bg-black/90 focus:outline-none"
+                aria-label="Fechar vídeo"
+              >
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                  <path d="M1 1l12 12M13 1L1 13" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                </svg>
+              </button>
             </div>
 
             <div className="space-y-5 p-5">
