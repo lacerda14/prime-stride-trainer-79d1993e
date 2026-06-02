@@ -41,9 +41,13 @@ export function AppShell({ children, title, eyebrow, action }: AppShellProps) {
     <RequireAuth>
       <div className="relative mx-auto flex min-h-screen w-full max-w-[480px] flex-col bg-background">
         <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b border-border/60 bg-background/80 px-4 backdrop-blur-xl">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-surface-elevated ring-1 ring-white/10 overflow-hidden">
+          <Link
+            to="/"
+            aria-label="Ir para o início"
+            className="flex h-9 w-9 items-center justify-center rounded-xl bg-surface-elevated ring-1 ring-white/10 overflow-hidden transition-transform active:scale-95"
+          >
             <img src={pmLogo.url} alt="PM Hybrid" className="h-7 w-7 object-contain" />
-          </div>
+          </Link>
           <div className="flex flex-1 flex-col leading-tight min-w-0">
             {eyebrow && (
               <span className="truncate text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
