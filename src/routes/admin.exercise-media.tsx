@@ -13,6 +13,7 @@ import {
   getMyRole,
   listExercisesWithStatus,
   listCandidates,
+  listPendingQueue,
   searchVideosForExercise,
   approveCandidate,
   rejectCandidate,
@@ -21,6 +22,7 @@ import {
   updateExerciseCues,
   type ExerciseRowDTO,
   type ExerciseMediaDTO,
+  type PendingQueueItemDTO,
 } from "@/lib/exercise-media.functions";
 
 export const Route = createFileRoute("/admin/exercise-media")({
