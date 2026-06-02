@@ -28,12 +28,12 @@ export function RequireAuth({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!user) return;
     if (profileQ.isLoading) return;
-    if (!profileQ.data?.onboarding_completed_at && pathname !== "/onboarding") {
+    if (!profileQ.data?.onboarding_completed && pathname !== "/onboarding") {
       navigate({ to: "/onboarding", replace: true });
     }
   }, [user, profileQ.data, profileQ.isLoading, pathname, navigate]);
 
-  if (loading || !user || profileQ.isLoading || !profileQ.data?.onboarding_completed_at) {
+  if (loading || !user || profileQ.isLoading || !profileQ.data?.onboarding_completed) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
         <Loader2 className="h-6 w-6 animate-spin text-primary" />
