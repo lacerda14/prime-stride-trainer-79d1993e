@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as TreinoRouteImport } from './routes/treino'
 import { Route as SemanasRouteImport } from './routes/semanas'
 import { Route as ProgressaoRouteImport } from './routes/progressao'
+import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as HojeRouteImport } from './routes/hoje'
 import { Route as HistoricoRouteImport } from './routes/historico'
 import { Route as CorridaRouteImport } from './routes/corrida'
@@ -32,6 +33,11 @@ const SemanasRoute = SemanasRouteImport.update({
 const ProgressaoRoute = ProgressaoRouteImport.update({
   id: '/progressao',
   path: '/progressao',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OnboardingRoute = OnboardingRouteImport.update({
+  id: '/onboarding',
+  path: '/onboarding',
   getParentRoute: () => rootRouteImport,
 } as any)
 const HojeRoute = HojeRouteImport.update({
@@ -72,6 +78,7 @@ export interface FileRoutesByFullPath {
   '/corrida': typeof CorridaRoute
   '/historico': typeof HistoricoRoute
   '/hoje': typeof HojeRoute
+  '/onboarding': typeof OnboardingRoute
   '/progressao': typeof ProgressaoRoute
   '/semanas': typeof SemanasRoute
   '/treino': typeof TreinoRoute
@@ -83,6 +90,7 @@ export interface FileRoutesByTo {
   '/corrida': typeof CorridaRoute
   '/historico': typeof HistoricoRoute
   '/hoje': typeof HojeRoute
+  '/onboarding': typeof OnboardingRoute
   '/progressao': typeof ProgressaoRoute
   '/semanas': typeof SemanasRoute
   '/treino': typeof TreinoRoute
@@ -95,6 +103,7 @@ export interface FileRoutesById {
   '/corrida': typeof CorridaRoute
   '/historico': typeof HistoricoRoute
   '/hoje': typeof HojeRoute
+  '/onboarding': typeof OnboardingRoute
   '/progressao': typeof ProgressaoRoute
   '/semanas': typeof SemanasRoute
   '/treino': typeof TreinoRoute
@@ -108,6 +117,7 @@ export interface FileRouteTypes {
     | '/corrida'
     | '/historico'
     | '/hoje'
+    | '/onboarding'
     | '/progressao'
     | '/semanas'
     | '/treino'
@@ -119,6 +129,7 @@ export interface FileRouteTypes {
     | '/corrida'
     | '/historico'
     | '/hoje'
+    | '/onboarding'
     | '/progressao'
     | '/semanas'
     | '/treino'
@@ -130,6 +141,7 @@ export interface FileRouteTypes {
     | '/corrida'
     | '/historico'
     | '/hoje'
+    | '/onboarding'
     | '/progressao'
     | '/semanas'
     | '/treino'
@@ -142,6 +154,7 @@ export interface RootRouteChildren {
   CorridaRoute: typeof CorridaRoute
   HistoricoRoute: typeof HistoricoRoute
   HojeRoute: typeof HojeRoute
+  OnboardingRoute: typeof OnboardingRoute
   ProgressaoRoute: typeof ProgressaoRoute
   SemanasRoute: typeof SemanasRoute
   TreinoRoute: typeof TreinoRoute
@@ -168,6 +181,13 @@ declare module '@tanstack/react-router' {
       path: '/progressao'
       fullPath: '/progressao'
       preLoaderRoute: typeof ProgressaoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/onboarding': {
+      id: '/onboarding'
+      path: '/onboarding'
+      fullPath: '/onboarding'
+      preLoaderRoute: typeof OnboardingRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/hoje': {
@@ -222,6 +242,7 @@ const rootRouteChildren: RootRouteChildren = {
   CorridaRoute: CorridaRoute,
   HistoricoRoute: HistoricoRoute,
   HojeRoute: HojeRoute,
+  OnboardingRoute: OnboardingRoute,
   ProgressaoRoute: ProgressaoRoute,
   SemanasRoute: SemanasRoute,
   TreinoRoute: TreinoRoute,
@@ -229,3 +250,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
