@@ -149,8 +149,8 @@ interface Data {
   pain_regions: string[];
   past_injuries: string[];
   uncomfortable_movements: string[];
-  // S10
-  equipment: string[];
+  // S10 — local + equipamentos
+  gym_setup: GymSetup;
   // S11
   preferences: string[];
   training_style: string;
