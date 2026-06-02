@@ -182,32 +182,9 @@ function CuratorBoard() {
             </div>
             <Input placeholder="Buscar exercício..." value={search} onChange={(e) => setSearch(e.target.value)} className="h-10" />
 
-            <div className="space-y-2 rounded-2xl border border-border/60 bg-surface/40 p-3">
-              <Button
-                onClick={() => searchAll.mutate()}
-                disabled={searchAll.isPending || missingCount === 0}
-                className="w-full"
-              >
-                {searchAll.isPending
-                  ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Rodando agente...</>
-                  : <><Search className="mr-2 h-4 w-4" /> Rodar agente em massa ({missingCount} sem vídeo)</>}
-              </Button>
-              {bulkProgress && (
-                <div>
-                  <div className="mb-1 flex justify-between text-[11px] text-muted-foreground">
-                    <span>{bulkProgress.done} / {bulkProgress.total} exercícios</span>
-                    <span>{bulkProgress.saved} candidatos salvos</span>
-                  </div>
-                  <div className="h-1.5 w-full overflow-hidden rounded-full bg-surface-elevated">
-                    <div
-                      className="h-full bg-primary transition-all"
-                      style={{ width: `${(bulkProgress.done / Math.max(bulkProgress.total, 1)) * 100}%` }}
-                    />
-                  </div>
-                </div>
-              )}
-              <p className="text-[10px] leading-relaxed text-muted-foreground">
-                O agente vai buscar até 3 candidatos por exercício no YouTube. Pode levar alguns minutos. Não feche esta aba.
+            <div className="rounded-2xl border border-border/60 bg-surface/40 p-3">
+              <p className="text-[11px] leading-relaxed text-muted-foreground">
+                <span className="font-semibold text-foreground">{missingCount}</span> exercício(s) sem vídeo. Busque um por vez (ícone <Search className="inline h-3 w-3" /> na linha) ou abra o exercício e cole uma URL do YouTube em "Adicionar manualmente". A busca automática consome cota diária do YouTube (~100 buscas/dia no total).
               </p>
             </div>
 
