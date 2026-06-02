@@ -80,20 +80,15 @@ function DashboardContent() {
   const name = firstName(rawName);
   const gender = inferGender(rawName);
 
-  // Coach AI insight — gerado localmente com base nos dados reais
-  const coachMessage = buildCoachMessage({
-    streak,
-    weekCompleted,
-    weekDays,
-    weeklyXp: dash?.weeklyXp ?? 0,
-    totalCompleted,
-    level,
-  });
+  // Coach AI insight — gerado no servidor com dados reais (volume, streak, PRs)
+  const coachMessage =
+    dash?.coachInsight ??
+    "Cada treino é um passo. Mantenha a consistência e os resultados vêm inevitavelmente.";
 
-  // PRs (placeholder elegante pois tabela personal_records pode não existir)
+  const topPRs = dash?.topPRs ?? [];
   const recentAchievements = dash?.recentAchievements ?? [];
 
-  // Conquistas próximas — hardcoded milestones como exemplo
+  // Conquistas próximas — milestones de treinos/streak
   const nextMilestones = buildNextMilestones(totalCompleted, streak);
 
   return (
