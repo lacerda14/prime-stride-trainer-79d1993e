@@ -15,7 +15,7 @@ export function useLocalToday(): LocalToday {
       schedule();
     };
 
-    schedule();
+    refresh();
     const onVisibility = () => {
       if (document.visibilityState === "visible") refresh();
     };
