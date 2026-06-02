@@ -29,7 +29,13 @@ export const listAllUsers = createServerFn({ method: "GET" })
     const { supabase, userId } = context;
     await ensureAdmin(supabase, userId);
 
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    let supabaseAdmin: Awaited<ReturnType<typeof import("@/integrations/supabase/client.server")["supabaseAdmin"]["from"]>> | any;
+    try {
+      const mod = await import("@/integrations/supabase/client.server");
+      supabaseAdmin = mod.supabaseAdmin;
+    } catch {
+      throw new Error("Variável SUPABASE_SERVICE_ROLE_KEY não configurada. Adicione em Project Settings → Environment Variables.");
+    }
 
     const { data: profiles, error } = await supabaseAdmin
       .from("profiles")
@@ -69,7 +75,13 @@ export const deleteUserById = createServerFn({ method: "POST" })
     if (data.targetUserId === userId) {
       throw new Error("Você não pode excluir a própria conta por aqui.");
     }
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    let supabaseAdmin: any;
+    try {
+      const mod = await import("@/integrations/supabase/client.server");
+      supabaseAdmin = mod.supabaseAdmin;
+    } catch {
+      throw new Error("Variável SUPABASE_SERVICE_ROLE_KEY não configurada. Adicione em Project Settings → Environment Variables.");
+    }
     const { error } = await supabaseAdmin.auth.admin.deleteUser(data.targetUserId);
     if (error) throw new Error(error.message);
     return { ok: true };

@@ -267,6 +267,7 @@ export const completeWorkoutSession = createServerFn({ method: "POST" })
       .update({
         status: "completed",
         finished_at: finishedAtIso,
+        completed_at: finishedAtIso,
         duration_seconds: data.total_elapsed_seconds,
         total_elapsed_seconds: data.total_elapsed_seconds,
       })

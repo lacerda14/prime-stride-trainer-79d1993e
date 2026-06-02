@@ -292,6 +292,7 @@ const onboardingV2Schema = z.object({
   perf_max_squats: z.number().int().min(0).max(1000).optional().nullable(),
   perf_max_plank_seconds: z.number().int().min(0).max(7200).optional().nullable(),
   perf_max_run_minutes: z.number().int().min(0).max(1440).optional().nullable(),
+  perf_longest_run_km: z.number().min(0).max(500).optional().nullable(),
   perf_lifts_done: z.array(z.string().min(1).max(40)).max(20).default([]),
   // meta
   program_start_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
