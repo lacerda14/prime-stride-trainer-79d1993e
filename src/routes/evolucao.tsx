@@ -201,6 +201,33 @@ function EvolucaoPage() {
                   </div>
                 </div>
               </div>
+              {/* Mini barra dos últimos 7 dias (índice 0 = hoje) */}
+              {evo?.daysWithSession30 && (
+                <div className="mt-4">
+                  <div className="text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground mb-2">
+                    Últimos 7 dias
+                  </div>
+                  <div className="flex items-end justify-between gap-1.5">
+                    {evo.daysWithSession30.slice(0, 7).reverse().map((done, i) => {
+                      const d = new Date();
+                      d.setHours(0, 0, 0, 0);
+                      d.setDate(d.getDate() - (6 - i));
+                      const label = d.toLocaleDateString("pt-BR", { weekday: "narrow" });
+                      return (
+                        <div key={i} className="flex flex-1 flex-col items-center gap-1">
+                          <div
+                            className={`w-full rounded-md transition-colors ${
+                              done ? "bg-primary" : "bg-surface border border-border/60"
+                            }`}
+                            style={{ height: done ? "32px" : "10px" }}
+                          />
+                          <div className="text-[9px] text-muted-foreground">{label}</div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
               {(evo?.consistencyPct ?? 0) >= 80 && (
                 <div className="mt-3 flex items-center gap-2 rounded-xl border border-primary/20 bg-primary/5 px-3 py-2 text-[11px] text-primary">
                   <Flame className="h-3.5 w-3.5" />
