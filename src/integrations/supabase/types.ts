@@ -816,6 +816,68 @@ export type Database = {
           },
         ]
       }
+      running_session_logs: {
+        Row: {
+          average_pace: string | null
+          average_speed_kmh: number | null
+          created_at: string
+          distance_km: number | null
+          id: string
+          max_speed_kmh: number | null
+          notes: string | null
+          perceived_effort: number | null
+          planned_protocol_id: string | null
+          total_duration_seconds: number | null
+          total_rest_seconds: number | null
+          total_running_seconds: number | null
+          updated_at: string
+          user_id: string
+          workout_session_id: string
+        }
+        Insert: {
+          average_pace?: string | null
+          average_speed_kmh?: number | null
+          created_at?: string
+          distance_km?: number | null
+          id?: string
+          max_speed_kmh?: number | null
+          notes?: string | null
+          perceived_effort?: number | null
+          planned_protocol_id?: string | null
+          total_duration_seconds?: number | null
+          total_rest_seconds?: number | null
+          total_running_seconds?: number | null
+          updated_at?: string
+          user_id: string
+          workout_session_id: string
+        }
+        Update: {
+          average_pace?: string | null
+          average_speed_kmh?: number | null
+          created_at?: string
+          distance_km?: number | null
+          id?: string
+          max_speed_kmh?: number | null
+          notes?: string | null
+          perceived_effort?: number | null
+          planned_protocol_id?: string | null
+          total_duration_seconds?: number | null
+          total_rest_seconds?: number | null
+          total_running_seconds?: number | null
+          updated_at?: string
+          user_id?: string
+          workout_session_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "running_session_logs_workout_session_id_fkey"
+            columns: ["workout_session_id"]
+            isOneToOne: true
+            referencedRelation: "workout_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       session_exercises: {
         Row: {
           created_at: string
@@ -1081,6 +1143,7 @@ export type Database = {
       workout_sessions: {
         Row: {
           completed_at: string | null
+          completed_summary: Json
           created_at: string
           current_block: number | null
           current_exercise_index: number
@@ -1091,6 +1154,7 @@ export type Database = {
           duration_min: number | null
           duration_seconds: number | null
           elapsed_seconds: number
+          estimated_calories: number | null
           finished_at: string | null
           id: string
           notes: string | null
@@ -1105,6 +1169,7 @@ export type Database = {
         }
         Insert: {
           completed_at?: string | null
+          completed_summary?: Json
           created_at?: string
           current_block?: number | null
           current_exercise_index?: number
@@ -1115,6 +1180,7 @@ export type Database = {
           duration_min?: number | null
           duration_seconds?: number | null
           elapsed_seconds?: number
+          estimated_calories?: number | null
           finished_at?: string | null
           id?: string
           notes?: string | null
@@ -1129,6 +1195,7 @@ export type Database = {
         }
         Update: {
           completed_at?: string | null
+          completed_summary?: Json
           created_at?: string
           current_block?: number | null
           current_exercise_index?: number
@@ -1139,6 +1206,7 @@ export type Database = {
           duration_min?: number | null
           duration_seconds?: number | null
           elapsed_seconds?: number
+          estimated_calories?: number | null
           finished_at?: string | null
           id?: string
           notes?: string | null
@@ -1152,6 +1220,74 @@ export type Database = {
           week_number?: number
         }
         Relationships: []
+      }
+      workout_set_logs: {
+        Row: {
+          actual_load_kg: number | null
+          actual_reps: number | null
+          actual_rpe: number | null
+          created_at: string
+          exercise_id: string | null
+          exercise_index: number
+          exercise_name: string
+          id: string
+          notes: string | null
+          planned_load_kg: number | null
+          planned_reps: string | null
+          planned_rpe: number | null
+          rest_seconds: number | null
+          set_number: number
+          updated_at: string
+          user_id: string
+          workout_session_id: string
+        }
+        Insert: {
+          actual_load_kg?: number | null
+          actual_reps?: number | null
+          actual_rpe?: number | null
+          created_at?: string
+          exercise_id?: string | null
+          exercise_index?: number
+          exercise_name: string
+          id?: string
+          notes?: string | null
+          planned_load_kg?: number | null
+          planned_reps?: string | null
+          planned_rpe?: number | null
+          rest_seconds?: number | null
+          set_number: number
+          updated_at?: string
+          user_id: string
+          workout_session_id: string
+        }
+        Update: {
+          actual_load_kg?: number | null
+          actual_reps?: number | null
+          actual_rpe?: number | null
+          created_at?: string
+          exercise_id?: string | null
+          exercise_index?: number
+          exercise_name?: string
+          id?: string
+          notes?: string | null
+          planned_load_kg?: number | null
+          planned_reps?: string | null
+          planned_rpe?: number | null
+          rest_seconds?: number | null
+          set_number?: number
+          updated_at?: string
+          user_id?: string
+          workout_session_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workout_set_logs_workout_session_id_fkey"
+            columns: ["workout_session_id"]
+            isOneToOne: false
+            referencedRelation: "workout_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       xp_events: {
         Row: {
