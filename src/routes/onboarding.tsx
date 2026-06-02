@@ -826,12 +826,158 @@ function S9({ d, setD }: SP) {
 }
 
 function S10({ d, setD }: SP) {
+  const g = d.gym_setup;
+  const setG = (patch: Partial<GymSetup>) =>
+    setD({ ...d, gym_setup: { ...g, ...patch } });
+
+  const selectLocation = (loc: string) => {
+    // Reset campos condicionais ao trocar de local
+    setD({ ...d, gym_setup: { ...EMPTY_GYM_SETUP, location: loc } });
+  };
+
   return (
     <div className="space-y-6">
-      <Hero eyebrow="10 / 13 · Equipamentos" title="O que você tem disponível?" hint="Selecione tudo que tem acesso. Vamos respeitar na hora de prescrever." />
-      <div className="animate-fade-in">
-        <Multi label="Equipamentos" items={EQUIPMENT_OPTIONS} selected={d.equipment}
-          onToggle={(v) => setD({ ...d, equipment: toggleArr(d.equipment, v) })} />
+      <Hero eyebrow="10 / 13 · Local e equipamentos"
+        title="Onde você treina principalmente?"
+        hint="Vamos prescrever apenas exercícios que você consegue executar." />
+
+      <div className="animate-fade-in space-y-6">
+        <div className="grid gap-2">
+          {TRAINING_LOCATION_OPTIONS.map((o) => (
+            <RowChoice key={o} active={g.location === o} onClick={() => selectLocation(o)}>
+              {o}
+            </RowChoice>
+          ))}
+        </div>
+
+        {/* ACADEMIA COMPLETA */}
+        {g.location === "Academia Completa" && (
+          <div className="space-y-5 pt-2 animate-fade-in">
+            <div>
+              <label className={labelCls}>Sua academia possui equipamentos comuns de musculação?</label>
+              <div className="grid gap-2">
+                {FULL_GYM_COMPLETENESS.map((o) => (
+                  <RowChoice key={o} active={g.full_gym_completeness === o}
+                    onClick={() => setG({ full_gym_completeness: o, full_gym_missing: [], full_gym_missing_other: "" })}>
+                    {o}
+                  </RowChoice>
+                ))}
+              </div>
+            </div>
+
+            {g.full_gym_completeness === "Algumas máquinas não existem" && (
+              <div className="space-y-3 animate-fade-in">
+                <Multi label="Quais equipamentos NÃO existem?" items={FULL_GYM_MISSING_OPTIONS}
+                  selected={g.full_gym_missing}
+                  onToggle={(v) => setG({ full_gym_missing: toggleArr(g.full_gym_missing, v) })} />
+                {g.full_gym_missing.includes("Outro") && (
+                  <div>
+                    <label className={labelCls}>Descreva outros equipamentos ausentes</label>
+                    <textarea className={textareaCls} value={g.full_gym_missing_other} maxLength={300}
+                      placeholder="Ex: não tem máquina de panturrilha..."
+                      onChange={(e) => setG({ full_gym_missing_other: e.target.value })} />
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* CONDOMÍNIO */}
+        {g.location === "Academia de Condomínio / Prédio" && (
+          <div className="space-y-4 pt-2 animate-fade-in">
+            <Multi label="Marque os equipamentos disponíveis" items={CONDO_GYM_EQUIPMENT}
+              selected={g.condo_equipment}
+              onToggle={(v) => setG({ condo_equipment: toggleArr(g.condo_equipment, v) })} />
+            <div>
+              <label className={labelCls}>Existe algum equipamento importante que não apareceu na lista?</label>
+              <textarea className={textareaCls} value={g.condo_other} maxLength={300}
+                placeholder="Ex: Tem um Hack Squat, tem um Multipower..."
+                onChange={(e) => setG({ condo_other: e.target.value })} />
+            </div>
+          </div>
+        )}
+
+        {/* CASA */}
+        {g.location === "Casa" && (
+          <div className="space-y-4 pt-2 animate-fade-in">
+            <Multi label="Quais equipamentos você possui em casa?" items={HOME_EQUIPMENT}
+              selected={g.home_equipment}
+              onToggle={(v) => setG({ home_equipment: toggleArr(g.home_equipment, v) })} />
+            <div>
+              <label className={labelCls}>Existe algum equipamento que não apareceu acima?</label>
+              <textarea className={textareaCls} value={g.home_other} maxLength={300}
+                placeholder="Descreva, se houver"
+                onChange={(e) => setG({ home_other: e.target.value })} />
+            </div>
+          </div>
+        )}
+
+        {/* BOX */}
+        {g.location === "Box de CrossFit" && (
+          <div className="space-y-5 pt-2 animate-fade-in">
+            <div>
+              <label className={labelCls}>Seu box possui equipamentos completos?</label>
+              <div className="grid grid-cols-2 gap-1.5">
+                {BOX_COMPLETENESS.map((o) => (
+                  <PillChoice key={o} active={g.box_completeness === o}
+                    onClick={() => setG({ box_completeness: o, box_equipment: [], box_other: "" })}>
+                    {o}
+                  </PillChoice>
+                ))}
+              </div>
+            </div>
+            {g.box_completeness === "Não" && (
+              <div className="space-y-3 animate-fade-in">
+                <Multi label="Marque o que existe no seu box" items={BOX_EQUIPMENT}
+                  selected={g.box_equipment}
+                  onToggle={(v) => setG({ box_equipment: toggleArr(g.box_equipment, v) })} />
+                {g.box_equipment.includes("Outro") && (
+                  <div>
+                    <label className={labelCls}>Outros equipamentos</label>
+                    <textarea className={textareaCls} value={g.box_other} maxLength={300}
+                      placeholder="Descreva"
+                      onChange={(e) => setG({ box_other: e.target.value })} />
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* MISTO */}
+        {g.location === "Misto" && (
+          <div className="space-y-5 pt-2 animate-fade-in">
+            <div>
+              <label className={labelCls}>Onde você treina com mais frequência?</label>
+              <div className="grid grid-cols-2 gap-1.5">
+                {MIXED_PRIMARY_LOCATIONS.map((o) => (
+                  <PillChoice key={o} active={g.mixed_primary === o}
+                    onClick={() => setG({ mixed_primary: o })}>{o}</PillChoice>
+                ))}
+              </div>
+            </div>
+            <Multi label="Quais outros locais utiliza?" items={MIXED_PRIMARY_LOCATIONS.filter((l) => l !== g.mixed_primary)}
+              selected={g.mixed_other_locations}
+              onToggle={(v) => setG({ mixed_other_locations: toggleArr(g.mixed_other_locations, v) })} />
+
+            {(g.mixed_primary === "Condomínio" || g.mixed_other_locations.includes("Condomínio")) && (
+              <Multi label="Equipamentos no condomínio" items={CONDO_GYM_EQUIPMENT}
+                selected={g.condo_equipment}
+                onToggle={(v) => setG({ condo_equipment: toggleArr(g.condo_equipment, v) })} />
+            )}
+            {(g.mixed_primary === "Casa" || g.mixed_other_locations.includes("Casa")) && (
+              <Multi label="Equipamentos em casa" items={HOME_EQUIPMENT}
+                selected={g.home_equipment}
+                onToggle={(v) => setG({ home_equipment: toggleArr(g.home_equipment, v) })} />
+            )}
+            {(g.mixed_primary === "Box" || g.mixed_other_locations.includes("Box")) && (
+              <Multi label="Equipamentos no box" items={BOX_EQUIPMENT}
+                selected={g.box_equipment}
+                onToggle={(v) => setG({ box_equipment: toggleArr(g.box_equipment, v) })} />
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
