@@ -1,14 +1,13 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { AppShell } from "@/components/app-shell";
-import { getCurrentWeek, getTodayWorkout, PROGRAM_STATS, getMacroForWeek, CURRENT_WEEK_NUMBER, MACROS } from "@/lib/mock-data";
 import { ArrowUpRight, Calendar, Flame, Trophy, Zap, Footprints } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { firstName, inferGender, welcomeWord, timeOfDayGreeting } from "@/lib/greeting";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { getDashboard } from "@/lib/profile.functions";
+import { getTodayTraining } from "@/lib/program.queries";
 import { levelProgress } from "@/lib/gamification";
-
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -29,37 +28,48 @@ function Dashboard() {
 }
 
 function DashboardContent() {
-  const week = getCurrentWeek();
-  const today = getTodayWorkout();
   const { user } = useAuth();
   const fetchDashboard = useServerFn(getDashboard);
+  const fetchToday = useServerFn(getTodayTraining);
 
-  const { data } = useQuery({
+  const { data: dash } = useQuery({
     queryKey: ["dashboard", user?.id],
     queryFn: () => fetchDashboard(),
     enabled: !!user,
   });
 
-  const profile = data?.profile;
+  const { data: programData } = useQuery({
+    queryKey: ["today-training", user?.id],
+    queryFn: () => fetchToday(),
+    enabled: !!user,
+  });
+
+  const profile = dash?.profile;
   const xp = profile?.xp_total ?? 0;
   const prog = levelProgress(xp);
   const streak = profile?.streak_current ?? 0;
-  const totalCompleted = data?.totalCompletedWorkouts ?? 0;
+  const totalCompleted = dash?.totalCompletedWorkouts ?? 0;
 
-  // Progresso semana / meso / macro
-  const weekDays = week.days.filter((d) => !d.isOff).length;
-  const weekProgress = 0; // TODO: contar sessões dessa semana
-  const mesoTotal = 4; // semanas por mesociclo (aprox)
-  const mesoCurrent = ((CURRENT_WEEK_NUMBER - 1) % mesoTotal) + 1;
-  const macro = getMacroForWeek(CURRENT_WEEK_NUMBER);
-  const macroRange = macro?.weeks.includes("-")
-    ? macro.weeks.split("-").map(Number)
-    : macro
-      ? [Number(macro.weeks), Number(macro.weeks)]
-      : [1, 48];
-  const macroWeeks = macroRange[1] - macroRange[0] + 1;
-  const macroCurrent = CURRENT_WEEK_NUMBER - macroRange[0] + 1;
-  const programPct = Math.round(((CURRENT_WEEK_NUMBER - 1) / PROGRAM_STATS.totalWeeks) * 100);
+  const summary = programData?.program ?? null;
+  const today = programData?.today ?? null;
+  const activeWeek = summary?.active_week ?? 1;
+  const totalWeeks = summary?.total_weeks ?? 48;
+
+  // Progresso meso/macro a partir do weekIndex
+  const currentMacro = summary?.macros.find(
+    (m) => activeWeek >= m.start_week && activeWeek <= m.end_week,
+  );
+  const currentMeso = currentMacro?.mesos.find(
+    (m) => activeWeek >= m.start_week && activeWeek <= m.end_week,
+  );
+  const mesoTotal = currentMeso ? currentMeso.end_week - currentMeso.start_week + 1 : 4;
+  const mesoCurrent = currentMeso ? activeWeek - currentMeso.start_week + 1 : 1;
+  const macroTotal = currentMacro ? currentMacro.end_week - currentMacro.start_week + 1 : 12;
+  const macroCurrent = currentMacro ? activeWeek - currentMacro.start_week + 1 : 1;
+  const programPct = Math.round(((activeWeek - 1) / totalWeeks) * 100);
+
+  const weekDays = programData?.week.days.filter((d) => d.session_type !== "rest").length ?? 0;
+  const weekCompleted = programData?.week.days.filter((d) => d.completed_at).length ?? 0;
 
   const rawName =
     (user?.user_metadata?.name as string | undefined) ||
@@ -69,9 +79,12 @@ function DashboardContent() {
   const name = firstName(rawName);
   const gender = inferGender(rawName);
 
+  const strengthCount = today?.exercises.filter((e) => e.exercise.category !== "core").length ?? 0;
+  const coreCount = today?.exercises.filter((e) => e.exercise.category === "core").length ?? 0;
+  const runMinutes = today?.running?.total_duration_minutes ?? null;
+
   return (
     <div className="space-y-5 p-4">
-      {/* Saudação */}
       <section className="animate-fade-in">
         <div className="text-[11px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
           {welcomeWord(gender)}
@@ -81,7 +94,6 @@ function DashboardContent() {
         </h2>
       </section>
 
-      {/* Card de Nível + XP + Streak */}
       <section className="animate-fade-in glass-strong relative overflow-hidden rounded-3xl p-5">
         <div className="absolute -right-12 -top-12 h-40 w-40 rounded-full bg-primary/20 blur-3xl" />
         <div className="relative flex items-start justify-between gap-3">
@@ -107,8 +119,6 @@ function DashboardContent() {
             </div>
           </div>
         </div>
-
-        {/* Barra para próximo nível */}
         <div className="relative mt-4">
           <div className="h-1.5 w-full overflow-hidden rounded-full bg-surface">
             <div
@@ -123,15 +133,13 @@ function DashboardContent() {
         </div>
       </section>
 
-      {/* Progresso triplo */}
       <section className="space-y-2.5">
-        <ProgressRow label="Semana atual" detail={`${weekProgress}/${weekDays} treinos`} pct={weekDays ? weekProgress / weekDays : 0} />
-        <ProgressRow label="Mesociclo" detail={`Semana ${mesoCurrent}/${mesoTotal}`} pct={mesoCurrent / mesoTotal} />
-        <ProgressRow label="Macrociclo" detail={`${macroCurrent}/${macroWeeks} semanas · ${macro?.macro ?? ""}`} pct={macroCurrent / macroWeeks} />
-        <ProgressRow label="Programa completo" detail={`Semana ${CURRENT_WEEK_NUMBER}/${PROGRAM_STATS.totalWeeks}`} pct={programPct / 100} accent />
+        <ProgressRow label="Semana atual" detail={`${weekCompleted}/${weekDays} treinos`} pct={weekDays ? weekCompleted / weekDays : 0} />
+        <ProgressRow label="Mesociclo" detail={`${currentMeso?.name ?? "—"} · ${mesoCurrent}/${mesoTotal}`} pct={mesoCurrent / mesoTotal} />
+        <ProgressRow label="Macrociclo" detail={`${currentMacro?.name ?? "—"} · ${macroCurrent}/${macroTotal}`} pct={macroCurrent / macroTotal} />
+        <ProgressRow label="Programa completo" detail={`Semana ${activeWeek}/${totalWeeks}`} pct={programPct / 100} accent />
       </section>
 
-      {/* CTA Iniciar treino */}
       <section className="grid grid-cols-2 gap-2">
         <Link
           to="/hoje"
@@ -148,42 +156,46 @@ function DashboardContent() {
         </Link>
       </section>
 
-      {/* Próximo treino */}
       <section className="glass rounded-2xl p-4">
         <div className="flex items-center gap-2 text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
           <Calendar className="h-3.5 w-3.5" strokeWidth={1.75} />
           Próximo treino
         </div>
-        <div className="mt-2 text-[16px] font-semibold tracking-tight">{today.day}</div>
-        <div className="mt-0.5 text-[12px] text-muted-foreground line-clamp-2">{today.session}</div>
+        <div className="mt-2 text-[16px] font-semibold tracking-tight">{today?.day_name ?? "—"}</div>
+        <div className="mt-0.5 text-[12px] text-muted-foreground line-clamp-2">
+          {today?.objective ?? "Sem treino programado."}
+        </div>
         <div className="mt-3 flex flex-wrap items-center gap-1.5 text-[10px] text-muted-foreground">
-          <span className="rounded-full border border-border/70 bg-surface/40 px-2 py-0.5">
-            {today.strength.length} força
-          </span>
-          <span className="rounded-full border border-border/70 bg-surface/40 px-2 py-0.5">
-            {today.core.length} core
-          </span>
-          {today.tempo && (
+          {strengthCount > 0 && (
+            <span className="rounded-full border border-border/70 bg-surface/40 px-2 py-0.5">
+              {strengthCount} força
+            </span>
+          )}
+          {coreCount > 0 && (
+            <span className="rounded-full border border-border/70 bg-surface/40 px-2 py-0.5">
+              {coreCount} core
+            </span>
+          )}
+          {runMinutes && (
             <span className="rounded-full border border-border/70 bg-surface/40 px-2 py-0.5 num">
-              {today.tempo}
+              {runMinutes} min corrida
             </span>
           )}
         </div>
       </section>
 
-      {/* Conquistas recentes */}
       <section>
         <div className="mb-2 flex items-center justify-between">
           <div className="text-[11px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
             Conquistas
           </div>
           <span className="text-[10px] text-muted-foreground">
-            {data?.recentAchievements.length ?? 0} desbloqueadas
+            {dash?.recentAchievements.length ?? 0} desbloqueadas
           </span>
         </div>
-        {data?.recentAchievements.length ? (
+        {dash?.recentAchievements.length ? (
           <div className="grid gap-2">
-            {data.recentAchievements.map((a) => {
+            {dash.recentAchievements.map((a) => {
               const ach = a.achievements as { title: string; description: string; xp_reward: number } | null;
               return (
                 <div key={a.achievement_code} className="flex items-center gap-3 rounded-2xl border border-primary/20 bg-primary/5 p-3">
@@ -209,11 +221,10 @@ function DashboardContent() {
         )}
       </section>
 
-      {/* Stats rápidos */}
       <section className="grid grid-cols-3 gap-2">
         <MiniStat icon={Trophy} label="Treinos" value={totalCompleted} />
         <MiniStat icon={Flame} label="Recorde" value={profile?.streak_longest ?? 0} suffix="d" />
-        <MiniStat icon={Footprints} label="Macros" value={MACROS.length} />
+        <MiniStat icon={Footprints} label="Macros" value={summary?.macros.length ?? 0} />
       </section>
     </div>
   );
