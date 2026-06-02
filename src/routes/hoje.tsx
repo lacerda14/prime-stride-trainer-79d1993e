@@ -133,6 +133,7 @@ function HojePage() {
   const week = data.week;
   const strength = today.exercises.filter((e) => e.exercise.category !== "core");
   const core = today.exercises.filter((e) => e.exercise.category === "core");
+  const detail = useExerciseDetail();
 
   return (
     <AppShell
