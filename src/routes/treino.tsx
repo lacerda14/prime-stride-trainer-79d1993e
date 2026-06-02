@@ -10,10 +10,12 @@ import { buildRunPhases, paceRange, runningHeadline, type RunPhase } from "@/lib
 import { useLocalToday } from "@/hooks/use-local-today";
 import {
   getActiveWorkoutSession,
+  getCompletedSessionForDay,
   startWorkoutSession,
   abandonWorkoutSession,
   type ActiveSessionDTO,
 } from "@/lib/workout-session.functions";
+
 import { syncSaveState, syncComplete, flushQueue } from "@/lib/offline-sync";
 import { OfflineBadge } from "@/components/offline-badge";
 
@@ -72,9 +74,11 @@ function TreinoPage() {
   const { user } = useAuth();
   const fetchToday = useServerFn(getTodayTraining);
   const fetchActive = useServerFn(getActiveWorkoutSession);
+  const fetchCompletedForDay = useServerFn(getCompletedSessionForDay);
   const startSession = useServerFn(startWorkoutSession);
   const abandonSession = useServerFn(abandonWorkoutSession);
   const localToday = useLocalToday();
+
 
   const todayQ = useQuery({
     queryKey: ["today-training", user?.id, localToday.local_date, localToday.timezone],
@@ -90,6 +94,26 @@ function TreinoPage() {
   const today = todayQ.data?.today;
   const weekNumber = todayQ.data?.week.week_number ?? null;
   const dayKey = today?.day_name ?? null;
+
+  // Se o treino do dia já foi concluído, vai direto pra tela de resumo
+  const completedTodayQ = useQuery({
+    queryKey: ["completed-session-for-day", user?.id, weekNumber, dayKey, localToday.local_date],
+    queryFn: () =>
+      fetchCompletedForDay({
+        data: { week_number: weekNumber!, day_key: dayKey!, local_date: localToday.local_date },
+      }),
+    enabled: !!user && !!weekNumber && !!dayKey,
+  });
+  useEffect(() => {
+    if (completedTodayQ.data?.id) {
+      navigate({
+        to: "/treino/concluido/$sessionId",
+        params: { sessionId: completedTodayQ.data.id },
+        replace: true,
+      });
+    }
+  }, [completedTodayQ.data, navigate]);
+
 
   // Constrói a fila de itens
   const queue = useMemo<QueueItem[]>(() => {
@@ -386,15 +410,18 @@ function TreinoPage() {
   useEffect(() => {
     if (!finished || finishing) return;
     setFinishing(true);
-    syncComplete({ session_id: sessionId!, total_elapsed_seconds: totalElapsedSeconds })
+    const sid = sessionId!;
+    syncComplete({ session_id: sid, total_elapsed_seconds: totalElapsedSeconds })
       .then(() => {
-        // sempre limpa o snapshot local — se ficou enfileirado,
-        // o offline-sync já guardou a operação separadamente
-        try { localStorage.removeItem(lsKey(sessionId!)); } catch { /* noop */ }
+        try { localStorage.removeItem(lsKey(sid)); } catch { /* noop */ }
         qc.invalidateQueries({ queryKey: ["active-workout-session", user?.id] });
         qc.invalidateQueries({ queryKey: ["workout-history", user?.id] });
+      })
+      .finally(() => {
+        navigate({ to: "/treino/concluido/$sessionId", params: { sessionId: sid }, replace: true });
       });
-  }, [finished, finishing, sessionId, totalElapsedSeconds, qc, user?.id]);
+  }, [finished, finishing, sessionId, totalElapsedSeconds, qc, user?.id, navigate]);
+
 
   // drena a fila ao montar (caso tenha sobrado de uma sessão anterior)
   useEffect(() => {
