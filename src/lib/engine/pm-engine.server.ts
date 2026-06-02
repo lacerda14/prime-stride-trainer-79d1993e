@@ -709,56 +709,56 @@ export async function persistProgram(
     mesoIdByCode.set(m.code, meso.id);
   }
 
-  // weeks + training_days + session_exercises + running_protocols
+  // ------------------------------------------------------------
+  // Bulk insert — gera UUIDs client-side e insere em lote para evitar
+  // ~600 round-trips sequenciais (causa de 504 upstream timeout).
+  // ------------------------------------------------------------
+  const weekRows = plan.weeks.map((w) => ({
+    id: crypto.randomUUID(),
+    program_id: programId,
+    mesocycle_id: mesoIdByCode.get(w.mesocycle_code)!,
+    week_number: w.week_number,
+    week_type: w.week_type,
+  }));
+  {
+    const { error } = await supabase.from("weeks").insert(weekRows);
+    if (error) throw new Error(`weeks: ${error.message}`);
+  }
+  const weekIdByNumber = new Map<number, string>();
+  weekRows.forEach((r) => weekIdByNumber.set(r.week_number, r.id));
+
+  const dayRows: any[] = [];
+  const sessionExerciseRows: any[] = [];
+  const runningRows: any[] = [];
+
   for (const w of plan.weeks) {
-    const { data: weekRow, error: wErr } = await supabase
-      .from("weeks")
-      .insert({
-        program_id: programId,
-        mesocycle_id: mesoIdByCode.get(w.mesocycle_code)!,
-        week_number: w.week_number,
-        week_type: w.week_type,
-      })
-      .select("id")
-      .single();
-    if (wErr) throw new Error(wErr.message);
-    const weekId = weekRow.id as string;
-
+    const weekId = weekIdByNumber.get(w.week_number)!;
     for (const d of w.days) {
-      const { data: dayRow, error: dErr } = await supabase
-        .from("training_days")
-        .insert({
-          week_id: weekId,
-          day_number: d.day_number,
-          day_name: d.day_name,
-          session_type: d.session_type,
-          objective: d.objective,
-          duration_minutes: d.duration_minutes,
-        })
-        .select("id")
-        .single();
-      if (dErr) throw new Error(dErr.message);
-      const dayId = dayRow.id as string;
-
-      if (d.exercises.length > 0) {
-        const { error: seErr } = await supabase.from("session_exercises").insert(
-          d.exercises.map((e) => ({
-            training_day_id: dayId,
-            exercise_id: e.exercise_id,
-            slot: e.slot,
-            pair_slot: e.pair_slot,
-            sets: e.sets,
-            reps: e.reps,
-            rpe_target: e.rpe_target,
-            rest_seconds: e.rest_seconds,
-            notes: e.notes,
-          })),
-        );
-        if (seErr) throw new Error(seErr.message);
+      const dayId = crypto.randomUUID();
+      dayRows.push({
+        id: dayId,
+        week_id: weekId,
+        day_number: d.day_number,
+        day_name: d.day_name,
+        session_type: d.session_type,
+        objective: d.objective,
+        duration_minutes: d.duration_minutes,
+      });
+      for (const e of d.exercises) {
+        sessionExerciseRows.push({
+          training_day_id: dayId,
+          exercise_id: e.exercise_id,
+          slot: e.slot,
+          pair_slot: e.pair_slot,
+          sets: e.sets,
+          reps: e.reps,
+          rpe_target: e.rpe_target,
+          rest_seconds: e.rest_seconds,
+          notes: e.notes,
+        });
       }
-
       if (d.running) {
-        const { error: rpErr } = await supabase.from("running_protocols").insert({
+        runningRows.push({
           training_day_id: dayId,
           protocol_type: d.running.protocol_type,
           total_duration_minutes: d.running.total_duration_minutes,
@@ -770,10 +770,21 @@ export async function persistProgram(
           pace_max: d.running.pace_max,
           notes: d.running.notes,
         });
-        if (rpErr) throw new Error(rpErr.message);
       }
     }
   }
+
+  const insertChunks = async (table: string, rows: any[], size = 500) => {
+    for (let i = 0; i < rows.length; i += size) {
+      const slice = rows.slice(i, i + size);
+      const { error } = await supabase.from(table).insert(slice);
+      if (error) throw new Error(`${table}: ${error.message}`);
+    }
+  };
+
+  await insertChunks("training_days", dayRows);
+  await insertChunks("session_exercises", sessionExerciseRows);
+  await insertChunks("running_protocols", runningRows);
 
   return { program_id: programId };
 }
