@@ -85,6 +85,10 @@ function CuratorBoard() {
   const search1 = useMutation({
     mutationFn: (exercise_id: string) => searchFn({ data: { exercise_id, max_results: 5 } }),
     onSuccess: (r) => {
+      if (r.error) {
+        toast.error(r.error.message);
+        return;
+      }
       toast.success(`Agente encontrou ${r.saved} candidatos`);
       qc.invalidateQueries({ queryKey: ["admin-exercises"] });
       qc.invalidateQueries({ queryKey: ["candidates"] });
@@ -98,11 +102,18 @@ function CuratorBoard() {
     mutationFn: async () => {
       const targets = (data ?? []).filter((e) => !e.has_primary);
       let total = 0;
+      let quotaHit = false;
       setBulkProgress({ done: 0, total: targets.length, saved: 0 });
       for (let i = 0; i < targets.length; i++) {
         const e = targets[i];
         try {
           const r = await searchFn({ data: { exercise_id: e.id, max_results: 3 } });
+          if (r.error) {
+            quotaHit = r.error.code === "quota_exceeded";
+            toast.error(r.error.message);
+            setBulkProgress({ done: i + 1, total: targets.length, saved: total });
+            break;
+          }
           total += r.saved;
         } catch (err) {
           console.error("search failed", e.name, err);
@@ -111,10 +122,10 @@ function CuratorBoard() {
         // pequena pausa para não estourar quota do YouTube
         await new Promise((r) => setTimeout(r, 200));
       }
-      return total;
+      return { total, quotaHit };
     },
-    onSuccess: (n) => {
-      toast.success(`Agente salvou ${n} candidatos no total`);
+    onSuccess: ({ total, quotaHit }) => {
+      if (!quotaHit) toast.success(`Agente salvou ${total} candidatos no total`);
       qc.invalidateQueries({ queryKey: ["admin-exercises"] });
       setTimeout(() => setBulkProgress(null), 4000);
     },
