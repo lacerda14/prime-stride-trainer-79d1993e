@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -111,6 +111,14 @@ function CuratorBoard() {
   return (
     <AppShell title="Curador de Vídeos" eyebrow="Admin">
       <div className="space-y-4 px-4 pb-8 pt-3">
+        <div className="flex items-center gap-2">
+          <Link
+            to="/admin/users"
+            className="rounded-full border border-border/60 bg-surface/40 px-3 py-1.5 text-[11px] font-medium text-muted-foreground hover:text-foreground"
+          >
+            Usuários →
+          </Link>
+        </div>
         <div className="flex gap-1 rounded-full bg-surface/40 p-1">
           <button
             onClick={() => setTab("exercises")}
