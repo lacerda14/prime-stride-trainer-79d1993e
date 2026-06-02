@@ -291,11 +291,10 @@ function TreinoPage() {
         session_data: { phase: p },
         status: paused ? ("paused" as const) : ("active" as const),
       };
-      saveState({ data: payload }).catch(() => {
-        /* offline: já está no localStorage */
-      });
+      // sync resiliente: tenta online, senão enfileira para mais tarde
+      void syncSaveState(payload);
     },
-    [sessionId, step, phase, queue, paused, phaseAccumMs, phaseStartedAt, totalAccumMs, saveState],
+    [sessionId, step, phase, queue, paused, phaseAccumMs, phaseStartedAt, totalAccumMs],
   );
 
   const schedulePersist = useCallback(() => {
@@ -387,18 +386,20 @@ function TreinoPage() {
   useEffect(() => {
     if (!finished || finishing) return;
     setFinishing(true);
-    completeSession({
-      data: { session_id: sessionId!, total_elapsed_seconds: totalElapsedSeconds },
-    })
+    syncComplete({ session_id: sessionId!, total_elapsed_seconds: totalElapsedSeconds })
       .then(() => {
+        // sempre limpa o snapshot local — se ficou enfileirado,
+        // o offline-sync já guardou a operação separadamente
         try { localStorage.removeItem(lsKey(sessionId!)); } catch { /* noop */ }
         qc.invalidateQueries({ queryKey: ["active-workout-session", user?.id] });
-      })
-      .catch(() => {
-        /* mantém estado para o usuário tentar de novo */
-        setFinishing(false);
+        qc.invalidateQueries({ queryKey: ["workout-history", user?.id] });
       });
-  }, [finished, finishing, sessionId, totalElapsedSeconds, completeSession, qc, user?.id]);
+  }, [finished, finishing, sessionId, totalElapsedSeconds, qc, user?.id]);
+
+  // drena a fila ao montar (caso tenha sobrado de uma sessão anterior)
+  useEffect(() => {
+    void flushQueue();
+  }, []);
 
   // ----------------------------------------------------------
   // RENDER
