@@ -267,11 +267,8 @@ export const completeWorkoutSession = createServerFn({ method: "POST" })
       .update({
         status: "completed",
         finished_at: finishedAtIso,
-        completed_at: finishedAtIso,
         duration_seconds: data.total_elapsed_seconds,
-        duration_min: Math.max(1, Math.round(data.total_elapsed_seconds / 60)),
         total_elapsed_seconds: data.total_elapsed_seconds,
-        updated_at: finishedAtIso,
       })
       .eq("id", data.session_id)
       .eq("user_id", userId)
@@ -407,7 +404,7 @@ export const listWorkoutHistory = createServerFn({ method: "GET" })
     const { supabase, userId } = context;
     const { data, error } = await supabase
       .from("workout_sessions")
-      .select("id, week_number, day_key, started_at, finished_at, duration_seconds, duration_min, status, completed_at")
+      .select("id, week_number, day_key, started_at, finished_at, duration_seconds, status")
       .eq("user_id", userId)
       .eq("status", "completed")
       .order("finished_at", { ascending: false, nullsFirst: false })
@@ -418,8 +415,8 @@ export const listWorkoutHistory = createServerFn({ method: "GET" })
       week_number: r.week_number,
       day_key: r.day_key,
       started_at: r.started_at,
-      finished_at: r.finished_at ?? r.completed_at ?? null,
-      duration_seconds: r.duration_seconds ?? (r.duration_min ? r.duration_min * 60 : null),
+      finished_at: r.finished_at ?? null,
+      duration_seconds: r.duration_seconds ?? null,
       status: r.status,
     }));
   });
