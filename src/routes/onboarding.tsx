@@ -210,9 +210,11 @@ function OnboardingPage() {
   }, [loading, user, navigate]);
 
   useEffect(() => {
-    if (profileQ.data?.onboarding_completed === true) {
+    const force = typeof window !== "undefined" && new URLSearchParams(window.location.search).get("force") === "1";
+    if (profileQ.data?.onboarding_completed === true && !force) {
       navigate({ to: "/", replace: true });
     }
+
     if (profileQ.data && !d.first_name) {
       const fullName = (profileQ.data.name as string | null) ?? "";
       const [fn, ...rest] = fullName.split(" ");
@@ -312,7 +314,9 @@ function OnboardingPage() {
     }
   };
 
-  if (loading || !user || profileQ.isPending || profileQ.data?.onboarding_completed === true) {
+  const forceView = typeof window !== "undefined" && new URLSearchParams(window.location.search).get("force") === "1";
+  if (loading || !user || profileQ.isPending || (profileQ.data?.onboarding_completed === true && !forceView)) {
+
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
         <Loader2 className="h-6 w-6 animate-spin text-primary" />
