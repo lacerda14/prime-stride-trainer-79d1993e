@@ -2,6 +2,8 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { AppShell } from "@/components/app-shell";
 import { DASHBOARD_STATS, getCurrentWeek, getTodayWorkout, PROGRAM_STATS } from "@/lib/mock-data";
 import { ArrowUpRight, Calendar, Timer, Footprints, Target, TrendingUp } from "lucide-react";
+import { useAuth } from "@/hooks/use-auth";
+import { firstName, inferGender, welcomeWord, timeOfDayGreeting } from "@/lib/greeting";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -40,10 +42,31 @@ function Dashboard() {
   const week = getCurrentWeek();
   const today = getTodayWorkout();
   const adherencePct = Math.round(DASHBOARD_STATS.adherence * 100);
+  const { user } = useAuth();
+  const rawName =
+    (user?.user_metadata?.display_name as string | undefined) ||
+    (user?.user_metadata?.full_name as string | undefined) ||
+    (user?.user_metadata?.name as string | undefined) ||
+    user?.email?.split("@")[0] ||
+    "";
+  const name = firstName(rawName);
+  const gender = inferGender(rawName);
+  const greeting = `${timeOfDayGreeting()}, ${name || "atleta"}`;
+  const welcome = welcomeWord(gender);
 
   return (
     <AppShell eyebrow="Visão geral" title="Dashboard">
       <div className="space-y-5 p-4">
+        {/* Saudação personalizada */}
+        <section className="animate-fade-in">
+          <div className="text-[11px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
+            {welcome}
+          </div>
+          <h2 className="mt-1 text-[22px] font-semibold leading-tight tracking-tight">
+            {greeting}
+          </h2>
+        </section>
+
         {/* Hero — Semana atual */}
         <section className="animate-fade-in glass-strong relative overflow-hidden rounded-3xl p-6">
           <div className="absolute -right-16 -top-16 h-48 w-48 rounded-full bg-primary/15 blur-3xl" />
