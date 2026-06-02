@@ -159,27 +159,27 @@ function HojePage() {
 
         {today.running && (
           <section className="glass rounded-2xl p-5">
-            <div className="text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">Corrida</div>
-            <div className="mt-2 num space-y-1.5 text-sm">
-              <div className="rounded-lg border border-border/60 bg-surface/40 px-3 py-2">
-                {today.running.protocol_type.toUpperCase()} · {today.running.total_duration_minutes} min
+            <div className="flex items-baseline justify-between">
+              <div className="text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                Corrida
               </div>
-              {today.running.blocks && today.running.intervals && (
-                <div className="rounded-lg border border-border/60 bg-surface/40 px-3 py-2">
-                  {today.running.blocks} blocos × {today.running.intervals} tiros
-                </div>
-              )}
-              {today.running.work_duration_seconds && (
-                <div className="rounded-lg border border-border/60 bg-surface/40 px-3 py-2">
-                  Work {today.running.work_duration_seconds}s · Rest {today.running.rest_duration_seconds}s
-                </div>
-              )}
-              {today.running.pace_min && today.running.pace_max && (
-                <div className="rounded-lg border border-border/60 bg-surface/40 px-3 py-2">
-                  Pace alvo: {today.running.pace_min.toFixed(2)}–{today.running.pace_max.toFixed(2)} min/km
-                </div>
-              )}
+              <div className="num text-[10px] uppercase tracking-wider text-primary/80">
+                {runningHeadline(today.running)}
+              </div>
             </div>
+            <ol className="mt-3 space-y-2 text-sm">
+              {runningInstructions(today.running).map((step, i) => (
+                <li
+                  key={i}
+                  className="num flex gap-3 rounded-lg border border-border/60 bg-surface/40 px-3 py-2.5"
+                >
+                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/15 text-[10px] font-semibold text-primary">
+                    {i + 1}
+                  </span>
+                  <span className="leading-snug">{step}</span>
+                </li>
+              ))}
+            </ol>
           </section>
         )}
 
