@@ -24,6 +24,7 @@ import { Route as ConfiguracoesRouteImport } from './routes/configuracoes'
 import { Route as CoachesRouteImport } from './routes/coaches'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AdminUsersRouteImport } from './routes/admin.users'
 import { Route as AdminExerciseMediaRouteImport } from './routes/admin.exercise-media'
 import { Route as TreinoConcluidoSessionIdRouteImport } from './routes/treino.concluido.$sessionId'
 
@@ -102,6 +103,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminUsersRoute = AdminUsersRouteImport.update({
+  id: '/admin/users',
+  path: '/admin/users',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminExerciseMediaRoute = AdminExerciseMediaRouteImport.update({
   id: '/admin/exercise-media',
   path: '/admin/exercise-media',
@@ -131,6 +137,7 @@ export interface FileRoutesByFullPath {
   '/treino': typeof TreinoRouteWithChildren
   '/treinos': typeof TreinosRoute
   '/admin/exercise-media': typeof AdminExerciseMediaRoute
+  '/admin/users': typeof AdminUsersRoute
   '/treino/concluido/$sessionId': typeof TreinoConcluidoSessionIdRoute
 }
 export interface FileRoutesByTo {
@@ -150,6 +157,7 @@ export interface FileRoutesByTo {
   '/treino': typeof TreinoRouteWithChildren
   '/treinos': typeof TreinosRoute
   '/admin/exercise-media': typeof AdminExerciseMediaRoute
+  '/admin/users': typeof AdminUsersRoute
   '/treino/concluido/$sessionId': typeof TreinoConcluidoSessionIdRoute
 }
 export interface FileRoutesById {
@@ -170,6 +178,7 @@ export interface FileRoutesById {
   '/treino': typeof TreinoRouteWithChildren
   '/treinos': typeof TreinosRoute
   '/admin/exercise-media': typeof AdminExerciseMediaRoute
+  '/admin/users': typeof AdminUsersRoute
   '/treino/concluido/$sessionId': typeof TreinoConcluidoSessionIdRoute
 }
 export interface FileRouteTypes {
@@ -191,6 +200,7 @@ export interface FileRouteTypes {
     | '/treino'
     | '/treinos'
     | '/admin/exercise-media'
+    | '/admin/users'
     | '/treino/concluido/$sessionId'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -210,6 +220,7 @@ export interface FileRouteTypes {
     | '/treino'
     | '/treinos'
     | '/admin/exercise-media'
+    | '/admin/users'
     | '/treino/concluido/$sessionId'
   id:
     | '__root__'
@@ -229,6 +240,7 @@ export interface FileRouteTypes {
     | '/treino'
     | '/treinos'
     | '/admin/exercise-media'
+    | '/admin/users'
     | '/treino/concluido/$sessionId'
   fileRoutesById: FileRoutesById
 }
@@ -249,6 +261,7 @@ export interface RootRouteChildren {
   TreinoRoute: typeof TreinoRouteWithChildren
   TreinosRoute: typeof TreinosRoute
   AdminExerciseMediaRoute: typeof AdminExerciseMediaRoute
+  AdminUsersRoute: typeof AdminUsersRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -358,6 +371,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/users': {
+      id: '/admin/users'
+      path: '/admin/users'
+      fullPath: '/admin/users'
+      preLoaderRoute: typeof AdminUsersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin/exercise-media': {
       id: '/admin/exercise-media'
       path: '/admin/exercise-media'
@@ -403,6 +423,7 @@ const rootRouteChildren: RootRouteChildren = {
   TreinoRoute: TreinoRouteWithChildren,
   TreinosRoute: TreinosRoute,
   AdminExerciseMediaRoute: AdminExerciseMediaRoute,
+  AdminUsersRoute: AdminUsersRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
