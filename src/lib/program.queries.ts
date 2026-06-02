@@ -242,8 +242,10 @@ async function loadWeekDetail(
       `id,day_number,day_name,session_type,objective,duration_minutes,completed_at,
        session_exercises(id,slot,pair_slot,sets,reps,rpe_target,rest_seconds,notes,
          exercise:exercise_pool(id,name,category)),
-       running_protocols(id,protocol_type,total_duration_minutes,blocks,intervals,
-         work_duration_seconds,rest_duration_seconds,pace_min,pace_max,notes)`,
+       running_protocols(id,protocol_type,protocol_name,goal,total_duration_minutes,
+         warmup_minutes,cooldown_minutes,blocks,intervals,intervals_per_block,
+         work_duration_seconds,rest_duration_seconds,between_blocks_rest_seconds,
+         target_pace_min,target_pace_max,pace_min,pace_max,notes)`,
     )
     .eq("week_id", week.id)
     .order("day_number");
