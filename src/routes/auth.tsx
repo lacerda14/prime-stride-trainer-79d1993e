@@ -197,11 +197,26 @@ function GoogleButton() {
     // tokens set, useAuth listener will redirect
   };
   return (
-    <Button type="button" variant="outline" className="w-full" onClick={onClick} disabled={busy}>
-      {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : (
-        <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.4 29.3 35.5 24 35.5c-6.4 0-11.5-5.1-11.5-11.5S17.6 12.5 24 12.5c2.9 0 5.6 1.1 7.7 2.9l5.7-5.7C33.8 6.2 29.1 4 24 4 13 4 4 13 4 24s9 20 20 20 20-9 20-20c0-1.2-.1-2.3-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 16 19 13 24 13c2.9 0 5.6 1.1 7.7 2.9l5.7-5.7C33.8 6.2 29.1 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35 26.7 36 24 36c-5.3 0-9.7-3.1-11.3-7.5l-6.5 5C9.6 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.3-2.3 4.2-4.1 5.6l6.2 5.2c-.4.4 6.6-4.8 6.6-14.8 0-1.2-.1-2.3-.4-3.5z"/></svg>
-      )}
-      Continuar com Google
-    </Button>
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={busy}
+      className="group relative flex w-full items-center justify-center gap-3 rounded-xl border border-border/70 bg-[#050505] px-4 py-3.5 text-[15px] font-medium tracking-tight text-foreground shadow-[inset_0_1px_0_0_rgba(255,255,255,0.04)] transition-all duration-200 hover:border-border hover:bg-[#0a0a0a] hover:-translate-y-[1px] hover:shadow-[0_8px_24px_-12px_rgba(0,0,0,0.6)] active:translate-y-0 active:bg-[#030303] disabled:cursor-not-allowed disabled:opacity-60"
+    >
+      <span className="flex h-5 w-5 shrink-0 items-center justify-center">
+        {busy ? (
+          <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+        ) : (
+          <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" aria-hidden="true">
+            <path fill="#EA4335" d="M12 10.2v3.92h5.45c-.24 1.4-1.7 4.1-5.45 4.1-3.28 0-5.96-2.71-5.96-6.06s2.68-6.06 5.96-6.06c1.87 0 3.12.8 3.84 1.48l2.62-2.52C16.78 3.52 14.6 2.5 12 2.5 6.76 2.5 2.5 6.76 2.5 12S6.76 21.5 12 21.5c6.07 0 10.08-4.27 10.08-10.27 0-.69-.07-1.22-.16-1.74H12z"/>
+            <path fill="#4285F4" d="M22.08 11.23c0-.69-.07-1.22-.16-1.74H12v3.92h5.66c-.11.94-.73 2.36-2.1 3.32l.02.13 3.05 2.36.21.02c1.94-1.79 3.06-4.43 3.06-7.55"/>
+            <path fill="#FBBC05" d="M5.92 13.5a5.8 5.8 0 0 1-.32-1.9c0-.66.12-1.3.31-1.9l-.01-.13-3.09-2.4-.1.05A9.5 9.5 0 0 0 1.5 12c0 1.54.37 2.99 1.02 4.27z"/>
+            <path fill="#34A853" d="M12 21.5c2.7 0 4.96-.89 6.62-2.42l-3.16-2.45c-.85.59-1.98 1-3.46 1-2.65 0-4.9-1.74-5.7-4.16l-.12.01-3.21 2.49-.04.12C4.74 19.16 8.08 21.5 12 21.5"/>
+            <path fill="#EA4335" d="M12 5.94c1.88 0 3.14.8 3.86 1.49l2.82-2.75C16.97 3.16 14.7 2.5 12 2.5 8.08 2.5 4.74 4.84 3.93 8.41l3.36 2.6C8.1 8.5 9.84 5.94 12 5.94"/>
+          </svg>
+        )}
+      </span>
+      <span>Continuar com Google</span>
+    </button>
   );
 }
