@@ -403,102 +403,228 @@ export type Database = {
       profiles: {
         Row: {
           age: number | null
+          arm_cm: number | null
           available_days: number | null
+          available_days_list: string[]
           available_minutes: number | null
           avatar_url: string | null
+          birth_date: string | null
+          cardio_preference: string | null
+          chest_cm: number | null
           created_at: string
+          current_pain_level: number | null
           current_week: number
+          equipment: string[]
           experience_level:
             | Database["public"]["Enums"]["experience_level_enum"]
             | null
+          first_name: string | null
           friend_code: string | null
           goal: Database["public"]["Enums"]["goal_enum"] | null
           height_cm: number | null
+          hip_cm: number | null
           id: string
+          last_name: string | null
           level: number
+          medical_conditions: string[]
+          medical_restrictions: string | null
+          medications: string | null
           motivations: string[]
           name: string | null
           onboarding_completed: boolean
+          pain_regions: string[]
+          past_injuries: string[]
+          perf_lifts_done: string[]
+          perf_max_plank_seconds: number | null
+          perf_max_pushups: number | null
+          perf_max_run_minutes: number | null
+          perf_max_squats: number | null
           phone: string | null
           preferences: string[]
+          preferred_time: string | null
+          primary_goal: string | null
           program_start_date: string
+          running_continuous_minutes: string | null
+          running_goals: string[]
+          running_level: string | null
+          running_mode: string | null
+          running_preferred_days: string[]
+          secondary_goals: string[]
           sex: Database["public"]["Enums"]["sex_enum"] | null
           sports: string[]
+          sports_frequency: Json
           streak_current: number
           streak_last_date: string | null
           streak_longest: number
+          surgeries: Json
+          thigh_cm: number | null
           training_history: string | null
           training_location: string | null
+          training_style: string | null
+          uncomfortable_movements: string[]
           updated_at: string
           username: string | null
+          waist_cm: number | null
           weight_kg: number | null
           xp_total: number
         }
         Insert: {
           age?: number | null
+          arm_cm?: number | null
           available_days?: number | null
+          available_days_list?: string[]
           available_minutes?: number | null
           avatar_url?: string | null
+          birth_date?: string | null
+          cardio_preference?: string | null
+          chest_cm?: number | null
           created_at?: string
+          current_pain_level?: number | null
           current_week?: number
+          equipment?: string[]
           experience_level?:
             | Database["public"]["Enums"]["experience_level_enum"]
             | null
+          first_name?: string | null
           friend_code?: string | null
           goal?: Database["public"]["Enums"]["goal_enum"] | null
           height_cm?: number | null
+          hip_cm?: number | null
           id: string
+          last_name?: string | null
           level?: number
+          medical_conditions?: string[]
+          medical_restrictions?: string | null
+          medications?: string | null
           motivations?: string[]
           name?: string | null
           onboarding_completed?: boolean
+          pain_regions?: string[]
+          past_injuries?: string[]
+          perf_lifts_done?: string[]
+          perf_max_plank_seconds?: number | null
+          perf_max_pushups?: number | null
+          perf_max_run_minutes?: number | null
+          perf_max_squats?: number | null
           phone?: string | null
           preferences?: string[]
+          preferred_time?: string | null
+          primary_goal?: string | null
           program_start_date?: string
+          running_continuous_minutes?: string | null
+          running_goals?: string[]
+          running_level?: string | null
+          running_mode?: string | null
+          running_preferred_days?: string[]
+          secondary_goals?: string[]
           sex?: Database["public"]["Enums"]["sex_enum"] | null
           sports?: string[]
+          sports_frequency?: Json
           streak_current?: number
           streak_last_date?: string | null
           streak_longest?: number
+          surgeries?: Json
+          thigh_cm?: number | null
           training_history?: string | null
           training_location?: string | null
+          training_style?: string | null
+          uncomfortable_movements?: string[]
           updated_at?: string
           username?: string | null
+          waist_cm?: number | null
           weight_kg?: number | null
           xp_total?: number
         }
         Update: {
           age?: number | null
+          arm_cm?: number | null
           available_days?: number | null
+          available_days_list?: string[]
           available_minutes?: number | null
           avatar_url?: string | null
+          birth_date?: string | null
+          cardio_preference?: string | null
+          chest_cm?: number | null
           created_at?: string
+          current_pain_level?: number | null
           current_week?: number
+          equipment?: string[]
           experience_level?:
             | Database["public"]["Enums"]["experience_level_enum"]
             | null
+          first_name?: string | null
           friend_code?: string | null
           goal?: Database["public"]["Enums"]["goal_enum"] | null
           height_cm?: number | null
+          hip_cm?: number | null
           id?: string
+          last_name?: string | null
           level?: number
+          medical_conditions?: string[]
+          medical_restrictions?: string | null
+          medications?: string | null
           motivations?: string[]
           name?: string | null
           onboarding_completed?: boolean
+          pain_regions?: string[]
+          past_injuries?: string[]
+          perf_lifts_done?: string[]
+          perf_max_plank_seconds?: number | null
+          perf_max_pushups?: number | null
+          perf_max_run_minutes?: number | null
+          perf_max_squats?: number | null
           phone?: string | null
           preferences?: string[]
+          preferred_time?: string | null
+          primary_goal?: string | null
           program_start_date?: string
+          running_continuous_minutes?: string | null
+          running_goals?: string[]
+          running_level?: string | null
+          running_mode?: string | null
+          running_preferred_days?: string[]
+          secondary_goals?: string[]
           sex?: Database["public"]["Enums"]["sex_enum"] | null
           sports?: string[]
+          sports_frequency?: Json
           streak_current?: number
           streak_last_date?: string | null
           streak_longest?: number
+          surgeries?: Json
+          thigh_cm?: number | null
           training_history?: string | null
           training_location?: string | null
+          training_style?: string | null
+          uncomfortable_movements?: string[]
           updated_at?: string
           username?: string | null
+          waist_cm?: number | null
           weight_kg?: number | null
           xp_total?: number
+        }
+        Relationships: []
+      }
+      progress_photos: {
+        Row: {
+          id: string
+          photo_type: string
+          storage_path: string
+          uploaded_at: string
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          photo_type: string
+          storage_path: string
+          uploaded_at?: string
+          user_id: string
+        }
+        Update: {
+          id?: string
+          photo_type?: string
+          storage_path?: string
+          uploaded_at?: string
+          user_id?: string
         }
         Relationships: []
       }
