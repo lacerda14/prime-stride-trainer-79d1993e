@@ -7,6 +7,7 @@ import {
   getRunningSessions,
   type RunningSessionListItem,
 } from "@/lib/program.queries";
+import { formatRunSeconds, paceRange, runningInstructions, runningTypeLabel } from "@/lib/format-running";
 import { useAuth } from "@/hooks/use-auth";
 import { ChevronDown, Footprints, Timer, Gauge, Loader2 } from "lucide-react";
 
@@ -78,27 +79,28 @@ function CorridaPage() {
 
 function describeProtocol(r: RunningSessionListItem): string[] {
   const p = r.protocol;
-  const lines: string[] = [];
-  if (p.total_duration_minutes) lines.push(`${p.total_duration_minutes} min total`);
-  if (p.blocks) lines.push(`${p.blocks} blocos`);
-  if (p.intervals && p.work_duration_seconds && p.rest_duration_seconds) {
-    lines.push(
-      `${p.intervals}× ${p.work_duration_seconds}s on / ${p.rest_duration_seconds}s off`,
-    );
+  return runningInstructions(p);
+}
+
+function protocolSummary(row: RunningSessionListItem): string {
+  const p = row.protocol;
+  const intervals = p.intervals_per_block ?? p.intervals;
+  const pace = paceRange(p);
+  if (p.blocks && intervals && p.work_duration_seconds) {
+    const rest = p.rest_duration_seconds ? ` · ${formatRunSeconds(p.rest_duration_seconds)} descanso` : "";
+    const between = p.blocks > 1
+      ? ` · Entre blocos: ${p.between_blocks_rest_seconds ? formatRunSeconds(p.between_blocks_rest_seconds) : "obrigatório"}`
+      : "";
+    return `${p.blocks}×${intervals} tiros · ${formatRunSeconds(p.work_duration_seconds)} corrida${rest}${between}${pace ? ` · Pace ${pace}` : ""}`;
   }
-  if (p.pace_min && p.pace_max) {
-    lines.push(`Pace ${p.pace_min}–${p.pace_max} min/km`);
-  } else if (p.pace_min) {
-    lines.push(`Pace ${p.pace_min} min/km`);
-  }
-  if (p.notes) lines.push(p.notes);
-  return lines;
+  return p.total_duration_minutes ? `${p.total_duration_minutes} min contínuos${pace ? ` · Pace ${pace}` : ""}` : row.protocol.protocol_type;
 }
 
 function RunCard({ row }: { row: RunningSessionListItem }) {
   const [open, setOpen] = useState(false);
   const lines = describeProtocol(row);
-  const first = lines[0] ?? row.protocol.protocol_type;
+  const first = protocolSummary(row);
+  const betweenRest = row.protocol.between_blocks_rest_seconds;
   return (
     <div className="glass overflow-hidden rounded-2xl">
       <button
@@ -114,7 +116,7 @@ function RunCard({ row }: { row: RunningSessionListItem }) {
               Semana {String(row.week_number).padStart(2, "0")} · {row.day_name}
             </div>
             <div className="mt-0.5 text-base font-semibold tracking-tight capitalize">
-              {row.protocol.protocol_type.replace(/_/g, " ")}
+              {runningTypeLabel(row.protocol)}
             </div>
             <div className="num mt-0.5 text-xs text-muted-foreground">{first}</div>
           </div>
@@ -130,6 +132,11 @@ function RunCard({ row }: { row: RunningSessionListItem }) {
           <div className="space-y-2 border-t border-border px-5 pb-5 pt-4">
             {row.objective && (
               <div className="text-xs text-muted-foreground">{row.objective}</div>
+            )}
+            {row.protocol.blocks && row.protocol.blocks > 1 && (
+              <div className="num rounded-xl border border-primary/30 bg-primary/10 px-4 py-3 text-sm text-primary">
+                🔸 Descanso entre blocos: {betweenRest ? formatRunSeconds(betweenRest) : "OBRIGATÓRIO — não configurado"}
+              </div>
             )}
             {lines.map((line, i) => (
               <div

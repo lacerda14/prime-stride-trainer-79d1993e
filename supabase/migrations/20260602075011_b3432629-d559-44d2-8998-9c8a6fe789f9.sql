@@ -1,0 +1,5 @@
+ALTER TABLE public.running_protocols
+  VALIDATE CONSTRAINT running_protocols_between_blocks_required;
+
+ALTER TABLE public.running_protocols
+  VALIDATE CONSTRAINT running_protocols_between_blocks_positive;

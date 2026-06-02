@@ -38,6 +38,13 @@ function intervalsCount(p: RunningProtocolDTO): number | null {
   return p.intervals_per_block ?? p.intervals;
 }
 
+export function formatRunSeconds(s: number): string {
+  if (s < 60) return `${s}s`;
+  const m = Math.floor(s / 60);
+  const r = s % 60;
+  return r === 0 ? `${m}min` : `${m}min${String(r).padStart(2, "0")}s`;
+}
+
 /**
  * Lista textual estruturada (usada nos cards de leitura).
  */
@@ -51,16 +58,22 @@ export function runningInstructions(p: RunningProtocolDTO): string[] {
   }
 
   if (p.blocks && ipb && p.work_duration_seconds) {
-    for (let b = 1; b <= p.blocks; b++) {
-      steps.push(
-        `Bloco ${b}: ${ipb} tiros de ${p.work_duration_seconds}s forte${
-          p.rest_duration_seconds ? ` + ${p.rest_duration_seconds}s caminhada leve` : ""
-        }`,
-      );
-      if (b < p.blocks && p.between_blocks_rest_seconds) {
-        steps.push(`Descanso entre blocos: ${formatSecs(p.between_blocks_rest_seconds)}`);
-      }
-    }
+    steps.push(`${p.blocks} blocos × ${ipb} tiros`);
+    steps.push(`Tempo de tiro: ${formatRunSeconds(p.work_duration_seconds)} corrida`);
+    steps.push(
+      `Descanso entre tiros: ${
+        p.rest_duration_seconds ? `${formatRunSeconds(p.rest_duration_seconds)} caminhada` : "não configurado"
+      }`,
+    );
+    steps.push(
+      `Descanso entre blocos: ${
+        p.blocks > 1
+          ? p.between_blocks_rest_seconds
+            ? formatRunSeconds(p.between_blocks_rest_seconds)
+            : "OBRIGATÓRIO — não configurado"
+          : "não aplicável (1 bloco)"
+      }`,
+    );
   } else if (ipb && p.work_duration_seconds) {
     steps.push(
       `${ipb} tiros de ${p.work_duration_seconds}s${
@@ -82,13 +95,6 @@ export function runningInstructions(p: RunningProtocolDTO): string[] {
   return steps;
 }
 
-function formatSecs(s: number): string {
-  if (s < 60) return `${s}s`;
-  const m = Math.floor(s / 60);
-  const r = s % 60;
-  return r === 0 ? `${m} min` : `${m}min${String(r).padStart(2, "0")}s`;
-}
-
 // ============================================================
 // Fases para o timer do Lock Screen
 // ============================================================
@@ -101,6 +107,8 @@ export interface RunPhase {
   detail: string;
   seconds: number;
   block?: number;
+  completedBlock?: number;
+  nextBlock?: number;
   interval?: number;
   totalIntervals?: number;
   totalBlocks?: number;
@@ -142,21 +150,29 @@ export function buildRunPhases(p: RunningProtocolDTO): RunPhase[] {
         if (!isLastInterval && p.rest_duration_seconds) {
           phases.push({
             kind: "rest",
-            label: "Recuperação",
+            label: "Descanso entre tiros",
             detail: "Caminhada leve",
             seconds: p.rest_duration_seconds,
             block: b,
+            interval: i,
+            totalIntervals: ipb,
+            totalBlocks: p.blocks,
           });
         }
       }
       const isLastBlock = b === p.blocks;
-      if (!isLastBlock && p.between_blocks_rest_seconds) {
+      if (!isLastBlock && p.blocks > 1) {
         phases.push({
           kind: "between",
-          label: `Descanso entre blocos`,
-          detail: "Trote leve / caminhada",
-          seconds: p.between_blocks_rest_seconds,
+          label: "DESCANSO ENTRE BLOCOS",
+          detail: p.between_blocks_rest_seconds
+            ? `Prepare-se para o bloco ${b + 1}`
+            : "Descanso obrigatório não configurado",
+          seconds: p.between_blocks_rest_seconds ?? 1,
           block: b,
+          completedBlock: b,
+          nextBlock: b + 1,
+          totalBlocks: p.blocks,
         });
       }
     }
