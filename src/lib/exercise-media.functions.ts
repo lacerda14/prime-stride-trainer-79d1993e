@@ -443,7 +443,8 @@ export const addManualMedia = createServerFn({ method: "POST" })
     await ensureAdmin(supabase, userId);
 
     // Detect YouTube
-    let media_type: string = "external_video";
+    type MType = "external_video" | "youtube_embed" | "vimeo_embed";
+    let media_type: MType = "external_video";
     let embed_url: string | null = null;
     let external_id: string | null = null;
     let source = "external";
