@@ -95,6 +95,26 @@ function TreinoPage() {
   const weekNumber = todayQ.data?.week.week_number ?? null;
   const dayKey = today?.day_name ?? null;
 
+  // Se o treino do dia já foi concluído, vai direto pra tela de resumo
+  const completedTodayQ = useQuery({
+    queryKey: ["completed-session-for-day", user?.id, weekNumber, dayKey, localToday.local_date],
+    queryFn: () =>
+      fetchCompletedForDay({
+        data: { week_number: weekNumber!, day_key: dayKey!, local_date: localToday.local_date },
+      }),
+    enabled: !!user && !!weekNumber && !!dayKey,
+  });
+  useEffect(() => {
+    if (completedTodayQ.data?.id) {
+      navigate({
+        to: "/treino/concluido/$sessionId",
+        params: { sessionId: completedTodayQ.data.id },
+        replace: true,
+      });
+    }
+  }, [completedTodayQ.data, navigate]);
+
+
   // Constrói a fila de itens
   const queue = useMemo<QueueItem[]>(() => {
     if (!today) return [];
