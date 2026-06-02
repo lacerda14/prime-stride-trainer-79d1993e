@@ -2,6 +2,13 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
+const localTodaySchema = z.object({
+  local_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  day_number: z.number().int().min(1).max(7),
+  day_name: z.string().min(1).max(32),
+  timezone: z.string().min(1).max(80).optional(),
+});
+
 // ============================================================
 // Tipos retornados (consumidos pelas telas)
 // ============================================================
@@ -85,6 +92,8 @@ export interface ProgramSummary {
   total_weeks: number;
   active_week: number;
   active_day: number;
+  program_start_date: string | null;
+  current_week: number;
   goal: string;
   experience_level: string;
   available_days: number;
@@ -101,6 +110,16 @@ export interface WeekDetailDTO {
   meso: MesoSummary;
   macro: { id: string; name: string; objective: string | null; dominant_method: string | null };
   days: TrainingDayDTO[];
+}
+
+export interface TodayTrainingCalendarDTO {
+  local_date: string;
+  day_number: number;
+  day_name: string;
+  timezone: string | null;
+  program_start_date: string;
+  current_week: number;
+  total_weeks: number;
 }
 
 // ============================================================
