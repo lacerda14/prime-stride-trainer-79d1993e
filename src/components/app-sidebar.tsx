@@ -8,6 +8,7 @@ import {
   History,
   Settings,
   LogOut,
+  Sparkles,
 } from "lucide-react";
 import pmLogo from "@/assets/pm-logo.png.asset.json";
 import { useAuth } from "@/hooks/use-auth";
@@ -27,13 +28,14 @@ import {
 } from "@/components/ui/sidebar";
 
 const items = [
-  { title: "Dashboard", url: "/", icon: LayoutDashboard },
-  { title: "Treino de Hoje", url: "/hoje", icon: Flame },
-  { title: "Semanas", url: "/semanas", icon: CalendarDays },
-  { title: "Corrida", url: "/corrida", icon: Footprints },
-  { title: "Progressão", url: "/progressao", icon: TrendingUp },
-  { title: "Histórico", url: "/historico", icon: History },
-  { title: "Configurações", url: "/configuracoes", icon: Settings },
+  { title: "Dashboard",      url: "/",           icon: LayoutDashboard, badge: null },
+  { title: "Treino de Hoje", url: "/hoje",        icon: Flame,           badge: null },
+  { title: "Semanas",        url: "/semanas",     icon: CalendarDays,    badge: null },
+  { title: "Corrida",        url: "/corrida",     icon: Footprints,      badge: null },
+  { title: "Progressão",     url: "/progressao",  icon: TrendingUp,      badge: null },
+  { title: "Histórico",      url: "/historico",   icon: History,         badge: null },
+  { title: "Coaches AI",     url: "/coaches",     icon: Sparkles,        badge: "Em breve" },
+  { title: "Configurações",  url: "/configuracoes", icon: Settings,      badge: null },
 ];
 
 export function AppSidebar() {
@@ -81,14 +83,24 @@ export function AppSidebar() {
                       className="h-10 rounded-lg data-[active=true]:bg-accent data-[active=true]:text-accent-foreground hover:bg-sidebar-accent/60"
                     >
                       <Link to={item.url}>
-                        <item.icon className="h-[18px] w-[18px]" strokeWidth={1.75} />
+                        <item.icon
+                          className={`h-[18px] w-[18px] shrink-0 ${item.badge ? "text-primary" : ""}`}
+                          strokeWidth={1.75}
+                        />
                         {!collapsed && (
-                          <span className="text-[13.5px] font-medium tracking-tight">
-                            {item.title}
-                          </span>
-                        )}
-                        {active && !collapsed && (
-                          <span className="ml-auto h-1.5 w-1.5 rounded-full bg-primary shadow-glow" />
+                          <>
+                            <span className="flex-1 text-[13.5px] font-medium tracking-tight">
+                              {item.title}
+                            </span>
+                            {item.badge && (
+                              <span className="ml-auto rounded-full border border-primary/30 bg-primary/10 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-widest text-primary">
+                                {item.badge}
+                              </span>
+                            )}
+                            {active && !item.badge && (
+                              <span className="ml-auto h-1.5 w-1.5 rounded-full bg-primary shadow-glow" />
+                            )}
+                          </>
                         )}
                       </Link>
                     </SidebarMenuButton>

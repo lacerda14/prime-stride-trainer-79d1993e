@@ -21,6 +21,7 @@ import { Route as ConfiguracoesRouteImport } from './routes/configuracoes'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminExerciseMediaRouteImport } from './routes/admin.exercise-media'
+import { Route as CoachesRouteImport } from './routes/coaches'
 import { Route as TreinoConcluidoSessionIdRouteImport } from './routes/treino.concluido.$sessionId'
 
 const TreinoRoute = TreinoRouteImport.update({
@@ -68,6 +69,11 @@ const ConfiguracoesRoute = ConfiguracoesRouteImport.update({
   path: '/configuracoes',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CoachesRoute = CoachesRouteImport.update({
+  id: '/coaches',
+  path: '/coaches',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
@@ -93,6 +99,7 @@ const TreinoConcluidoSessionIdRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/coaches': typeof CoachesRoute
   '/configuracoes': typeof ConfiguracoesRoute
   '/corrida': typeof CorridaRoute
   '/historico': typeof HistoricoRoute
@@ -108,6 +115,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/coaches': typeof CoachesRoute
   '/configuracoes': typeof ConfiguracoesRoute
   '/corrida': typeof CorridaRoute
   '/historico': typeof HistoricoRoute
@@ -124,6 +132,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/coaches': typeof CoachesRoute
   '/configuracoes': typeof ConfiguracoesRoute
   '/corrida': typeof CorridaRoute
   '/historico': typeof HistoricoRoute
@@ -141,6 +150,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/auth'
+    | '/coaches'
     | '/configuracoes'
     | '/corrida'
     | '/historico'
@@ -156,6 +166,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/auth'
+    | '/coaches'
     | '/configuracoes'
     | '/corrida'
     | '/historico'
@@ -171,6 +182,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/auth'
+    | '/coaches'
     | '/configuracoes'
     | '/corrida'
     | '/historico'
@@ -187,6 +199,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthRoute: typeof AuthRoute
+  CoachesRoute: typeof CoachesRoute
   ConfiguracoesRoute: typeof ConfiguracoesRoute
   CorridaRoute: typeof CorridaRoute
   HistoricoRoute: typeof HistoricoRoute
@@ -271,6 +284,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/coaches': {
+      id: '/coaches'
+      path: '/coaches'
+      fullPath: '/coaches'
+      preLoaderRoute: typeof CoachesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -309,6 +329,7 @@ const TreinoRouteWithChildren =
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthRoute: AuthRoute,
+  CoachesRoute: CoachesRoute,
   ConfiguracoesRoute: ConfiguracoesRoute,
   CorridaRoute: CorridaRoute,
   HistoricoRoute: HistoricoRoute,
