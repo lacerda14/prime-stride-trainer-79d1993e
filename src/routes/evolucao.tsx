@@ -264,33 +264,52 @@ function EvolucaoPage() {
                   </div>
                 </div>
 
-                {/* Mini histórico */}
-                {evo.weightHistory.length > 1 && (
+                {/* Gráfico de barras 30 dias */}
+                {evo.weight30d && evo.weight30d.some((p) => p.weight_kg != null) && (
                   <div>
                     <div className="text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground mb-2">
-                      Histórico
+                      Últimos 30 dias
                     </div>
-                    <div className="flex items-end gap-1.5 h-12">
-                      {[...evo.weightHistory].reverse().map((w, i) => {
-                        const allWeights = evo.weightHistory.map((x) => x.weight_kg);
-                        const min = Math.min(...allWeights);
-                        const max = Math.max(...allWeights);
-                        const range = max - min || 1;
-                        const pct = ((w.weight_kg - min) / range) * 100;
-                        const barH = 20 + (pct * 28) / 100; // 20px–48px
-                        return (
-                          <div key={i} className="flex flex-1 flex-col items-center gap-1">
-                            <div
-                              className="w-full rounded-t-sm bg-primary/40"
-                              style={{ height: `${barH}px` }}
-                            />
-                            <div className="num text-[8px] text-muted-foreground">
-                              {w.weight_kg.toFixed(1)}
-                            </div>
+                    {(() => {
+                      const vals = evo.weight30d
+                        .map((p) => p.weight_kg)
+                        .filter((v): v is number => v != null);
+                      const min = Math.min(...vals);
+                      const max = Math.max(...vals);
+                      const range = max - min || 1;
+                      return (
+                        <>
+                          <div className="flex items-end gap-[2px] h-16">
+                            {evo.weight30d.map((p, i) => {
+                              if (p.weight_kg == null) {
+                                return (
+                                  <div
+                                    key={i}
+                                    className="flex-1 rounded-sm bg-surface border border-border/40"
+                                    style={{ height: "4px" }}
+                                  />
+                                );
+                              }
+                              const pct = (p.weight_kg - min) / range;
+                              const h = 12 + pct * 52; // 12px–64px
+                              return (
+                                <div
+                                  key={i}
+                                  className="flex-1 rounded-sm bg-primary/50"
+                                  style={{ height: `${h}px` }}
+                                  title={`${p.date}: ${p.weight_kg.toFixed(1)} kg`}
+                                />
+                              );
+                            })}
                           </div>
-                        );
-                      })}
-                    </div>
+                          <div className="mt-1.5 flex items-center justify-between text-[9px] text-muted-foreground num">
+                            <span>{min.toFixed(1)} kg</span>
+                            <span>30d</span>
+                            <span>{max.toFixed(1)} kg</span>
+                          </div>
+                        </>
+                      );
+                    })()}
                   </div>
                 )}
               </div>
