@@ -36,7 +36,14 @@ export const TRAINING_LOCATION_OPTIONS = [
 
 export type TrainingLocation = typeof TRAINING_LOCATION_OPTIONS[number];
 
-// Lista comum (academia completa)
+export const TRAINING_LOCATION_DB_VALUE: Record<TrainingLocation, string> = {
+  "Academia Completa":               "gym",
+  "Academia de Condomínio / Prédio": "home_gym",
+  "Casa":                            "home",
+  "Box de CrossFit":                 "crossfit_box",
+  "Misto":                           "home_gym",
+};
+
 export const FULL_GYM_COMPLETENESS = [
   "Sim, possui praticamente tudo",
   "Não tenho certeza",
@@ -174,6 +181,35 @@ export const LIFTS_DONE = [
   "Back Squat", "Front Squat", "Deadlift", "Bench Press",
   "Pull Up", "Programas de corrida", "Nenhum",
 ];
+
+export const HAD_STRUCTURED_PROGRAM_OPTIONS = [
+  "Não", "Sim, por pouco tempo", "Sim, por vários meses", "Sim, por anos",
+] as const;
+
+export const HAD_SURGERY_OPTIONS = ["Não", "Sim"] as const;
+
+export const LAST_CHECKUP_OPTIONS = [
+  "Nos últimos 6 meses", "Entre 6 meses e 1 ano",
+  "Entre 1 e 2 anos", "Há mais de 2 anos", "Nunca fiz",
+] as const;
+
+export const PROFESSIONAL_ACTIVITY_OPTIONS = [
+  "Sedentária (escritório, home office)",
+  "Moderadamente ativa (em pé, caminhando)",
+  "Muito ativa (trabalho físico intenso)",
+] as const;
+
+export const SLEEP_HOURS_OPTIONS = [
+  "Menos de 5h", "5–6h", "6–7h", "7–8h", "Mais de 8h",
+] as const;
+
+export const WATER_INTAKE_OPTIONS = [
+  "Ruim (menos de 1L)", "Regular (1–1,5L)", "Boa (1,5–2L)", "Excelente (mais de 2L)",
+] as const;
+
+export const ALCOHOL_FREQUENCY_OPTIONS = [
+  "Não consumo", "Raramente", "Semanalmente", "Frequentemente",
+] as const;
 
 // keys that, when changed, suggest the plan should be regenerated.
 export const PLAN_IMPACTING_KEYS = [

@@ -10,16 +10,44 @@ import { getLocalToday } from "@/lib/local-today";
 import { supabase } from "@/integrations/supabase/client";
 import pmLogo from "@/assets/pm-logo.png.asset.json";
 import {
-  PRIMARY_GOAL_OPTIONS, SECONDARY_GOALS, TRAINING_HISTORY_OPTIONS,
-  TRAINING_LOCATION_OPTIONS, DAYS_PER_WEEK, MINUTES_PER_SESSION,
-  SPORTS_OPTIONS, RUNNING_MODES, RUNNING_LEVEL, RUNNING_CONTINUOUS,
-  RUNNING_GOALS_OPTIONS, WEEK_DAYS, CARDIO_OPTIONS, PREFERRED_TIMES,
-  MEDICAL_CONDITIONS, PAIN_REGIONS, PAST_INJURIES, UNCOMFORTABLE_MOVEMENTS,
-  PREFERENCES_OPTIONS, TRAINING_STYLES,
-  MOTIVATIONS_OPTIONS, LIFTS_DONE, EXPERIENCE_OPTIONS,
-  FULL_GYM_COMPLETENESS, FULL_GYM_MISSING_OPTIONS,
-  CONDO_GYM_EQUIPMENT, HOME_EQUIPMENT,
-  BOX_COMPLETENESS, BOX_EQUIPMENT, MIXED_PRIMARY_LOCATIONS,
+  PRIMARY_GOAL_OPTIONS,
+  SECONDARY_GOALS,
+  TRAINING_HISTORY_OPTIONS,
+  HAD_STRUCTURED_PROGRAM_OPTIONS,
+  TRAINING_LOCATION_OPTIONS,
+  TRAINING_LOCATION_DB_VALUE,
+  DAYS_PER_WEEK,
+  MINUTES_PER_SESSION,
+  SPORTS_OPTIONS,
+  RUNNING_MODES,
+  RUNNING_LEVEL,
+  RUNNING_CONTINUOUS,
+  RUNNING_GOALS_OPTIONS,
+  WEEK_DAYS,
+  CARDIO_OPTIONS,
+  PREFERRED_TIMES,
+  MEDICAL_CONDITIONS,
+  HAD_SURGERY_OPTIONS,
+  LAST_CHECKUP_OPTIONS,
+  PAIN_REGIONS,
+  PAST_INJURIES,
+  UNCOMFORTABLE_MOVEMENTS,
+  PREFERENCES_OPTIONS,
+  TRAINING_STYLES,
+  MOTIVATIONS_OPTIONS,
+  LIFTS_DONE,
+  EXPERIENCE_OPTIONS,
+  FULL_GYM_COMPLETENESS,
+  FULL_GYM_MISSING_OPTIONS,
+  CONDO_GYM_EQUIPMENT,
+  HOME_EQUIPMENT,
+  BOX_COMPLETENESS,
+  BOX_EQUIPMENT,
+  MIXED_PRIMARY_LOCATIONS,
+  PROFESSIONAL_ACTIVITY_OPTIONS,
+  SLEEP_HOURS_OPTIONS,
+  WATER_INTAKE_OPTIONS,
+  ALCOHOL_FREQUENCY_OPTIONS,
 } from "@/lib/onboarding-options";
 
 interface GymSetup {
@@ -123,43 +151,57 @@ interface Data {
   // S4
   experience_level: Experience | "";
   training_history: string;
-  
+  had_structured_program: string;
   available_days: number | "";
   available_minutes: number | "";
-  // S5
+  available_days_list: string[];
+  preferred_time: string;
+  // Contato de emergência
+  emergency_contact_name: string;
+  emergency_contact_phone: string;
+  // Esportes
   sports: string[];
   sports_frequency: Record<string, number>;
-  // S6
+  sports_notes: string;
+  // Corrida
   running_mode: string;
   running_level: string;
   running_continuous_minutes: string;
   running_goals: string[];
   running_preferred_days: string[];
   cardio_preference: string;
-  // S7
-  available_days_list: string[];
-  preferred_time: string;
-  // S8
+  // Saúde
   medical_conditions: string[];
   medications: string;
   surgeries: { name: string; year?: string }[];
   medical_restrictions: string;
-  // S9
+  had_surgery: string;
+  last_medical_checkup: string;
+  // Hábitos
+  professional_activity: string;
+  sleep_hours: number | "";
+  water_intake: string;
+  smokes: boolean;
+  alcohol_frequency: string;
+  // Lesões
   current_pain_level: number;
   pain_regions: string[];
+  pain_intensity: Record<string, number>;
   past_injuries: string[];
   uncomfortable_movements: string[];
-  // S10 — local + equipamentos
+  limitations_notes: string;
+  // Local + equipamentos
   gym_setup: GymSetup;
-  // S11
+  // Preferências
   preferences: string[];
   training_style: string;
   motivations: string[];
-  // S12
+  // Performance
   perf_max_pushups: number | "";
   perf_max_squats: number | "";
   perf_max_plank_seconds: number | "";
   perf_max_run_minutes: number | "";
+  perf_longest_run_km: number | "";
   perf_lifts_done: string[];
 }
 
@@ -187,20 +229,25 @@ function OnboardingPage() {
     height_cm: "", weight_kg: "",
     waist_cm: "", hip_cm: "", chest_cm: "", arm_cm: "", thigh_cm: "",
     phone: "",
+    emergency_contact_name: "", emergency_contact_phone: "",
     primary_goal: "",
     secondary_goals: [],
-    experience_level: "", training_history: "",
+    experience_level: "", training_history: "", had_structured_program: "",
     available_days: "", available_minutes: "",
-    sports: [], sports_frequency: {},
+    available_days_list: [], preferred_time: "",
+    sports: [], sports_frequency: {}, sports_notes: "",
     running_mode: "", running_level: "", running_continuous_minutes: "",
     running_goals: [], running_preferred_days: [], cardio_preference: "",
-    available_days_list: [], preferred_time: "",
     medical_conditions: [], medications: "", surgeries: [], medical_restrictions: "",
-    current_pain_level: 0, pain_regions: [], past_injuries: [], uncomfortable_movements: [],
+    had_surgery: "", last_medical_checkup: "",
+    professional_activity: "", sleep_hours: "", water_intake: "",
+    smokes: false, alcohol_frequency: "",
+    current_pain_level: 0, pain_regions: [], pain_intensity: {},
+    past_injuries: [], uncomfortable_movements: [], limitations_notes: "",
     gym_setup: { ...EMPTY_GYM_SETUP },
     preferences: [], training_style: "", motivations: [],
     perf_max_pushups: "", perf_max_squats: "", perf_max_plank_seconds: "",
-    perf_max_run_minutes: "", perf_lifts_done: [],
+    perf_max_run_minutes: "", perf_longest_run_km: "", perf_lifts_done: [],
   });
 
   useEffect(() => {
@@ -265,7 +312,9 @@ function OnboardingPage() {
           secondary_goals: d.secondary_goals,
           experience_level: d.experience_level as Experience,
           training_history: d.training_history as never,
-          training_location: d.gym_setup.location,
+          training_location: d.gym_setup.location
+            ? (TRAINING_LOCATION_DB_VALUE[d.gym_setup.location as keyof typeof TRAINING_LOCATION_DB_VALUE] ?? d.gym_setup.location)
+            : null,
           available_days: d.available_days as number,
           available_minutes: d.available_minutes as number,
           sports: d.sports, sports_frequency: d.sports_frequency,
@@ -386,7 +435,117 @@ function OnboardingPage() {
   );
 }
 
-// ============== Splash & primitives ==============
+// ============================================================
+// Step patch builder (for incremental save)
+// ============================================================
+
+function buildStepPatch(step: number, d: Data): Record<string, unknown> {
+  switch (step) {
+    case 1:
+      return {
+        first_name: d.first_name.trim(),
+        last_name: d.last_name.trim() || null,
+        birth_date: d.birth_date || null,
+        sex: d.sex || null,
+        height_cm: typeof d.height_cm === "number" ? d.height_cm : null,
+        weight_kg: typeof d.weight_kg === "number" ? d.weight_kg : null,
+        phone: d.phone.trim() || null,
+        emergency_contact_name: d.emergency_contact_name.trim() || null,
+        emergency_contact_phone: d.emergency_contact_phone.trim() || null,
+        waist_cm: typeof d.waist_cm === "number" ? d.waist_cm : null,
+        hip_cm: typeof d.hip_cm === "number" ? d.hip_cm : null,
+        chest_cm: typeof d.chest_cm === "number" ? d.chest_cm : null,
+        arm_cm: typeof d.arm_cm === "number" ? d.arm_cm : null,
+        thigh_cm: typeof d.thigh_cm === "number" ? d.thigh_cm : null,
+      };
+    case 2:
+      return { primary_goal: d.primary_goal };
+    case 3:
+      return { secondary_goals: d.secondary_goals };
+    case 4:
+      return {
+        experience_level: d.experience_level || null,
+        training_history: d.training_history || null,
+        had_structured_program: d.had_structured_program || null,
+      };
+    case 5:
+      return {
+        available_days: typeof d.available_days === "number" ? d.available_days : null,
+        available_minutes: typeof d.available_minutes === "number" ? d.available_minutes : null,
+        available_days_list: d.available_days_list,
+        preferred_time: d.preferred_time || null,
+      };
+    case 6:
+      return {
+        training_location: d.gym_setup.location
+          ? (TRAINING_LOCATION_DB_VALUE[d.gym_setup.location as keyof typeof TRAINING_LOCATION_DB_VALUE] ?? d.gym_setup.location)
+          : null,
+        gym_setup: d.gym_setup,
+        equipment: deriveEquipment(d.gym_setup),
+      };
+    case 7:
+      return {
+        running_mode: d.running_mode || null,
+        running_level: d.running_level || null,
+        running_continuous_minutes: d.running_continuous_minutes || null,
+        running_goals: d.running_goals,
+        running_preferred_days: d.running_preferred_days,
+        cardio_preference: d.cardio_preference || null,
+      };
+    case 8:
+      return {
+        sports: d.sports,
+        sports_frequency: d.sports_frequency,
+        sports_notes: d.sports_notes || null,
+      };
+    case 9:
+      return {
+        professional_activity: d.professional_activity || null,
+        sleep_hours: d.sleep_hours || null,
+        water_intake: d.water_intake || null,
+        smokes: d.smokes,
+        alcohol_frequency: d.alcohol_frequency || null,
+      };
+    case 10:
+      return {
+        medical_conditions: d.medical_conditions,
+        medications: d.medications || null,
+        had_surgery: d.had_surgery || null,
+        medical_restrictions: d.medical_restrictions || null,
+        last_medical_checkup: d.last_medical_checkup || null,
+      };
+    case 11:
+      return {
+        current_pain_level: d.current_pain_level,
+        pain_regions: d.pain_regions,
+        pain_intensity: d.pain_intensity,
+        past_injuries: d.past_injuries,
+        uncomfortable_movements: d.uncomfortable_movements,
+        limitations_notes: d.limitations_notes || null,
+      };
+    case 12:
+      return {
+        preferences: d.preferences,
+        training_style: d.training_style || null,
+        motivations: d.motivations,
+      };
+    case 13:
+      return {
+        perf_max_pushups: typeof d.perf_max_pushups === "number" ? d.perf_max_pushups : null,
+        perf_max_squats: typeof d.perf_max_squats === "number" ? d.perf_max_squats : null,
+        perf_max_plank_seconds: typeof d.perf_max_plank_seconds === "number" ? d.perf_max_plank_seconds : null,
+        perf_max_run_minutes: typeof d.perf_max_run_minutes === "number" ? d.perf_max_run_minutes : null,
+        perf_longest_run_km: typeof d.perf_longest_run_km === "number" ? d.perf_longest_run_km : null,
+        perf_lifts_done: d.perf_lifts_done,
+      };
+    default:
+      return {};
+  }
+}
+
+// ============================================================
+// Primitives
+// ============================================================
 
 function Splash({ onStart }: { onStart: () => void }) {
   return (
