@@ -27,11 +27,23 @@ export interface SessionExerciseDTO {
 export interface RunningProtocolDTO {
   id: string;
   protocol_type: string;
+  protocol_name: string | null;
+  goal: string | null;
   total_duration_minutes: number | null;
+  warmup_minutes: number | null;
+  cooldown_minutes: number | null;
   blocks: number | null;
+  /** tiros por bloco (campo novo) */
+  intervals_per_block: number | null;
+  /** legado — fallback se intervals_per_block estiver null */
   intervals: number | null;
   work_duration_seconds: number | null;
   rest_duration_seconds: number | null;
+  between_blocks_rest_seconds: number | null;
+  /** novos campos de pace alvo */
+  target_pace_min: number | null;
+  target_pace_max: number | null;
+  /** legado */
   pace_min: number | null;
   pace_max: number | null;
   notes: string | null;
@@ -230,8 +242,10 @@ async function loadWeekDetail(
       `id,day_number,day_name,session_type,objective,duration_minutes,completed_at,
        session_exercises(id,slot,pair_slot,sets,reps,rpe_target,rest_seconds,notes,
          exercise:exercise_pool(id,name,category)),
-       running_protocols(id,protocol_type,total_duration_minutes,blocks,intervals,
-         work_duration_seconds,rest_duration_seconds,pace_min,pace_max,notes)`,
+       running_protocols(id,protocol_type,protocol_name,goal,total_duration_minutes,
+         warmup_minutes,cooldown_minutes,blocks,intervals,intervals_per_block,
+         work_duration_seconds,rest_duration_seconds,between_blocks_rest_seconds,
+         target_pace_min,target_pace_max,pace_min,pace_max,notes)`,
     )
     .eq("week_id", week.id)
     .order("day_number");
@@ -347,8 +361,10 @@ export const getRunningSessions = createServerFn({ method: "GET" })
     const { data, error } = await supabase
       .from("running_protocols")
       .select(
-        `id,protocol_type,total_duration_minutes,blocks,intervals,work_duration_seconds,
-         rest_duration_seconds,pace_min,pace_max,notes,
+        `id,protocol_type,protocol_name,goal,total_duration_minutes,
+         warmup_minutes,cooldown_minutes,blocks,intervals,intervals_per_block,
+         work_duration_seconds,rest_duration_seconds,between_blocks_rest_seconds,
+         target_pace_min,target_pace_max,pace_min,pace_max,notes,
          training_day:training_days!inner(day_number,day_name,session_type,objective,
            week:weeks!inner(week_number,program_id))`,
       )
@@ -366,11 +382,19 @@ export const getRunningSessions = createServerFn({ method: "GET" })
         protocol: {
           id: r.id,
           protocol_type: r.protocol_type,
+          protocol_name: r.protocol_name,
+          goal: r.goal,
           total_duration_minutes: r.total_duration_minutes,
+          warmup_minutes: r.warmup_minutes,
+          cooldown_minutes: r.cooldown_minutes,
           blocks: r.blocks,
+          intervals_per_block: r.intervals_per_block,
           intervals: r.intervals,
           work_duration_seconds: r.work_duration_seconds,
           rest_duration_seconds: r.rest_duration_seconds,
+          between_blocks_rest_seconds: r.between_blocks_rest_seconds,
+          target_pace_min: r.target_pace_min,
+          target_pace_max: r.target_pace_max,
           pace_min: r.pace_min,
           pace_max: r.pace_max,
           notes: r.notes,

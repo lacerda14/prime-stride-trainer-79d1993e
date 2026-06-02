@@ -376,84 +376,126 @@ export type Database = {
       }
       run_sessions: {
         Row: {
+          cadence: number | null
+          calories: number | null
           completed_at: string | null
           created_at: string
           distance_km: number | null
           duration_min: number | null
+          heart_rate_avg: number | null
+          heart_rate_max: number | null
           id: string
           notes: string | null
+          pace_real_seconds_per_km: number | null
           pace_seconds_per_km: number | null
           scheduled_date: string | null
           user_id: string
           week_number: number | null
+          zone: string | null
         }
         Insert: {
+          cadence?: number | null
+          calories?: number | null
           completed_at?: string | null
           created_at?: string
           distance_km?: number | null
           duration_min?: number | null
+          heart_rate_avg?: number | null
+          heart_rate_max?: number | null
           id?: string
           notes?: string | null
+          pace_real_seconds_per_km?: number | null
           pace_seconds_per_km?: number | null
           scheduled_date?: string | null
           user_id: string
           week_number?: number | null
+          zone?: string | null
         }
         Update: {
+          cadence?: number | null
+          calories?: number | null
           completed_at?: string | null
           created_at?: string
           distance_km?: number | null
           duration_min?: number | null
+          heart_rate_avg?: number | null
+          heart_rate_max?: number | null
           id?: string
           notes?: string | null
+          pace_real_seconds_per_km?: number | null
           pace_seconds_per_km?: number | null
           scheduled_date?: string | null
           user_id?: string
           week_number?: number | null
+          zone?: string | null
         }
         Relationships: []
       }
       running_protocols: {
         Row: {
+          between_blocks_rest_seconds: number | null
           blocks: number | null
+          cooldown_minutes: number | null
           created_at: string
+          goal: string | null
           id: string
           intervals: number | null
+          intervals_per_block: number | null
           notes: string | null
           pace_max: number | null
           pace_min: number | null
+          protocol_name: string | null
           protocol_type: Database["public"]["Enums"]["running_protocol_enum"]
           rest_duration_seconds: number | null
+          target_pace_max: number | null
+          target_pace_min: number | null
           total_duration_minutes: number | null
           training_day_id: string
+          warmup_minutes: number | null
           work_duration_seconds: number | null
         }
         Insert: {
+          between_blocks_rest_seconds?: number | null
           blocks?: number | null
+          cooldown_minutes?: number | null
           created_at?: string
+          goal?: string | null
           id?: string
           intervals?: number | null
+          intervals_per_block?: number | null
           notes?: string | null
           pace_max?: number | null
           pace_min?: number | null
+          protocol_name?: string | null
           protocol_type: Database["public"]["Enums"]["running_protocol_enum"]
           rest_duration_seconds?: number | null
+          target_pace_max?: number | null
+          target_pace_min?: number | null
           total_duration_minutes?: number | null
           training_day_id: string
+          warmup_minutes?: number | null
           work_duration_seconds?: number | null
         }
         Update: {
+          between_blocks_rest_seconds?: number | null
           blocks?: number | null
+          cooldown_minutes?: number | null
           created_at?: string
+          goal?: string | null
           id?: string
           intervals?: number | null
+          intervals_per_block?: number | null
           notes?: string | null
           pace_max?: number | null
           pace_min?: number | null
+          protocol_name?: string | null
           protocol_type?: Database["public"]["Enums"]["running_protocol_enum"]
           rest_duration_seconds?: number | null
+          target_pace_max?: number | null
+          target_pace_min?: number | null
           total_duration_minutes?: number | null
           training_day_id?: string
+          warmup_minutes?: number | null
           work_duration_seconds?: number | null
         }
         Relationships: [
@@ -804,6 +846,11 @@ export type Database = {
         | "intervals"
         | "recovery"
         | "threshold"
+        | "vo2_intervals"
+        | "tempo_run"
+        | "zone_2"
+        | "pace_work"
+        | "recovery_run"
       session_type_enum: "full_body" | "run_upper" | "run" | "rest"
       sex_enum: "male" | "female" | "other"
       week_type_enum: "A" | "B"
@@ -958,6 +1005,11 @@ export const Constants = {
         "intervals",
         "recovery",
         "threshold",
+        "vo2_intervals",
+        "tempo_run",
+        "zone_2",
+        "pace_work",
+        "recovery_run",
       ],
       session_type_enum: ["full_body", "run_upper", "run", "rest"],
       sex_enum: ["male", "female", "other"],

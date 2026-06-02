@@ -177,79 +177,267 @@ const GOAL_PACE_MULTIPLIER: Record<Goal, number> = {
 };
 
 // ============================================================
-// Running protocols por mesociclo
+// Running protocols por mesociclo (versão completa: warmup, blocks,
+// intervals, between-block rest, cooldown e pace alvo)
 // ============================================================
+export type RunProtoType =
+  | "vo2_intervals"
+  | "tempo_run"
+  | "zone_2"
+  | "pace_work"
+  | "recovery_run"
+  | "threshold";
+
 export interface RunProtocolDef {
-  protocol_type: "vo2" | "z2" | "tempo" | "intervals" | "recovery" | "threshold";
+  protocol_type: RunProtoType;
+  protocol_name: string;
+  goal: string;
   total_duration_minutes: number;
+  warmup_minutes: number;
+  cooldown_minutes: number;
+  /** quantos blocos de tiros; null para sessões contínuas */
   blocks: number | null;
-  intervals: number | null;
+  /** tiros por bloco; null para sessões contínuas */
+  intervals_per_block: number | null;
+  /** duração do tiro forte em segundos */
   work_duration_seconds: number | null;
+  /** descanso entre tiros (caminhada leve) em segundos */
   rest_duration_seconds: number | null;
-  pace_min: number;
-  pace_max: number;
+  /** descanso entre blocos em segundos */
+  between_blocks_rest_seconds: number | null;
+  target_pace_min: number;
+  target_pace_max: number;
   notes: string;
+}
+
+const round1 = (n: number) => Math.round(n * 10) / 10;
+
+function applyGoalPace(p: RunProtocolDef, goal: Goal): RunProtocolDef {
+  const mult = GOAL_PACE_MULTIPLIER[goal];
+  return {
+    ...p,
+    target_pace_min: round1(p.target_pace_min * mult),
+    target_pace_max: round1(p.target_pace_max * mult),
+  };
 }
 
 function tuesdayProtocol(week: number, goal: Goal): RunProtocolDef {
   const meso = mesoForWeek(week);
-  const mult = GOAL_PACE_MULTIPLIER[goal];
   const map: Record<string, RunProtocolDef> = {
+    // Semanas 1-4
     M1: {
-      protocol_type: "vo2", total_duration_minutes: 30, blocks: 2, intervals: 5,
-      work_duration_seconds: 45, rest_duration_seconds: 60,
-      pace_min: 9.0, pace_max: 9.5, notes: "Adaptação: 2 blocos x 5 tiros, 45/60s",
+      protocol_type: "vo2_intervals",
+      protocol_name: "VO2 Intervals Beginner",
+      goal: "VO2 / adaptação",
+      total_duration_minutes: 30,
+      warmup_minutes: 5,
+      cooldown_minutes: 5,
+      blocks: 2,
+      intervals_per_block: 5,
+      work_duration_seconds: 45,
+      rest_duration_seconds: 60,
+      between_blocks_rest_seconds: 195, // 3min15s
+      target_pace_min: 9.0,
+      target_pace_max: 9.5,
+      notes: "Adaptação ao VO2: 2 blocos × 5 tiros 45/60s, 3min15s entre blocos.",
     },
+    // Semanas 5-8
     M2: {
-      protocol_type: "vo2", total_duration_minutes: 30, blocks: 2, intervals: 5,
-      work_duration_seconds: 60, rest_duration_seconds: 60,
-      pace_min: 9.5, pace_max: 10.5, notes: "2 blocos x 5 tiros, 60/60s",
+      protocol_type: "vo2_intervals",
+      protocol_name: "VO2 Intervals · Progressão",
+      goal: "VO2 / consistência",
+      total_duration_minutes: 32,
+      warmup_minutes: 5,
+      cooldown_minutes: 5,
+      blocks: 2,
+      intervals_per_block: 5,
+      work_duration_seconds: 60,
+      rest_duration_seconds: 60,
+      between_blocks_rest_seconds: 180,
+      target_pace_min: 9.5,
+      target_pace_max: 10.5,
+      notes: "2 blocos × 5 tiros 60/60s, 3 min entre blocos.",
     },
+    // Semanas 9-16
     M3: {
-      protocol_type: "intervals", total_duration_minutes: 35, blocks: 2, intervals: 6,
-      work_duration_seconds: 75, rest_duration_seconds: 60,
-      pace_min: 10.5, pace_max: 11.0, notes: "2 blocos x 6 tiros, 75/60s",
+      protocol_type: "vo2_intervals",
+      protocol_name: "VO2 Intervals · Volume",
+      goal: "VO2 / potência aeróbica",
+      total_duration_minutes: 38,
+      warmup_minutes: 5,
+      cooldown_minutes: 5,
+      blocks: 2,
+      intervals_per_block: 6,
+      work_duration_seconds: 75,
+      rest_duration_seconds: 60,
+      between_blocks_rest_seconds: 150, // 2min30s
+      target_pace_min: 10.5,
+      target_pace_max: 11.0,
+      notes: "2 blocos × 6 tiros 75/60s, 2min30s entre blocos.",
     },
+    // Semanas 17-24
     M4: {
-      protocol_type: "intervals", total_duration_minutes: 40, blocks: 3, intervals: 5,
-      work_duration_seconds: 75, rest_duration_seconds: 60,
-      pace_min: 11.0, pace_max: 11.5, notes: "3 blocos x 5 tiros, 75/60s",
+      protocol_type: "vo2_intervals",
+      protocol_name: "VO2 Intervals · Intensidade",
+      goal: "VO2 / força específica",
+      total_duration_minutes: 42,
+      warmup_minutes: 5,
+      cooldown_minutes: 5,
+      blocks: 3,
+      intervals_per_block: 5,
+      work_duration_seconds: 75,
+      rest_duration_seconds: 60,
+      between_blocks_rest_seconds: 120,
+      target_pace_min: 11.0,
+      target_pace_max: 11.5,
+      notes: "3 blocos × 5 tiros 75/60s, 2 min entre blocos.",
     },
+    // Semanas 25-40
     M5: {
-      protocol_type: "threshold", total_duration_minutes: 30, blocks: null, intervals: null,
-      work_duration_seconds: 90, rest_duration_seconds: 60,
-      pace_min: 11.0, pace_max: 12.0, notes: "5K pace work: 90s forte / 1min leve, contínuo",
+      protocol_type: "pace_work",
+      protocol_name: "Pace Work 5K",
+      goal: "Eficiência de pace para 5K",
+      total_duration_minutes: 30,
+      warmup_minutes: 5,
+      cooldown_minutes: 5,
+      blocks: 1,
+      intervals_per_block: 12,
+      work_duration_seconds: 90,
+      rest_duration_seconds: 60,
+      between_blocks_rest_seconds: null,
+      target_pace_min: 11.0,
+      target_pace_max: 12.0,
+      notes: "30 min contínuos alternando 90s forte / 60s leve. Sem divisão em blocos.",
     },
+    // Semanas 41-48
     M6: {
-      protocol_type: "vo2", total_duration_minutes: 25, blocks: 1, intervals: 8,
-      work_duration_seconds: 60, rest_duration_seconds: 60,
-      pace_min: 11.0, pace_max: 12.0, notes: "Tiros de manutenção 60/60",
+      protocol_type: "pace_work",
+      protocol_name: "Pace Work · Manutenção",
+      goal: "Manutenção de velocidade",
+      total_duration_minutes: 30,
+      warmup_minutes: 5,
+      cooldown_minutes: 5,
+      blocks: 1,
+      intervals_per_block: 15,
+      work_duration_seconds: 60,
+      rest_duration_seconds: 60,
+      between_blocks_rest_seconds: null,
+      target_pace_min: 11.0,
+      target_pace_max: 12.0,
+      notes: "30 min contínuos alternando 60s forte / 60s leve.",
     },
   };
-  const p = map[meso.code];
-  return {
-    ...p,
-    pace_min: round1(p.pace_min * mult),
-    pace_max: round1(p.pace_max * mult),
-  };
+  return applyGoalPace(map[meso.code], goal);
 }
 
 function thursdayProtocol(week: number, goal: Goal): RunProtocolDef {
   const meso = mesoForWeek(week);
-  const mult = GOAL_PACE_MULTIPLIER[goal];
   const map: Record<string, RunProtocolDef> = {
-    M1: { protocol_type: "z2", total_duration_minutes: 30, blocks: null, intervals: null, work_duration_seconds: null, rest_duration_seconds: null, pace_min: 6.5, pace_max: 7.5, notes: "Z2 contínuo: 5min walk + 20min Z2 + 5min leve" },
-    M2: { protocol_type: "z2", total_duration_minutes: 30, blocks: null, intervals: null, work_duration_seconds: null, rest_duration_seconds: null, pace_min: 7.0, pace_max: 8.5, notes: "Progressivo: 10 leve / 10 mod / 10 leve" },
-    M3: { protocol_type: "z2", total_duration_minutes: 30, blocks: null, intervals: null, work_duration_seconds: null, rest_duration_seconds: null, pace_min: 8.0, pace_max: 9.0, notes: "Z2/Z3 misto: 10 leve + 15 mod + 5 leve" },
-    M4: { protocol_type: "tempo", total_duration_minutes: 30, blocks: null, intervals: null, work_duration_seconds: null, rest_duration_seconds: null, pace_min: 8.5, pace_max: 9.5, notes: "Tempo: 30min contínuos sustentáveis" },
-    M5: { protocol_type: "tempo", total_duration_minutes: 30, blocks: null, intervals: null, work_duration_seconds: null, rest_duration_seconds: null, pace_min: 9.0, pace_max: 10.0, notes: "Economia de corrida: 30min ritmo sustentável" },
-    M6: { protocol_type: "recovery", total_duration_minutes: 30, blocks: null, intervals: null, work_duration_seconds: null, rest_duration_seconds: null, pace_min: 9.5, pace_max: 10.5, notes: "5K confortável, controle respiratório" },
+    // Semanas 1-4 — Zone 2 base
+    M1: {
+      protocol_type: "zone_2",
+      protocol_name: "Zone 2 Base",
+      goal: "Resistência aeróbica",
+      total_duration_minutes: 30,
+      warmup_minutes: 5,
+      cooldown_minutes: 5,
+      blocks: null,
+      intervals_per_block: null,
+      work_duration_seconds: null,
+      rest_duration_seconds: null,
+      between_blocks_rest_seconds: null,
+      target_pace_min: 6.5,
+      target_pace_max: 7.5,
+      notes: "5 min caminhada + 20 min Z2 contínuo + 5 min caminhada.",
+    },
+    // Semanas 5-8 — Tempo progressivo
+    M2: {
+      protocol_type: "tempo_run",
+      protocol_name: "Tempo Run · Progressivo",
+      goal: "Capacidade aeróbica + ritmo",
+      total_duration_minutes: 30,
+      warmup_minutes: 0,
+      cooldown_minutes: 0,
+      blocks: null,
+      intervals_per_block: null,
+      work_duration_seconds: null,
+      rest_duration_seconds: null,
+      between_blocks_rest_seconds: null,
+      target_pace_min: 7.0,
+      target_pace_max: 8.5,
+      notes: "10 min leve + 10 min moderado + 10 min leve.",
+    },
+    // Semanas 9-16
+    M3: {
+      protocol_type: "tempo_run",
+      protocol_name: "Tempo Run · Sustentável",
+      goal: "Capacidade aeróbica avançada",
+      total_duration_minutes: 30,
+      warmup_minutes: 0,
+      cooldown_minutes: 0,
+      blocks: null,
+      intervals_per_block: null,
+      work_duration_seconds: null,
+      rest_duration_seconds: null,
+      between_blocks_rest_seconds: null,
+      target_pace_min: 8.0,
+      target_pace_max: 9.0,
+      notes: "10 min leve + 15 min moderado + 5 min leve.",
+    },
+    // Semanas 17-24
+    M4: {
+      protocol_type: "tempo_run",
+      protocol_name: "Tempo Run · Contínuo",
+      goal: "Resistência ao ritmo",
+      total_duration_minutes: 30,
+      warmup_minutes: 0,
+      cooldown_minutes: 0,
+      blocks: null,
+      intervals_per_block: null,
+      work_duration_seconds: null,
+      rest_duration_seconds: null,
+      between_blocks_rest_seconds: null,
+      target_pace_min: 8.5,
+      target_pace_max: 9.5,
+      notes: "30 min contínuos em ritmo sustentável.",
+    },
+    // Semanas 25-40
+    M5: {
+      protocol_type: "tempo_run",
+      protocol_name: "Tempo Run · Economia",
+      goal: "Economia de corrida",
+      total_duration_minutes: 30,
+      warmup_minutes: 0,
+      cooldown_minutes: 0,
+      blocks: null,
+      intervals_per_block: null,
+      work_duration_seconds: null,
+      rest_duration_seconds: null,
+      between_blocks_rest_seconds: null,
+      target_pace_min: 9.0,
+      target_pace_max: 10.0,
+      notes: "30 min sustentáveis em ritmo de 5K confortável.",
+    },
+    // Semanas 41-48
+    M6: {
+      protocol_type: "recovery_run",
+      protocol_name: "Recovery Run · 5K Confortável",
+      goal: "Controle respiratório + recuperação",
+      total_duration_minutes: 30,
+      warmup_minutes: 0,
+      cooldown_minutes: 0,
+      blocks: null,
+      intervals_per_block: null,
+      work_duration_seconds: null,
+      rest_duration_seconds: null,
+      between_blocks_rest_seconds: null,
+      target_pace_min: 9.0,
+      target_pace_max: 10.0,
+      notes: "30 min contínuos, foco em controle respiratório e 5K confortável.",
+    },
   };
-  const p = map[meso.code];
-  return { ...p, pace_min: round1(p.pace_min * mult), pace_max: round1(p.pace_max * mult) };
+  return applyGoalPace(map[meso.code], goal);
 }
-
-const round1 = (n: number) => Math.round(n * 10) / 10;
 
 // ============================================================
 // Exercise pool — categorias por dia A/B
@@ -761,13 +949,21 @@ export async function persistProgram(
         runningRows.push({
           training_day_id: dayId,
           protocol_type: d.running.protocol_type,
+          protocol_name: d.running.protocol_name,
+          goal: d.running.goal,
           total_duration_minutes: d.running.total_duration_minutes,
+          warmup_minutes: d.running.warmup_minutes,
+          cooldown_minutes: d.running.cooldown_minutes,
           blocks: d.running.blocks,
-          intervals: d.running.intervals,
+          intervals: d.running.intervals_per_block, // legado
+          intervals_per_block: d.running.intervals_per_block,
           work_duration_seconds: d.running.work_duration_seconds,
           rest_duration_seconds: d.running.rest_duration_seconds,
-          pace_min: d.running.pace_min,
-          pace_max: d.running.pace_max,
+          between_blocks_rest_seconds: d.running.between_blocks_rest_seconds,
+          target_pace_min: d.running.target_pace_min,
+          target_pace_max: d.running.target_pace_max,
+          pace_min: d.running.target_pace_min, // legado
+          pace_max: d.running.target_pace_max, // legado
           notes: d.running.notes,
         });
       }
