@@ -199,7 +199,7 @@ function HojePage() {
           <div>
             <div className="mb-3 text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">Força</div>
             <div className="space-y-3">
-              {strength.map((e, i) => <ExerciseCard key={e.id} exercise={e} index={i} />)}
+              {strength.map((e, i) => <ExerciseCard key={e.id} exercise={e} index={i} onOpenVideo={detail.open} />)}
             </div>
           </div>
         )}
