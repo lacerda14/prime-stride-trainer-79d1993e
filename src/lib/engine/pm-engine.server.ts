@@ -221,6 +221,16 @@ function applyGoalPace(p: RunProtocolDef, goal: Goal): RunProtocolDef {
   };
 }
 
+function assertRunProtocol(p: RunProtocolDef, week: number): RunProtocolDef {
+  if ((p.blocks ?? 0) > 1 && !p.between_blocks_rest_seconds) {
+    throw new Error(`Semana ${week}: descanso entre blocos obrigatório ausente.`);
+  }
+  if ((p.blocks ?? 0) > 0 && (!p.intervals_per_block || !p.work_duration_seconds || !p.rest_duration_seconds)) {
+    throw new Error(`Semana ${week}: protocolo intervalado incompleto.`);
+  }
+  return p;
+}
+
 function tuesdayProtocol(week: number, goal: Goal): RunProtocolDef {
   const meso = mesoForWeek(week);
   const map: Record<string, RunProtocolDef> = {
@@ -327,7 +337,7 @@ function tuesdayProtocol(week: number, goal: Goal): RunProtocolDef {
       notes: "30 min contínuos alternando 60s forte / 60s leve.",
     },
   };
-  return applyGoalPace(map[meso.code], goal);
+  return assertRunProtocol(applyGoalPace(map[meso.code], goal), week);
 }
 
 function thursdayProtocol(week: number, goal: Goal): RunProtocolDef {
@@ -436,7 +446,7 @@ function thursdayProtocol(week: number, goal: Goal): RunProtocolDef {
       notes: "30 min contínuos, foco em controle respiratório e 5K confortável.",
     },
   };
-  return applyGoalPace(map[meso.code], goal);
+  return assertRunProtocol(applyGoalPace(map[meso.code], goal), week);
 }
 
 // ============================================================
