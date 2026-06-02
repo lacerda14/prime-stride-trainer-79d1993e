@@ -8,6 +8,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { getDashboard } from "@/lib/profile.functions";
 import { levelProgress } from "@/lib/gamification";
+import { WeekDistributionModal } from "@/components/week-distribution-modal";
 
 export const Route = createFileRoute("/")({
   head: () => ({
