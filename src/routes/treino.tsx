@@ -2,6 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { getTodayWorkout } from "@/lib/mock-data";
 import { Pause, Play, SkipForward, X, Check } from "lucide-react";
+import { RequireAuth } from "@/components/require-auth";
 
 export const Route = createFileRoute("/treino")({
   head: () => ({
