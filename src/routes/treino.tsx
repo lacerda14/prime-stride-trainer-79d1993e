@@ -73,8 +73,6 @@ function TreinoPage() {
   const fetchToday = useServerFn(getTodayTraining);
   const fetchActive = useServerFn(getActiveWorkoutSession);
   const startSession = useServerFn(startWorkoutSession);
-  const saveState = useServerFn(updateWorkoutSessionState);
-  const completeSession = useServerFn(completeWorkoutSession);
   const abandonSession = useServerFn(abandonWorkoutSession);
   const localToday = useLocalToday();
 
