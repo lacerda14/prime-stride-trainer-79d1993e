@@ -241,6 +241,7 @@ function HojePage() {
           </Link>
         </div>
       </div>
+      <ExerciseDetailModal {...detail.modalProps} />
     </AppShell>
   );
 }
