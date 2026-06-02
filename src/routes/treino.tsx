@@ -72,6 +72,9 @@ function TreinoPage() {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const { user } = useAuth();
+  // Ref para evitar TDZ: sinaliza que estamos no meio de finalizar uma sessão
+  const finishingRef = useRef(false);
+  const sessionIdRef = useRef<string | null>(null);
   const fetchToday = useServerFn(getTodayTraining);
   const fetchActive = useServerFn(getActiveWorkoutSession);
   const fetchCompletedForDay = useServerFn(getCompletedSessionForDay);
@@ -104,15 +107,20 @@ function TreinoPage() {
       }),
     enabled: !!user && !!weekNumber && !!dayKey,
   });
+  const search = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
+  const [allowRepeat, setAllowRepeat] = useState(() => search?.get("force") === "1");
+
+  // Só redireciona para o resumo se NÃO estiver finalizando uma sessão AGORA
+  // e o usuário não pediu para repetir o treino
   useEffect(() => {
-    if (completedTodayQ.data?.id) {
+    if (completedTodayQ.data?.id && !finishingRef.current && !sessionIdRef.current && !allowRepeat) {
       navigate({
         to: "/treino/concluido/$sessionId",
         params: { sessionId: completedTodayQ.data.id },
         replace: true,
       });
     }
-  }, [completedTodayQ.data, navigate]);
+  }, [completedTodayQ.data, allowRepeat, navigate]);
 
 
   // Constrói a fila de itens
@@ -405,12 +413,20 @@ function TreinoPage() {
   // Finalizar
   // ----------------------------------------------------------
   const [finishing, setFinishing] = useState(false);
+  finishingRef.current = finishing;
+  sessionIdRef.current = sessionId ?? null;
   const finished = sessionId && step >= queue.length && queue.length > 0;
 
   useEffect(() => {
     if (!finished || finishing) return;
     setFinishing(true);
     const sid = sessionId!;
+
+    // Timeout de segurança: se demorar mais de 8s, navega de qualquer forma
+    const safetyTimer = setTimeout(() => {
+      navigate({ to: "/treino/concluido/$sessionId", params: { sessionId: sid }, replace: true });
+    }, 8000);
+
     syncComplete({ session_id: sid, total_elapsed_seconds: totalElapsedSeconds })
       .then(() => {
         try { localStorage.removeItem(lsKey(sid)); } catch { /* noop */ }
@@ -418,6 +434,7 @@ function TreinoPage() {
         qc.invalidateQueries({ queryKey: ["workout-history", user?.id] });
       })
       .finally(() => {
+        clearTimeout(safetyTimer);
         navigate({ to: "/treino/concluido/$sessionId", params: { sessionId: sid }, replace: true });
       });
   }, [finished, finishing, sessionId, totalElapsedSeconds, qc, user?.id, navigate]);
@@ -499,6 +516,7 @@ function TreinoPage() {
 
   // ainda não iniciou
   if (!sessionId) {
+    const alreadyDoneToday = !!completedTodayQ.data?.id && allowRepeat;
     return (
       <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-background p-6 text-center safe-pad">
         <div className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
@@ -508,11 +526,22 @@ function TreinoPage() {
         <p className="mt-3 max-w-sm text-sm text-muted-foreground">
           {queue.length} blocos nesta sessão. O tempo começa a contar ao tocar em iniciar — você pode fechar o app e voltar depois.
         </p>
+
+        {alreadyDoneToday && (
+          <div className="mt-6 max-w-sm rounded-2xl border border-yellow-500/30 bg-yellow-500/10 px-5 py-4 text-sm text-yellow-300">
+            <div className="font-semibold">Você já treinou hoje</div>
+            <div className="mt-1 text-xs text-yellow-300/70">
+              Repetir o mesmo treino no mesmo dia não é recomendado — pode comprometer a recuperação muscular. Mas se tiver certeza, pode continuar.
+            </div>
+          </div>
+        )}
+
         <button
           onClick={beginSession}
           className="mt-8 inline-flex items-center gap-2 rounded-full bg-primary px-8 py-4 text-base font-semibold text-primary-foreground shadow-glow active:scale-95"
         >
-          <Play className="h-5 w-5 fill-current" /> Começar treino
+          <Play className="h-5 w-5 fill-current" />
+          {alreadyDoneToday ? "Treinar mesmo assim" : "Começar treino"}
         </button>
         <button
           onClick={() => navigate({ to: "/hoje" })}

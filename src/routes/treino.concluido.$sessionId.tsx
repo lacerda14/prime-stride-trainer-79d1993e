@@ -378,6 +378,12 @@ function ConcluidoPage() {
               Voltar ao início
             </button>
           </div>
+          <button
+            onClick={() => navigate({ to: "/treino", search: { force: "1" } as never })}
+            className="w-full rounded-full border border-border/40 bg-surface/30 py-3 text-xs font-medium text-muted-foreground hover:text-foreground"
+          >
+            Repetir treino hoje
+          </button>
         </div>
       </div>
     </div>
