@@ -150,10 +150,13 @@ export function buildRunPhases(p: RunningProtocolDTO): RunPhase[] {
         if (!isLastInterval && p.rest_duration_seconds) {
           phases.push({
             kind: "rest",
-            label: "Recuperação",
+            label: "Descanso entre tiros",
             detail: "Caminhada leve",
             seconds: p.rest_duration_seconds,
             block: b,
+            interval: i,
+            totalIntervals: ipb,
+            totalBlocks: p.blocks,
           });
         }
       }
