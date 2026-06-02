@@ -7,8 +7,11 @@ import {
   TrendingUp,
   History,
   Settings,
+  LogOut,
 } from "lucide-react";
 import pmLogo from "@/assets/pm-logo.png.asset.json";
+import { useAuth } from "@/hooks/use-auth";
+import { Button } from "@/components/ui/button";
 
 import {
   Sidebar,
@@ -37,8 +40,14 @@ export function AppSidebar() {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
   const currentPath = useRouterState({ select: (r) => r.location.pathname });
+  const { user, signOut } = useAuth();
   const isActive = (path: string) =>
     path === "/" ? currentPath === "/" : currentPath.startsWith(path);
+  const displayName =
+    (user?.user_metadata?.display_name as string | undefined) ||
+    (user?.user_metadata?.full_name as string | undefined) ||
+    user?.email?.split("@")[0] ||
+    "Atleta";
 
   return (
     <Sidebar collapsible="icon" className="border-r border-sidebar-border">
