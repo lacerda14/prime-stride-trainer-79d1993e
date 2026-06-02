@@ -62,8 +62,8 @@ function DashboardContent() {
   const programPct = Math.round(((CURRENT_WEEK_NUMBER - 1) / PROGRAM_STATS.totalWeeks) * 100);
 
   const rawName =
-    (user?.user_metadata?.display_name as string | undefined) ||
-    profile?.display_name ||
+    (user?.user_metadata?.name as string | undefined) ||
+    profile?.name ||
     user?.email?.split("@")[0] ||
     "";
   const name = firstName(rawName);
@@ -71,7 +71,6 @@ function DashboardContent() {
 
   return (
     <div className="space-y-5 p-4">
-      <WeekDistributionModal weekNumber={CURRENT_WEEK_NUMBER} />
       {/* Saudação */}
       <section className="animate-fade-in">
         <div className="text-[11px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
