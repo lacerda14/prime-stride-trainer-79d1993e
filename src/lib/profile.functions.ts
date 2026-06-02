@@ -1,6 +1,8 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { generatePlan, loadExercisePool, persistProgram, type UserProfileInput } from "@/lib/engine/pm-engine.server";
+
 
 // ============================================================
 // GET: profile + dashboard data
