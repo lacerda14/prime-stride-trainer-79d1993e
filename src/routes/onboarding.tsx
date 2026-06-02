@@ -12,33 +12,24 @@ export const Route = createFileRoute("/onboarding")({
   component: OnboardingPage,
 });
 
-type Gender = "male" | "female" | "other" | "prefer_not_to_say";
+type Sex = "male" | "female" | "other";
 type Experience = "beginner" | "intermediate" | "advanced";
-type Goal = "weight_loss" | "hypertrophy" | "aerobic" | "hybrid" | "general_health";
+type Goal = "fat_loss" | "hypertrophy" | "endurance" | "hybrid";
+type AvailableDays = 3 | 4 | 5;
 
 interface OnboardingData {
-  display_name: string;
+  name: string;
   phone: string;
   age: number | "";
-  gender: Gender | "";
+  sex: Sex | "";
   weight_kg: number | "";
   height_cm: number | "";
   experience_level: Experience | "";
-  main_goal: Goal | "";
-  available_days: number[];
+  goal: Goal | "";
+  available_days: AvailableDays | "";
 }
 
-const TOTAL_STEPS = 10;
-
-const DAY_LABELS = [
-  { v: 1, label: "Seg" },
-  { v: 2, label: "Ter" },
-  { v: 3, label: "Qua" },
-  { v: 4, label: "Qui" },
-  { v: 5, label: "Sex" },
-  { v: 6, label: "Sáb" },
-  { v: 0, label: "Dom" },
-];
+const TOTAL_STEPS = 10; // 9 perguntas + 1 resumo
 
 function OnboardingPage() {
   const navigate = useNavigate();
@@ -56,18 +47,17 @@ function OnboardingPage() {
   const [step, setStep] = useState(1);
   const [saving, setSaving] = useState(false);
   const [data, setData] = useState<OnboardingData>({
-    display_name: "",
+    name: "",
     phone: "",
     age: "",
-    gender: "",
+    sex: "",
     weight_kg: "",
     height_cm: "",
     experience_level: "",
-    main_goal: "",
-    available_days: [],
+    goal: "",
+    available_days: "",
   });
 
-  // Redireciona logado sem necessidade de onboarding
   useEffect(() => {
     if (!loading && !user) {
       navigate({ to: "/auth", search: { redirect: "/onboarding" } as never, replace: true });
@@ -75,13 +65,13 @@ function OnboardingPage() {
   }, [loading, user, navigate]);
 
   useEffect(() => {
-    if (profileQ.data?.onboarding_completed_at) {
+    if (profileQ.data?.onboarding_completed) {
       navigate({ to: "/", replace: true });
     }
-    if (profileQ.data && !data.display_name && profileQ.data.display_name) {
-      setData((d) => ({ ...d, display_name: profileQ.data!.display_name as string }));
+    if (profileQ.data && !data.name && profileQ.data.name) {
+      setData((d) => ({ ...d, name: profileQ.data!.name as string }));
     }
-  }, [profileQ.data, navigate, data.display_name]);
+  }, [profileQ.data, navigate, data.name]);
 
   if (loading || profileQ.isLoading) {
     return (
@@ -93,15 +83,15 @@ function OnboardingPage() {
 
   const canAdvance = (): boolean => {
     switch (step) {
-      case 1: return data.display_name.trim().length > 0;
+      case 1: return data.name.trim().length > 0;
       case 2: return true; // telefone opcional
       case 3: return typeof data.age === "number" && data.age >= 10 && data.age <= 100;
-      case 4: return data.gender !== "";
+      case 4: return data.sex !== "";
       case 5: return typeof data.weight_kg === "number" && data.weight_kg >= 20;
       case 6: return typeof data.height_cm === "number" && data.height_cm >= 100;
       case 7: return data.experience_level !== "";
-      case 8: return data.main_goal !== "";
-      case 9: return data.available_days.length > 0;
+      case 8: return data.goal !== "";
+      case 9: return data.available_days !== "";
       case 10: return true;
       default: return false;
     }
@@ -118,19 +108,19 @@ function OnboardingPage() {
     try {
       await submit({
         data: {
-          display_name: data.display_name.trim(),
+          name: data.name.trim(),
           phone: data.phone.trim() || null,
           age: data.age as number,
-          gender: data.gender as Gender,
+          sex: data.sex as Sex,
           weight_kg: data.weight_kg as number,
           height_cm: data.height_cm as number,
           experience_level: data.experience_level as Experience,
-          main_goal: data.main_goal as Goal,
-          available_days: data.available_days,
+          goal: data.goal as Goal,
+          available_days: data.available_days as AvailableDays,
         },
       });
       await qc.invalidateQueries({ queryKey: ["profile"] });
-      toast.success("Tudo pronto! Bem-vindo ao PM Hybrid.");
+      toast.success("Programa sendo gerado... Bem-vindo ao PM Hybrid!");
       navigate({ to: "/", replace: true });
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Erro ao salvar.");
@@ -143,7 +133,6 @@ function OnboardingPage() {
 
   return (
     <div className="relative mx-auto flex min-h-screen w-full max-w-[480px] flex-col bg-background">
-      {/* Progress */}
       <div className="sticky top-0 z-10 bg-background/90 px-5 pt-6 pb-3 backdrop-blur-xl">
         <div className="flex items-center justify-between text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
           <span>Passo {step} de {TOTAL_STEPS}</span>
@@ -157,12 +146,10 @@ function OnboardingPage() {
         </div>
       </div>
 
-      {/* Step content */}
       <div className="flex-1 px-5 pb-32 pt-6">
         <StepContent step={step} data={data} setData={setData} />
       </div>
 
-      {/* Sticky footer */}
       <div className="fixed bottom-0 left-1/2 z-20 w-full max-w-[480px] -translate-x-1/2 border-t border-border/60 bg-background/95 px-5 py-4 pb-[max(env(safe-area-inset-bottom),1rem)] backdrop-blur-xl">
         <div className="flex items-center gap-3">
           {step > 1 && (
@@ -190,7 +177,7 @@ function OnboardingPage() {
               className="flex h-12 flex-1 items-center justify-center gap-2 rounded-2xl bg-primary text-[15px] font-semibold text-primary-foreground shadow-glow disabled:opacity-60 active:scale-[0.99]"
             >
               {saving ? <Loader2 className="h-5 w-5 animate-spin" /> : <Check className="h-5 w-5" />}
-              {saving ? "Salvando..." : "Concluir"}
+              {saving ? "Gerando programa..." : "Concluir"}
             </button>
           )}
         </div>
@@ -198,10 +185,6 @@ function OnboardingPage() {
     </div>
   );
 }
-
-// ============================================================
-// Step content
-// ============================================================
 
 function StepShell({ eyebrow, title, hint, children }: { eyebrow: string; title: string; hint?: string; children: React.ReactNode }) {
   return (
@@ -234,8 +217,8 @@ function StepContent({
         <input
           className={inputCls}
           placeholder="Ex: Pedro"
-          value={data.display_name}
-          onChange={(e) => setData({ ...data, display_name: e.target.value })}
+          value={data.name}
+          onChange={(e) => setData({ ...data, name: e.target.value })}
           autoFocus
           maxLength={80}
         />
@@ -273,17 +256,16 @@ function StepContent({
     );
   }
   if (step === 4) {
-    const options: { v: Gender; label: string }[] = [
+    const options: { v: Sex; label: string }[] = [
       { v: "male", label: "Masculino" },
       { v: "female", label: "Feminino" },
       { v: "other", label: "Outro" },
-      { v: "prefer_not_to_say", label: "Prefiro não dizer" },
     ];
     return (
-      <StepShell eyebrow="Sobre você" title="Sexo" hint="Usamos para personalizar mensagens.">
+      <StepShell eyebrow="Sobre você" title="Sexo" hint="Usamos para calibrar prescrições.">
         <div className="grid gap-2">
           {options.map((o) => (
-            <Choice key={o.v} active={data.gender === o.v} onClick={() => setData({ ...data, gender: o.v })}>
+            <Choice key={o.v} active={data.sex === o.v} onClick={() => setData({ ...data, sex: o.v })}>
               {o.label}
             </Choice>
           ))}
@@ -354,19 +336,19 @@ function StepContent({
     );
   }
   if (step === 8) {
-    const options: { v: Goal; label: string }[] = [
-      { v: "weight_loss", label: "Emagrecimento" },
-      { v: "hypertrophy", label: "Hipertrofia" },
-      { v: "aerobic", label: "Resistência aeróbica" },
-      { v: "hybrid", label: "Performance híbrida" },
-      { v: "general_health", label: "Saúde geral" },
+    const options: { v: Goal; label: string; hint: string }[] = [
+      { v: "fat_loss", label: "Emagrecimento", hint: "Foco em gasto calórico e composição corporal" },
+      { v: "hypertrophy", label: "Hipertrofia", hint: "Foco em massa muscular" },
+      { v: "endurance", label: "Resistência aeróbica", hint: "Foco em corrida e capacidade cardiorrespiratória" },
+      { v: "hybrid", label: "Treino híbrido", hint: "Equilíbrio entre força e corrida" },
     ];
     return (
       <StepShell eyebrow="Objetivo" title="Qual seu foco principal?">
         <div className="grid gap-2">
           {options.map((o) => (
-            <Choice key={o.v} active={data.main_goal === o.v} onClick={() => setData({ ...data, main_goal: o.v })}>
-              {o.label}
+            <Choice key={o.v} active={data.goal === o.v} onClick={() => setData({ ...data, goal: o.v })}>
+              <div className="text-[15px] font-semibold">{o.label}</div>
+              <div className="text-[12px] text-muted-foreground">{o.hint}</div>
             </Choice>
           ))}
         </div>
@@ -374,52 +356,37 @@ function StepContent({
     );
   }
   if (step === 9) {
-    const toggle = (v: number) => {
-      setData({
-        ...data,
-        available_days: data.available_days.includes(v)
-          ? data.available_days.filter((d) => d !== v)
-          : [...data.available_days, v].sort(),
-      });
-    };
+    const options: { v: AvailableDays; label: string; hint: string }[] = [
+      { v: 3, label: "3 dias por semana", hint: "Full Body combinado + 1 corrida" },
+      { v: 4, label: "4 dias por semana", hint: "Força reduzida + corrida intermediária" },
+      { v: 5, label: "5 dias por semana", hint: "Programa completo (padrão PM Hybrid)" },
+    ];
     return (
-      <StepShell eyebrow="Agenda" title="Quais dias você pode treinar?" hint="Selecione os dias da sua semana.">
-        <div className="grid grid-cols-4 gap-2">
-          {DAY_LABELS.map((d) => {
-            const active = data.available_days.includes(d.v);
-            return (
-              <button
-                key={d.v}
-                onClick={() => toggle(d.v)}
-                className={`h-16 rounded-2xl border text-[13px] font-semibold transition-colors active:scale-95 ${
-                  active
-                    ? "border-primary/70 bg-primary/15 text-foreground"
-                    : "border-border bg-surface/40 text-muted-foreground"
-                }`}
-              >
-                {d.label}
-              </button>
-            );
-          })}
+      <StepShell eyebrow="Agenda" title="Quantos dias você pode treinar?" hint="O motor adapta a periodização à sua disponibilidade.">
+        <div className="grid gap-2">
+          {options.map((o) => (
+            <Choice key={o.v} active={data.available_days === o.v} onClick={() => setData({ ...data, available_days: o.v })}>
+              <div className="text-[15px] font-semibold">{o.label}</div>
+              <div className="text-[12px] text-muted-foreground">{o.hint}</div>
+            </Choice>
+          ))}
         </div>
-        <p className="mt-3 text-[12px] text-muted-foreground">
-          {data.available_days.length} {data.available_days.length === 1 ? "dia" : "dias"} selecionados
-        </p>
       </StepShell>
     );
   }
   // step 10 — resumo
   return (
-    <StepShell eyebrow="Tudo pronto" title="Vamos começar?" hint="Revise seus dados antes de finalizar.">
+    <StepShell eyebrow="Tudo pronto" title="Vamos gerar seu programa?" hint="Confira seus dados antes de finalizar.">
       <div className="space-y-2 rounded-2xl border border-border bg-surface/40 p-4">
-        <SummaryRow label="Nome" value={data.display_name} />
+        <SummaryRow label="Nome" value={data.name} />
         {data.phone && <SummaryRow label="Telefone" value={data.phone} />}
         <SummaryRow label="Idade" value={`${data.age} anos`} />
+        <SummaryRow label="Sexo" value={sexLabel(data.sex as Sex)} />
         <SummaryRow label="Peso" value={`${data.weight_kg} kg`} />
         <SummaryRow label="Altura" value={`${data.height_cm} cm`} />
         <SummaryRow label="Experiência" value={experienceLabel(data.experience_level as Experience)} />
-        <SummaryRow label="Objetivo" value={goalLabel(data.main_goal as Goal)} />
-        <SummaryRow label="Dias" value={`${data.available_days.length}/semana`} />
+        <SummaryRow label="Objetivo" value={goalLabel(data.goal as Goal)} />
+        <SummaryRow label="Dias por semana" value={`${data.available_days}`} />
       </div>
     </StepShell>
   );
@@ -449,15 +416,17 @@ function SummaryRow({ label, value }: { label: string; value: string }) {
   );
 }
 
+function sexLabel(s: Sex): string {
+  return { male: "Masculino", female: "Feminino", other: "Outro" }[s] ?? "";
+}
 function experienceLabel(e: Experience): string {
   return { beginner: "Iniciante", intermediate: "Intermediário", advanced: "Avançado" }[e] ?? "";
 }
 function goalLabel(g: Goal): string {
   return {
-    weight_loss: "Emagrecimento",
+    fat_loss: "Emagrecimento",
     hypertrophy: "Hipertrofia",
-    aerobic: "Resistência aeróbica",
-    hybrid: "Performance híbrida",
-    general_health: "Saúde geral",
+    endurance: "Resistência aeróbica",
+    hybrid: "Treino híbrido",
   }[g] ?? "";
 }
