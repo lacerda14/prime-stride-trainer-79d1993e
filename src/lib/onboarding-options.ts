@@ -27,9 +27,55 @@ export const TRAINING_HISTORY_OPTIONS = [
 ] as const;
 
 export const TRAINING_LOCATION_OPTIONS = [
-  "Academia", "Box de CrossFit", "Academia de condomínio",
-  "Academia do trabalho", "Casa", "Home Gym",
+  "Academia Completa",
+  "Academia de Condomínio / Prédio",
+  "Casa",
+  "Box de CrossFit",
+  "Misto",
+] as const;
+
+export type TrainingLocation = typeof TRAINING_LOCATION_OPTIONS[number];
+
+// Lista comum (academia completa)
+export const FULL_GYM_COMPLETENESS = [
+  "Sim, possui praticamente tudo",
+  "Não tenho certeza",
+  "Algumas máquinas não existem",
+] as const;
+
+export const FULL_GYM_MISSING_OPTIONS = [
+  "Leg Press", "Smith", "Máquina de Cabos", "Hack Squat",
+  "Cadeira Extensora", "Mesa Flexora", "Banco Ajustável",
+  "Barra Olímpica", "Barra Fixa", "Outro",
 ];
+
+export const CONDO_GYM_EQUIPMENT = [
+  "Esteira", "Bicicleta", "Elíptico", "Banco reto", "Banco ajustável",
+  "Halteres", "Barra curta", "Barra longa", "Anilhas", "Smith",
+  "Máquina de Cabos", "Barra fixa", "Leg Press", "Cadeira Extensora",
+  "Mesa Flexora", "Kettlebells", "Faixas elásticas", "Bola suíça",
+  "Step", "Remo", "Air Bike",
+];
+
+export const HOME_EQUIPMENT = [
+  "Peso corporal apenas", "Faixas elásticas", "Mini band", "Halteres",
+  "Kettlebells", "Barra fixa", "Banco", "Banco ajustável",
+  "Barra olímpica", "Anilhas", "Rack", "Bicicleta", "Esteira",
+  "Air Bike", "Remo", "Caixa para salto", "TRX", "Corda",
+  "Bola suíça", "Colchonete",
+];
+
+export const BOX_COMPLETENESS = ["Sim", "Não"] as const;
+
+export const BOX_EQUIPMENT = [
+  "Remo", "Bike", "SkiErg", "Barra olímpica", "Anilhas bumper",
+  "Caixa de salto", "Kettlebells", "Dumbbells", "Corda", "Argolas",
+  "Barra fixa", "GHD", "Wall Ball", "Trenó", "Outro",
+];
+
+export const MIXED_PRIMARY_LOCATIONS = [
+  "Academia", "Condomínio", "Casa", "Box",
+] as const;
 
 export const DAYS_PER_WEEK = [3, 4, 5, 6] as const;
 export const MINUTES_PER_SESSION = [30, 45, 60, 75, 90] as const;
