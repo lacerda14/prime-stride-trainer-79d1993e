@@ -7,6 +7,7 @@ import { getTodayTraining, type SessionExerciseDTO } from "@/lib/program.queries
 import { useAuth } from "@/hooks/use-auth";
 import { ChevronDown, Play, Timer, Target, Loader2 } from "lucide-react";
 import { runningHeadline, runningInstructions } from "@/lib/format-running";
+import { useLocalToday } from "@/hooks/use-local-today";
 
 export const Route = createFileRoute("/hoje")({
   head: () => ({
@@ -95,9 +96,10 @@ function ExerciseCard({ exercise, index }: { exercise: SessionExerciseDTO; index
 function HojePage() {
   const { user } = useAuth();
   const fetchToday = useServerFn(getTodayTraining);
+  const localToday = useLocalToday();
   const { data, isLoading } = useQuery({
-    queryKey: ["today-training", user?.id],
-    queryFn: () => fetchToday(),
+    queryKey: ["today-training", user?.id, localToday.local_date, localToday.timezone],
+    queryFn: () => fetchToday({ data: localToday }),
     enabled: !!user,
   });
 
@@ -113,7 +115,7 @@ function HojePage() {
     return (
       <AppShell eyebrow="Treino" title="Treino de Hoje">
         <div className="p-8 text-center text-sm text-muted-foreground">
-          Nenhum treino programado. Conclua o onboarding para gerar o programa.
+          Hoje é {data?.calendar.day_name ?? "um dia sem treino"}. Nenhum treino programado para esta data.
         </div>
       </AppShell>
     );
@@ -126,7 +128,7 @@ function HojePage() {
 
   return (
     <AppShell
-      eyebrow={`Semana ${String(week.week_number).padStart(2, "0")} · ${today.day_name}`}
+      eyebrow={`Hoje é ${data.calendar.day_name} · Semana ${String(week.week_number).padStart(2, "0")} de ${data.calendar.total_weeks}`}
       title="Treino de Hoje"
       action={
         <Link

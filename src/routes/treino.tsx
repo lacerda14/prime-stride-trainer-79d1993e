@@ -7,6 +7,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { Pause, Play, SkipForward, X, Check, Loader2, Footprints, Timer, Flame, Wind } from "lucide-react";
 import { RequireAuth } from "@/components/require-auth";
 import { buildRunPhases, paceRange, runningHeadline, type RunPhase } from "@/lib/format-running";
+import { useLocalToday } from "@/hooks/use-local-today";
 
 export const Route = createFileRoute("/treino")({
   head: () => ({
@@ -41,9 +42,10 @@ function TreinoPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const fetchToday = useServerFn(getTodayTraining);
+  const localToday = useLocalToday();
   const { data, isLoading } = useQuery({
-    queryKey: ["today-training", user?.id],
-    queryFn: () => fetchToday(),
+    queryKey: ["today-training", user?.id, localToday.local_date, localToday.timezone],
+    queryFn: () => fetchToday({ data: localToday }),
     enabled: !!user,
   });
 

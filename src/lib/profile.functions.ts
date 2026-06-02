@@ -66,6 +66,7 @@ export const getDashboard = createServerFn({ method: "GET" })
 const onboardingSchema = z.object({
   name: z.string().trim().min(1).max(80),
   phone: z.string().trim().max(40).optional().nullable(),
+  program_start_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   age: z.number().int().min(10).max(100),
   sex: z.enum(["male", "female", "other"]),
   weight_kg: z.number().min(20).max(300),
@@ -94,6 +95,8 @@ export const completeOnboarding = createServerFn({ method: "POST" })
         experience_level: data.experience_level,
         goal: data.goal,
         available_days: data.available_days,
+        program_start_date: data.program_start_date,
+        current_week: 1,
         onboarding_completed: true,
       }, { onConflict: "id" });
     if (updateErr) throw new Error(updateErr.message);
@@ -140,7 +143,7 @@ export const resetOnboarding = createServerFn({ method: "POST" })
 
     const { error } = await supabase
       .from("profiles")
-      .update({ onboarding_completed: false })
+      .update({ onboarding_completed: false, current_week: 1 })
       .eq("id", userId);
     if (error) throw new Error(error.message);
 

@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { useAuth } from "@/hooks/use-auth";
 import { completeOnboarding, getProfile } from "@/lib/profile.functions";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { getLocalToday } from "@/lib/local-today";
 
 export const Route = createFileRoute("/onboarding")({
   head: () => ({ meta: [{ title: "Boas-vindas — PM Hybrid" }] }),
@@ -111,6 +112,7 @@ function OnboardingPage() {
         data: {
           name: data.name.trim(),
           phone: data.phone.trim() || null,
+          program_start_date: getLocalToday().local_date,
           age: data.age as number,
           sex: data.sex as Sex,
           weight_kg: data.weight_kg as number,

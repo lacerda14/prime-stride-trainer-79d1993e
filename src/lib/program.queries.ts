@@ -2,6 +2,13 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
+const localTodaySchema = z.object({
+  local_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  day_number: z.number().int().min(1).max(7),
+  day_name: z.string().min(1).max(32),
+  timezone: z.string().min(1).max(80).optional(),
+});
+
 // ============================================================
 // Tipos retornados (consumidos pelas telas)
 // ============================================================
@@ -85,6 +92,8 @@ export interface ProgramSummary {
   total_weeks: number;
   active_week: number;
   active_day: number;
+  program_start_date: string | null;
+  current_week: number;
   goal: string;
   experience_level: string;
   available_days: number;
@@ -101,6 +110,16 @@ export interface WeekDetailDTO {
   meso: MesoSummary;
   macro: { id: string; name: string; objective: string | null; dominant_method: string | null };
   days: TrainingDayDTO[];
+}
+
+export interface TodayTrainingCalendarDTO {
+  local_date: string;
+  day_number: number;
+  day_name: string;
+  timezone: string | null;
+  program_start_date: string;
+  current_week: number;
+  total_weeks: number;
 }
 
 // ============================================================
@@ -123,6 +142,19 @@ async function getActiveProgramId(
   return data?.id ?? null;
 }
 
+function daysBetweenLocalDates(start: string, end: string): number {
+  const [sy, sm, sd] = start.split("-").map(Number);
+  const [ey, em, ed] = end.split("-").map(Number);
+  const startMs = Date.UTC(sy, sm - 1, sd);
+  const endMs = Date.UTC(ey, em - 1, ed);
+  return Math.floor((endMs - startMs) / 86_400_000);
+}
+
+function weekFromStartDate(startDate: string, localDate: string, totalWeeks: number): number {
+  const elapsedDays = Math.max(0, daysBetweenLocalDates(startDate, localDate));
+  return Math.min(totalWeeks, Math.floor(elapsedDays / 7) + 1);
+}
+
 // ============================================================
 // loadProgramSummary (helper interno) + getProgramSummary (RPC)
 // ============================================================
@@ -130,6 +162,7 @@ async function getActiveProgramId(
 async function loadProgramSummary(
   supabase: any,
   userId: string,
+  calendar?: z.infer<typeof localTodaySchema>,
 ): Promise<ProgramSummary | null> {
   const { data: prog, error: pErr } = await supabase
     .from("training_programs")
@@ -143,6 +176,19 @@ async function loadProgramSummary(
     .maybeSingle();
   if (pErr) throw new Error(pErr.message);
   if (!prog) return null;
+
+  const { data: profile, error: profileErr } = await supabase
+    .from("profiles")
+    .select("program_start_date,current_week")
+    .eq("id", userId)
+    .maybeSingle();
+  if (profileErr) throw new Error(profileErr.message);
+
+  const programStartDate = profile?.program_start_date ?? calendar?.local_date ?? null;
+  const computedWeek = programStartDate && calendar
+    ? weekFromStartDate(programStartDate, calendar.local_date, prog.total_weeks)
+    : (profile?.current_week ?? prog.active_week);
+  const activeDay = calendar?.day_number ?? prog.active_day;
 
   const [{ data: macros, error: mErr }, { data: mesos, error: msErr }, { data: weeks, error: wErr }] =
     await Promise.all([
@@ -207,8 +253,10 @@ async function loadProgramSummary(
   return {
     id: prog.id,
     total_weeks: prog.total_weeks,
-    active_week: prog.active_week,
-    active_day: prog.active_day,
+    active_week: computedWeek,
+    active_day: activeDay,
+    program_start_date: programStartDate,
+    current_week: computedWeek,
     goal: prog.goal,
     experience_level: prog.experience_level,
     available_days: prog.available_days,
@@ -319,23 +367,45 @@ export const getWeekDetail = createServerFn({ method: "GET" })
   });
 
 // ============================================================
-// getTodayTraining — usa active_week + active_day
+// getTodayTraining — usa data local do dispositivo + program_start_date
 // ============================================================
 
 export const getTodayTraining = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
-  .handler(async ({ context }): Promise<{
+  .inputValidator((input) => localTodaySchema.parse(input))
+  .handler(async ({ data, context }): Promise<{
     program: ProgramSummary;
     week: WeekDetailDTO;
     today: TrainingDayDTO | null;
+    calendar: TodayTrainingCalendarDTO;
   } | null> => {
-    const summary = await loadProgramSummary(context.supabase, context.userId);
+    const calendarInput = data;
+    const summary = await loadProgramSummary(context.supabase, context.userId, calendarInput);
     if (!summary) return null;
     const week = await loadWeekDetail(context.supabase, summary.id, summary.active_week);
     if (!week) return null;
-    const today =
-      week.days.find((d) => d.day_number === summary.active_day) ?? week.days[0] ?? null;
-    return { program: summary, week, today };
+    const today = week.days.find((d) => d.day_number === summary.active_day) ?? null;
+
+    await context.supabase
+      .from("profiles")
+      .update({ current_week: summary.current_week })
+      .eq("id", context.userId)
+      .neq("current_week", summary.current_week);
+
+    return {
+      program: summary,
+      week,
+      today,
+      calendar: {
+        local_date: calendarInput.local_date,
+        day_number: calendarInput.day_number,
+        day_name: calendarInput.day_name,
+        timezone: calendarInput.timezone ?? null,
+        program_start_date: summary.program_start_date ?? calendarInput.local_date,
+        current_week: summary.current_week,
+        total_weeks: summary.total_weeks,
+      },
+    };
   });
 
 // ============================================================
