@@ -78,10 +78,8 @@ function DashboardContent() {
   const name = firstName(rawName);
   const gender = inferGender(rawName);
 
-  // Coach AI insight — gerado no servidor com dados reais (volume, streak, PRs)
-  const coachMessage =
-    dash?.coachInsight ??
-    "Cada treino é um passo. Mantenha a consistência e os resultados vêm inevitavelmente.";
+  // Coach AI insight calculado no servidor (não exibido — feature em breve)
+  void dash?.coachInsight;
 
   const topPRs = dash?.topPRs ?? [];
   const recentAchievements = dash?.recentAchievements ?? [];
