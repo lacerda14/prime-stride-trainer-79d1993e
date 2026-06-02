@@ -79,7 +79,7 @@ function OnboardingPage() {
       navigate({ to: "/", replace: true });
     }
     if (profileQ.data && !data.display_name && profileQ.data.display_name) {
-      setData((d) => ({ ...d, display_name: profileQ.data.display_name as string }));
+      setData((d) => ({ ...d, display_name: profileQ.data!.display_name as string }));
     }
   }, [profileQ.data, navigate, data.display_name]);
 
