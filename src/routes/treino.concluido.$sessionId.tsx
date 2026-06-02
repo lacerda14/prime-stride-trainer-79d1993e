@@ -10,10 +10,12 @@ import {
   Flame,
   Footprints,
   Loader2,
-  Sparkles,
   Trophy,
   Check,
-  Clock,
+  Dumbbell,
+  BarChart3,
+  Timer,
+  MessageSquare,
 } from "lucide-react";
 import { getCompletedSession, saveWorkoutLogs, type SetLogDTO } from "@/lib/workout-logs.functions";
 import { getWeekDetail } from "@/lib/program.queries";
@@ -65,6 +67,15 @@ interface SetRow {
   notes: string;
 }
 
+// Mapeamento emoji → RPE
+const EFFORT_OPTIONS = [
+  { emoji: "😰", label: "Pesado demais", rpe: "9" },
+  { emoji: "😤", label: "Difícil",        rpe: "8" },
+  { emoji: "💪", label: "Perfeito",       rpe: "7" },
+  { emoji: "😊", label: "Tranquilo",      rpe: "5" },
+  { emoji: "😌", label: "Leve demais",    rpe: "3" },
+] as const;
+
 // ============================================================
 // Página
 // ============================================================
@@ -111,6 +122,8 @@ function ConcluidoPage() {
   const [generalNotes, setGeneralNotes] = useState("");
   const [saving, setSaving] = useState(false);
   const [savedOnce, setSavedOnce] = useState(false);
+  const [notesOpen, setNotesOpen] = useState(false);
+  const [setsOpen, setSetsOpen] = useState(false);
 
   // Constrói as linhas a partir do plano + logs existentes
   useEffect(() => {
@@ -242,7 +255,6 @@ function ConcluidoPage() {
 
   const sess = completedQ.data.session;
   const prof = completedQ.data.profile;
-  const completedExercises = planned?.exercises.length ?? 0;
   const completedSets = setRows.length;
 
   // Volume total calculado dos logs
@@ -252,170 +264,185 @@ function ConcluidoPage() {
     return acc + kg * reps;
   }, 0);
 
-  // Agrupar séries por exercício para o breakdown
-  const exerciseBreakdown = useMemo(() => {
-    const map = new Map<string, { name: string; sets: SetRow[] }>();
+  // Agrupar exercícios para o breakdown
+  const exerciseBreakdown = (() => {
+    const map = new Map<string, { name: string; sets: SetRow[]; plannedReps: string | null }>();
     for (const row of setRows) {
-      if (!map.has(row.exercise_name)) map.set(row.exercise_name, { name: row.exercise_name, sets: [] });
+      if (!map.has(row.exercise_name)) {
+        map.set(row.exercise_name, { name: row.exercise_name, sets: [], plannedReps: row.planned_reps });
+      }
       map.get(row.exercise_name)!.sets.push(row);
     }
     return Array.from(map.values());
-  }, [setRows]);
+  })();
 
-  const avgRpe = useMemo(() => {
-    const rows = setRows.filter((r) => r.actual_rpe !== "");
-    if (rows.length === 0) return null;
-    return (rows.reduce((a, r) => a + Number(r.actual_rpe), 0) / rows.length).toFixed(1);
-  }, [setRows]);
+  const formatVolume = (v: number) =>
+    v >= 1000 ? `${(v / 1000).toFixed(1)}t` : `${Math.round(v)}kg`;
 
   return (
-    <div className="min-h-screen bg-background pb-32 safe-pad">
-      <div className="mx-auto w-full max-w-[480px] px-5 pt-8">
+    <div className="min-h-screen bg-background pb-40 safe-pad">
+      <div className="mx-auto w-full max-w-[480px] px-4 pt-10">
 
-        {/* Header */}
-        <div className="text-center">
-          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-primary/15 text-primary shadow-glow">
-            <Check className="h-8 w-8" />
+        {/* ── 1. Header de celebração ── */}
+        <div className="flex flex-col items-center text-center animate-fade-in">
+          {/* Ícone com glow */}
+          <div className="relative">
+            <div className="absolute inset-0 rounded-full bg-primary/20 blur-xl" />
+            <div className="relative flex h-20 w-20 items-center justify-center rounded-full border border-primary/30 bg-primary/10 shadow-glow">
+              <Check className="h-10 w-10 text-primary" strokeWidth={2.5} />
+            </div>
           </div>
-          <h1 className="mt-4 text-2xl font-semibold tracking-tight">Treino concluído</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {sess.day_key} · Semana {String(sess.week_number).padStart(2, "0")}
+          <h1 className="mt-5 text-3xl font-semibold tracking-tight text-foreground">
+            Treino concluído!
+          </h1>
+          <p className="mt-1.5 text-sm text-muted-foreground">
+            {sess.day_key}
+            {sess.week_number != null && (
+              <> · Semana {String(sess.week_number).padStart(2, "0")}</>
+            )}
           </p>
         </div>
 
-        {/* Stats principais — hero cards */}
-        <div className="mt-6 grid grid-cols-2 gap-3">
-          <div className="col-span-2 flex items-center justify-between rounded-2xl border border-primary/30 bg-primary/8 px-5 py-4">
-            <div>
-              <div className="text-[10px] font-medium uppercase tracking-widest text-primary/70">Duração</div>
-              <div className="num mt-1 text-3xl font-semibold text-foreground">{formatHMS(sess.duration_seconds ?? 0)}</div>
+        {/* ── 2. Stats em grid 2×2 ── */}
+        <div className="mt-8 grid grid-cols-2 gap-3 animate-slide-up">
+          {/* Duração — destaque maior */}
+          <div className="col-span-2 flex items-center justify-between rounded-2xl border border-primary/25 bg-primary/8 px-5 py-4">
+            <div className="flex items-center gap-3">
+              <Timer className="h-5 w-5 shrink-0 text-primary/70" />
+              <div>
+                <div className="text-[10px] font-medium uppercase tracking-widest text-primary/60">
+                  Duração
+                </div>
+                <div className="num mt-0.5 text-3xl font-semibold tabular-nums text-foreground">
+                  {formatHMS(sess.duration_seconds ?? 0)}
+                </div>
+              </div>
             </div>
-            <div className="text-right">
-              <div className="text-[10px] font-medium uppercase tracking-widest text-primary/70">Calorias</div>
-              <div className="num mt-1 text-3xl font-semibold text-foreground">{estimatedCal} <span className="text-base font-normal text-muted-foreground">kcal</span></div>
+            <div className="flex items-center gap-3 text-right">
+              <div>
+                <div className="text-[10px] font-medium uppercase tracking-widest text-primary/60">
+                  Calorias
+                </div>
+                <div className="num mt-0.5 flex items-baseline gap-1 text-3xl font-semibold tabular-nums text-foreground">
+                  {estimatedCal}
+                  <span className="text-sm font-normal text-muted-foreground">kcal</span>
+                </div>
+              </div>
+              <Flame className="h-5 w-5 shrink-0 text-orange-400" />
             </div>
           </div>
 
-          <div className="rounded-2xl border border-border/60 bg-surface/50 px-4 py-3">
-            <div className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground">Volume total</div>
-            <div className="num mt-1 text-xl font-semibold">
-              {totalVolume >= 1000 ? `${(totalVolume / 1000).toFixed(1)}t` : `${Math.round(totalVolume)}kg`}
-            </div>
-          </div>
-          <div className="rounded-2xl border border-border/60 bg-surface/50 px-4 py-3">
-            <div className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground">RPE médio</div>
-            <div className="num mt-1 text-xl font-semibold">{avgRpe ?? "—"}</div>
-          </div>
-          <div className="rounded-2xl border border-border/60 bg-surface/50 px-4 py-3">
-            <div className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground">Exercícios</div>
-            <div className="num mt-1 text-xl font-semibold">{completedExercises}</div>
-          </div>
-          <div className="rounded-2xl border border-border/60 bg-surface/50 px-4 py-3">
-            <div className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground">Séries</div>
-            <div className="num mt-1 text-xl font-semibold">{completedSets}</div>
+          {/* Volume */}
+          <StatCard
+            icon={<BarChart3 className="h-4 w-4" />}
+            label="Volume total"
+            value={totalVolume > 0 ? formatVolume(totalVolume) : "—"}
+          />
+
+          {/* Séries */}
+          <StatCard
+            icon={<Dumbbell className="h-4 w-4" />}
+            label="Séries"
+            value={String(completedSets)}
+          />
+        </div>
+
+        {/* ── 3. Avaliação da sessão — estilo Apple ── */}
+        <div className="mt-6 animate-slide-up" style={{ animationDelay: "80ms" }}>
+          <h2 className="mb-3 text-sm font-semibold text-foreground">Como foi esse treino?</h2>
+          <div className="grid grid-cols-5 gap-2">
+            {EFFORT_OPTIONS.map((opt) => {
+              const selected = generalEffort === opt.rpe;
+              return (
+                <button
+                  key={opt.rpe}
+                  onClick={() => setGeneralEffort(selected ? "" : opt.rpe)}
+                  className={[
+                    "flex flex-col items-center gap-1.5 rounded-2xl border py-3 transition-all duration-150",
+                    selected
+                      ? "border-primary bg-primary/12 shadow-glow"
+                      : "border-border/50 bg-surface/40 hover:border-primary/30 hover:bg-surface/70",
+                  ].join(" ")}
+                >
+                  <span className="text-xl leading-none">{opt.emoji}</span>
+                  <span
+                    className={[
+                      "text-center text-[9px] font-medium leading-tight",
+                      selected ? "text-primary" : "text-muted-foreground",
+                    ].join(" ")}
+                  >
+                    {opt.label}
+                  </span>
+                </button>
+              );
+            })}
           </div>
         </div>
 
-        {/* XP + Streak */}
-        <div className="mt-3 flex gap-3">
-          <div className="flex flex-1 items-center gap-3 rounded-2xl border border-border/60 bg-surface/50 px-4 py-3">
-            <Sparkles className="h-5 w-5 shrink-0 text-primary" />
-            <div>
-              <div className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground">XP total</div>
-              <div className="num text-lg font-semibold text-primary">{prof.xp_total} XP</div>
-            </div>
-          </div>
-          <div className="flex flex-1 items-center gap-3 rounded-2xl border border-border/60 bg-surface/50 px-4 py-3">
-            <Flame className="h-5 w-5 shrink-0 text-orange-400" />
-            <div>
-              <div className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground">Sequência</div>
-              <div className="num text-lg font-semibold">{prof.streak_current} dias</div>
-            </div>
-          </div>
-        </div>
-
-        {/* Breakdown por exercício */}
+        {/* ── 4. Destaques do treino — "O que você fez" ── */}
         {exerciseBreakdown.length > 0 && (
-          <Section title="O que você fez" defaultOpen icon={<Trophy className="h-4 w-4" />}>
-            <div className="space-y-3">
+          <div className="mt-6 animate-slide-up" style={{ animationDelay: "120ms" }}>
+            <div className="mb-3 flex items-center gap-2">
+              <Trophy className="h-4 w-4 text-primary" />
+              <h2 className="text-sm font-semibold text-foreground">O que você fez</h2>
+            </div>
+            <div className="space-y-2">
               {exerciseBreakdown.map((ex) => {
-                const vol = ex.sets.reduce((a, s) => {
-                  const kg = s.actual_load_kg !== "" ? Number(s.actual_load_kg) : 0;
-                  const reps = s.actual_reps !== "" ? Number(s.actual_reps) : 0;
-                  return a + kg * reps;
-                }, 0);
-                const bestLoad = Math.max(...ex.sets.map((s) => s.actual_load_kg !== "" ? Number(s.actual_load_kg) : 0));
+                const loads = ex.sets
+                  .map((s) => (s.actual_load_kg !== "" ? Number(s.actual_load_kg) : 0))
+                  .filter((v) => v > 0);
+                const bestLoad = loads.length > 0 ? Math.max(...loads) : null;
+                const totalSets = ex.sets.length;
+                const plannedReps = ex.plannedReps;
+
                 return (
-                  <div key={ex.name} className="rounded-xl border border-border/50 bg-background/30 px-4 py-3">
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="font-semibold text-sm">{ex.name}</div>
-                      {vol > 0 && (
-                        <div className="num shrink-0 text-xs text-primary font-medium">
-                          {Math.round(vol)}kg vol.
-                        </div>
-                      )}
+                  <div
+                    key={ex.name}
+                    className="flex items-center justify-between rounded-xl border border-border/40 bg-surface/40 px-4 py-3"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate text-sm font-medium text-foreground">
+                        {ex.name}
+                      </div>
+                      <div className="mt-0.5 text-xs text-muted-foreground">
+                        {totalSets} série{totalSets !== 1 ? "s" : ""}
+                        {plannedReps ? ` × ${plannedReps}` : ""}
+                      </div>
                     </div>
-                    <div className="num mt-2 flex flex-wrap gap-1.5">
-                      {ex.sets.map((s) => (
-                        <div key={s.set_number} className="rounded-lg border border-border/40 bg-surface/60 px-2 py-1 text-[11px] text-muted-foreground">
-                          S{s.set_number}
-                          {s.actual_reps ? ` · ${s.actual_reps}r` : ""}
-                          {s.actual_load_kg ? ` · ${s.actual_load_kg}kg` : ""}
-                          {s.actual_rpe ? ` · RPE ${s.actual_rpe}` : ""}
+                    {bestLoad !== null && (
+                      <div className="num ml-3 shrink-0 text-right">
+                        <div className="text-sm font-semibold text-primary">
+                          {bestLoad}kg
                         </div>
-                      ))}
-                    </div>
-                    {bestLoad > 0 && (
-                      <div className="num mt-1.5 text-[10px] text-muted-foreground">
-                        Melhor carga: {bestLoad}kg
+                        <div className="text-[10px] text-muted-foreground">melhor</div>
                       </div>
                     )}
                   </div>
                 );
               })}
             </div>
-          </Section>
+          </div>
         )}
 
-        {/* Avaliação geral */}
-        <Section title="Avaliação" defaultOpen icon={<Sparkles className="h-4 w-4" />}>
-          <Label>Esforço percebido geral (1-10)</Label>
-          <input
-            type="number"
-            inputMode="numeric"
-            min={1}
-            max={10}
-            value={generalEffort}
-            onChange={(e) => setGeneralEffort(e.target.value)}
-            className="mt-1 w-full rounded-xl border border-border bg-surface/60 px-3 py-2 text-sm text-foreground outline-none focus:border-primary"
-            placeholder="Ex: 7"
-          />
-          <Label className="mt-3">Comentários</Label>
-          <textarea
-            value={generalNotes}
-            onChange={(e) => setGeneralNotes(e.target.value)}
-            rows={3}
-            maxLength={1000}
-            className="mt-1 w-full rounded-xl border border-border bg-surface/60 px-3 py-2 text-sm text-foreground outline-none focus:border-primary"
-            placeholder="Como você se sentiu?"
-          />
-        </Section>
-
-        {/* Corrida */}
+        {/* ── 5. Corrida (se houver) ── */}
         {planned?.running && (
-          <Section title="Dados da corrida" defaultOpen icon={<Footprints className="h-4 w-4" />}>
+          <Section
+            title="Dados da corrida"
+            defaultOpen
+            icon={<Footprints className="h-4 w-4" />}
+          >
             <div className="grid grid-cols-2 gap-3">
               <Field label="Duração total (min)" value={runDuration} onChange={setRunDuration} type="number" />
               <Field label="Distância (km)" value={runDistance} onChange={setRunDistance} type="number" step="0.1" />
               <Field
-                label="Velocidade média (km/h)"
+                label="Vel. média (km/h)"
                 value={runAvgSpeed}
                 onChange={setRunAvgSpeed}
                 type="number"
                 step="0.1"
               />
               <Field
-                label="Velocidade máx. (km/h)"
+                label="Vel. máx. (km/h)"
                 value={runMaxSpeed}
                 onChange={setRunMaxSpeed}
                 type="number"
@@ -442,44 +469,104 @@ function ConcluidoPage() {
           </Section>
         )}
 
-        {/* Registrar pesos */}
+        {/* ── 5. Campo de comentário — colapsável ── */}
+        <div className="mt-4 overflow-hidden rounded-2xl border border-border bg-surface/40">
+          <button
+            onClick={() => setNotesOpen((v) => !v)}
+            className="flex w-full items-center justify-between px-4 py-3 text-left"
+          >
+            <span className="flex items-center gap-2 text-sm font-semibold tracking-tight text-foreground">
+              <MessageSquare className="h-4 w-4 text-muted-foreground" />
+              Anotações (opcional)
+            </span>
+            {notesOpen ? (
+              <ChevronUp className="h-4 w-4 text-muted-foreground" />
+            ) : (
+              <ChevronDown className="h-4 w-4 text-muted-foreground" />
+            )}
+          </button>
+          {notesOpen && (
+            <div className="border-t border-border/50 px-4 py-4">
+              <textarea
+                value={generalNotes}
+                onChange={(e) => setGeneralNotes(e.target.value)}
+                rows={3}
+                maxLength={1000}
+                className="w-full rounded-xl border border-border bg-surface/60 px-3 py-2 text-sm text-foreground outline-none focus:border-primary"
+                placeholder="Como você se sentiu? Algo que queira lembrar..."
+                autoFocus
+              />
+            </div>
+          )}
+        </div>
+
+        {/* ── 6. Registrar pesos — colapsável, fechado por padrão ── */}
         {setRows.length > 0 && (
-          <Section title="Registrar pesos" defaultOpen={false} icon={<Trophy className="h-4 w-4" />} highlight>
-            <p className="mb-3 text-xs text-muted-foreground">Informe os pesos usados em cada série para acompanhar sua progressão.</p>
-            <SetLogList rows={setRows} onChange={setSetRows} />
-          </Section>
+          <div className="mt-4 overflow-hidden rounded-2xl border border-primary/20 bg-primary/5">
+            <button
+              onClick={() => setSetsOpen((v) => !v)}
+              className="flex w-full items-center justify-between px-4 py-3 text-left"
+            >
+              <span className="flex items-center gap-2 text-sm font-semibold tracking-tight text-foreground">
+                <Dumbbell className="h-4 w-4 text-primary" />
+                Registrar pesos detalhados
+              </span>
+              <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                {setsOpen ? (
+                  <>
+                    Fechar <ChevronUp className="h-4 w-4" />
+                  </>
+                ) : (
+                  <>
+                    Ver séries completas <ChevronDown className="h-4 w-4" />
+                  </>
+                )}
+              </span>
+            </button>
+            {setsOpen && (
+              <div className="border-t border-primary/15 px-4 py-4">
+                <p className="mb-3 text-xs text-muted-foreground">
+                  Informe os pesos usados em cada série para acompanhar sua progressão.
+                </p>
+                <SetLogList rows={setRows} onChange={setSetRows} />
+              </div>
+            )}
+          </div>
         )}
 
-        {/* XP / Salvar */}
-        <div className="mt-6 flex flex-col gap-3">
+        {/* ── 7. Botões de ação ── */}
+        <div className="mt-8 flex flex-col gap-3 pb-6">
           <button
             onClick={handleSave}
             disabled={saving}
-            className="flex w-full items-center justify-center gap-2 rounded-full bg-primary py-4 text-sm font-semibold text-primary-foreground shadow-glow disabled:opacity-50"
+            className="flex w-full items-center justify-center gap-2 rounded-full bg-primary py-4 text-sm font-semibold text-primary-foreground shadow-glow transition-opacity disabled:opacity-50 active:opacity-90"
           >
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
             {savedOnce ? "Salvar alterações" : "Salvar treino"}
           </button>
+
           {savedOnce && (
-            <p className="text-center text-sm text-primary">Treino salvo com sucesso</p>
+            <p className="text-center text-xs text-primary">Treino salvo</p>
           )}
+
           <div className="grid grid-cols-2 gap-3">
             <button
               onClick={() => navigate({ to: "/historico" })}
-              className="rounded-full border border-border bg-surface/60 py-3 text-sm font-medium text-foreground hover:bg-surface"
+              className="rounded-full border border-border bg-surface/60 py-3 text-sm font-medium text-foreground transition-colors hover:bg-surface active:opacity-80"
             >
-              Ver progresso
+              Ver histórico
             </button>
             <button
               onClick={() => navigate({ to: "/" })}
-              className="rounded-full border border-border bg-surface/60 py-3 text-sm font-medium text-foreground hover:bg-surface"
+              className="rounded-full border border-border bg-surface/60 py-3 text-sm font-medium text-foreground transition-colors hover:bg-surface active:opacity-80"
             >
               Voltar ao início
             </button>
           </div>
+
           <button
             onClick={() => navigate({ to: "/treino", search: { force: "1" } as never })}
-            className="w-full rounded-full border border-border/40 bg-surface/30 py-3 text-xs font-medium text-muted-foreground hover:text-foreground"
+            className="w-full rounded-full border border-border/30 bg-transparent py-2.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground active:opacity-70"
           >
             Repetir treino hoje
           </button>
@@ -490,29 +577,45 @@ function ConcluidoPage() {
 }
 
 // ============================================================
-// Componentes
+// Componentes auxiliares
 // ============================================================
+
+function StatCard({
+  icon,
+  label,
+  value,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="flex items-start gap-3 rounded-2xl border border-border/50 bg-surface/40 px-4 py-4">
+      <div className="mt-0.5 text-muted-foreground">{icon}</div>
+      <div>
+        <div className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground">
+          {label}
+        </div>
+        <div className="num mt-1 text-xl font-semibold text-foreground">{value}</div>
+      </div>
+    </div>
+  );
+}
 
 function Section({
   title,
   defaultOpen,
   icon,
-  highlight,
   children,
 }: {
   title: string;
   defaultOpen?: boolean;
   icon?: React.ReactNode;
-  highlight?: boolean;
   children: React.ReactNode;
 }) {
   const [open, setOpen] = useState(!!defaultOpen);
   return (
-    <div
-      className={`mt-4 overflow-hidden rounded-2xl border ${
-        highlight ? "border-primary/40 bg-primary/5" : "border-border bg-surface/40"
-      }`}
-    >
+    <div className="mt-4 overflow-hidden rounded-2xl border border-border bg-surface/40">
       <button
         onClick={() => setOpen((v) => !v)}
         className="flex w-full items-center justify-between px-4 py-3 text-left"
@@ -617,7 +720,7 @@ function SetLogList({
         <div key={idx} className="rounded-xl border border-border/40 bg-background/40 p-3">
           <div className="text-sm font-semibold text-foreground">{sets[0]?.exercise_name}</div>
           <div className="text-[11px] text-muted-foreground">
-            Programado: {sets[0]?.planned_reps ?? "—"} reps · {sets.length} séries
+            Programado: {sets[0]?.planned_reps ?? "—"} reps · {sets.length} série{sets.length !== 1 ? "s" : ""}
           </div>
           <div className="mt-3 flex flex-col gap-2">
             {sets.map((s) => (
