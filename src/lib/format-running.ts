@@ -185,14 +185,14 @@ export function buildRunPhases(p: RunningProtocolDTO): RunPhase[] {
     });
   }
 
-  if (p.cooldown_minutes && p.cooldown_minutes > 0) {
-    phases.push({
-      kind: "cooldown",
-      label: "Cooldown",
-      detail: "Caminhada leve",
-      seconds: p.cooldown_minutes * 60,
-    });
-  }
+  // Cooldown SEMPRE — default 3 min.
+  const cooldownMin = Math.max(p.cooldown_minutes ?? 0, 3);
+  phases.push({
+    kind: "cooldown",
+    label: "Cooldown",
+    detail: "Caminhada leve",
+    seconds: cooldownMin * 60,
+  });
 
   return phases;
 }
