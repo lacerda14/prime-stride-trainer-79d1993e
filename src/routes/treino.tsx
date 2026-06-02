@@ -4,8 +4,9 @@ import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { getTodayTraining } from "@/lib/program.queries";
 import { useAuth } from "@/hooks/use-auth";
-import { Pause, Play, SkipForward, X, Check, Loader2 } from "lucide-react";
+import { Pause, Play, SkipForward, X, Check, Loader2, Footprints } from "lucide-react";
 import { RequireAuth } from "@/components/require-auth";
+import { runningHeadline, runningInstructions } from "@/lib/format-running";
 
 export const Route = createFileRoute("/treino")({
   head: () => ({
@@ -18,12 +19,15 @@ export const Route = createFileRoute("/treino")({
 });
 
 interface QueueItem {
+  kind: "strength" | "running";
   name: string;
   set: number;
   totalSets: number;
   reps: string;
   rest: number;
-  block: "Força" | "Core";
+  block: "Força" | "Core" | "Corrida";
+  runningSteps?: string[];
+  runningHead?: string;
 }
 
 function TreinoPage() {
@@ -41,12 +45,25 @@ function TreinoPage() {
   const queue = useMemo<QueueItem[]>(() => {
     if (!today) return [];
     const items: QueueItem[] = [];
+    if (today.running) {
+      items.push({
+        kind: "running",
+        name: "Corrida",
+        set: 1,
+        totalSets: 1,
+        reps: runningHeadline(today.running),
+        rest: 0,
+        block: "Corrida",
+        runningSteps: runningInstructions(today.running),
+        runningHead: runningHeadline(today.running),
+      });
+    }
     for (const e of today.exercises) {
       const block: "Força" | "Core" = e.exercise.category === "core" ? "Core" : "Força";
       const sets = Math.max(1, e.sets);
       const rest = e.rest_seconds ?? (block === "Core" ? 30 : 60);
       for (let s = 1; s <= sets; s++) {
-        items.push({ name: e.exercise.name, set: s, totalSets: sets, reps: e.reps, rest, block });
+        items.push({ kind: "strength", name: e.exercise.name, set: s, totalSets: sets, reps: e.reps, rest, block });
       }
     }
     return items;
@@ -99,6 +116,10 @@ function TreinoPage() {
   }
 
   const completeSet = () => {
+    if (current.kind === "running") {
+      setPhase("work"); setSeconds(0); setIdx((i) => Math.min(queue.length - 1, i + 1));
+      return;
+    }
     if (phase === "work") {
       setPhase("rest"); setSeconds(0); setRunning(true);
     } else {
@@ -129,16 +150,36 @@ function TreinoPage() {
         <div className="w-10" />
       </header>
 
-      <main className="relative flex flex-1 flex-col items-center justify-center px-6">
-        <div className="text-center">
+      <main className="relative flex flex-1 flex-col items-center justify-center px-6 py-8">
+        <div className="w-full max-w-md text-center">
           <div className="text-[10px] font-medium uppercase tracking-[0.28em] text-muted-foreground">
             {phase === "work" ? `Em execução · ${current.block}` : "Descanso"}
           </div>
-          <h1 className="mt-3 text-5xl font-semibold leading-tight tracking-tight lg:text-6xl">
-            {current.name}
+          <h1 className="mt-3 text-4xl font-semibold leading-tight tracking-tight lg:text-5xl">
+            {current.kind === "running" ? (
+              <span className="inline-flex items-center gap-3">
+                <Footprints className="h-8 w-8 text-primary" /> {current.runningHead}
+              </span>
+            ) : (
+              current.name
+            )}
           </h1>
 
-          {phase === "work" ? (
+          {current.kind === "running" && phase === "work" ? (
+            <ol className="num mt-8 space-y-2 text-left">
+              {(current.runningSteps ?? []).map((step, i) => (
+                <li
+                  key={i}
+                  className="flex gap-3 rounded-xl border border-border/60 bg-surface/40 px-4 py-3 text-sm leading-snug"
+                >
+                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/15 text-[11px] font-semibold text-primary">
+                    {i + 1}
+                  </span>
+                  <span>{step}</span>
+                </li>
+              ))}
+            </ol>
+          ) : phase === "work" ? (
             <div className="num mt-10 flex items-end justify-center gap-3">
               <div className="text-[120px] font-semibold leading-none tracking-tighter text-gradient-primary lg:text-[180px]">
                 {current.reps}
@@ -151,17 +192,19 @@ function TreinoPage() {
             </div>
           )}
 
-          <div className="num mt-6 flex items-center justify-center gap-6 text-sm text-muted-foreground">
-            <div>Set <span className="text-foreground">{current.set}</span> / {current.totalSets}</div>
-            <div>REST <span className="text-foreground">{current.rest}s</span></div>
-          </div>
+          {current.kind === "strength" && (
+            <div className="num mt-6 flex items-center justify-center gap-6 text-sm text-muted-foreground">
+              <div>Set <span className="text-foreground">{current.set}</span> / {current.totalSets}</div>
+              <div>REST <span className="text-foreground">{current.rest}s</span></div>
+            </div>
+          )}
         </div>
 
         {next && (
-          <div className="glass mt-12 w-full max-w-md rounded-2xl px-5 py-3 text-left">
+          <div className="glass mt-10 w-full max-w-md rounded-2xl px-5 py-3 text-left">
             <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Próximo</div>
             <div className="num mt-0.5 text-sm font-semibold tracking-tight">
-              {next.name} · Set {next.set} · {next.reps} reps
+              {next.kind === "running" ? next.runningHead : `${next.name} · Set ${next.set} · ${next.reps} reps`}
             </div>
           </div>
         )}
@@ -172,7 +215,11 @@ function TreinoPage() {
           {running ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5 fill-current" />}
         </button>
         <button onClick={completeSet} className="flex h-14 max-w-xs flex-1 items-center justify-center gap-2 rounded-full bg-primary text-base font-semibold text-primary-foreground shadow-glow transition-transform active:scale-95">
-          {phase === "work" ? (<><Check className="h-5 w-5" /> Concluir Set</>) : (<><SkipForward className="h-5 w-5" /> Pular descanso</>)}
+          {current.kind === "running"
+            ? (<><Check className="h-5 w-5" /> Corrida concluída</>)
+            : phase === "work"
+              ? (<><Check className="h-5 w-5" /> Concluir Set</>)
+              : (<><SkipForward className="h-5 w-5" /> Pular descanso</>)}
         </button>
       </footer>
     </div>
