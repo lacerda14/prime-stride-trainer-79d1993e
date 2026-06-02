@@ -511,14 +511,16 @@ export const updateExerciseCues = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
     await ensureAdmin(supabase, userId);
-    const patch: Record<string, unknown> = {};
+    const patch: {
+      instructions?: string;
+      common_mistakes?: string;
+      primary_muscles?: string[];
+    } = {};
     if (data.instructions !== undefined) patch.instructions = data.instructions;
     if (data.common_mistakes !== undefined) patch.common_mistakes = data.common_mistakes;
     if (data.primary_muscles !== undefined) patch.primary_muscles = data.primary_muscles;
     if (Object.keys(patch).length === 0) return { ok: true };
 
-    // exercise_pool only allows updates via admin? — currently no UPDATE policy.
-    // We need to allow admin updates. Add a policy via migration if missing.
     const { error } = await supabase.from("exercise_pool").update(patch).eq("id", data.exercise_id);
     if (error) throw new Error(error.message);
     return { ok: true };
