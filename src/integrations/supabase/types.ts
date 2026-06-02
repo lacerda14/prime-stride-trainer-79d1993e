@@ -1239,7 +1239,7 @@ export type Database = {
         | "pace_work"
         | "recovery_run"
       session_type_enum: "full_body" | "run_upper" | "run" | "rest"
-      sex_enum: "male" | "female" | "other"
+      sex_enum: "male" | "female" | "other" | "prefer_not_to_say"
       week_type_enum: "A" | "B"
     }
     CompositeTypes: {
@@ -1416,7 +1416,7 @@ export const Constants = {
         "recovery_run",
       ],
       session_type_enum: ["full_body", "run_upper", "run", "rest"],
-      sex_enum: ["male", "female", "other"],
+      sex_enum: ["male", "female", "other", "prefer_not_to_say"],
       week_type_enum: ["A", "B"],
     },
   },
