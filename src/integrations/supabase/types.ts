@@ -80,6 +80,57 @@ export type Database = {
         }
         Relationships: []
       }
+      exercise_pool: {
+        Row: {
+          allowed_advanced: boolean
+          allowed_beginner: boolean
+          allowed_intermediate: boolean
+          banned_weeks_1_to_12: boolean
+          category: Database["public"]["Enums"]["exercise_category_enum"]
+          code: string
+          created_at: string
+          equipment: string | null
+          id: string
+          lower_body_pattern: string | null
+          movement_pattern: string | null
+          name: string
+          notes: string | null
+          shoulder_safe: boolean
+        }
+        Insert: {
+          allowed_advanced?: boolean
+          allowed_beginner?: boolean
+          allowed_intermediate?: boolean
+          banned_weeks_1_to_12?: boolean
+          category: Database["public"]["Enums"]["exercise_category_enum"]
+          code: string
+          created_at?: string
+          equipment?: string | null
+          id?: string
+          lower_body_pattern?: string | null
+          movement_pattern?: string | null
+          name: string
+          notes?: string | null
+          shoulder_safe?: boolean
+        }
+        Update: {
+          allowed_advanced?: boolean
+          allowed_beginner?: boolean
+          allowed_intermediate?: boolean
+          banned_weeks_1_to_12?: boolean
+          category?: Database["public"]["Enums"]["exercise_category_enum"]
+          code?: string
+          created_at?: string
+          equipment?: string | null
+          id?: string
+          lower_body_pattern?: string | null
+          movement_pattern?: string | null
+          name?: string
+          notes?: string | null
+          shoulder_safe?: boolean
+        }
+        Relationships: []
+      }
       friendships: {
         Row: {
           accepted_at: string | null
@@ -157,22 +208,112 @@ export type Database = {
         }
         Relationships: []
       }
+      macrocycles: {
+        Row: {
+          created_at: string
+          dominant_method: string | null
+          end_week: number
+          id: string
+          name: string
+          objective: string | null
+          program_id: string
+          sort_order: number
+          start_week: number
+        }
+        Insert: {
+          created_at?: string
+          dominant_method?: string | null
+          end_week: number
+          id?: string
+          name: string
+          objective?: string | null
+          program_id: string
+          sort_order: number
+          start_week: number
+        }
+        Update: {
+          created_at?: string
+          dominant_method?: string | null
+          end_week?: number
+          id?: string
+          name?: string
+          objective?: string | null
+          program_id?: string
+          sort_order?: number
+          start_week?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "macrocycles_program_id_fkey"
+            columns: ["program_id"]
+            isOneToOne: false
+            referencedRelation: "training_programs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mesocycles: {
+        Row: {
+          created_at: string
+          end_week: number
+          id: string
+          macrocycle_id: string
+          method: string | null
+          name: string
+          objective: string | null
+          sort_order: number
+          start_week: number
+        }
+        Insert: {
+          created_at?: string
+          end_week: number
+          id?: string
+          macrocycle_id: string
+          method?: string | null
+          name: string
+          objective?: string | null
+          sort_order: number
+          start_week: number
+        }
+        Update: {
+          created_at?: string
+          end_week?: number
+          id?: string
+          macrocycle_id?: string
+          method?: string | null
+          name?: string
+          objective?: string | null
+          sort_order?: number
+          start_week?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mesocycles_macrocycle_id_fkey"
+            columns: ["macrocycle_id"]
+            isOneToOne: false
+            referencedRelation: "macrocycles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           age: number | null
-          available_days: number[] | null
+          available_days: number | null
           avatar_url: string | null
           created_at: string
-          display_name: string | null
-          experience_level: string | null
+          experience_level:
+            | Database["public"]["Enums"]["experience_level_enum"]
+            | null
           friend_code: string | null
-          gender: string | null
+          goal: Database["public"]["Enums"]["goal_enum"] | null
           height_cm: number | null
           id: string
           level: number
-          main_goal: string | null
-          onboarding_completed_at: string | null
+          name: string | null
+          onboarding_completed: boolean
           phone: string | null
+          sex: Database["public"]["Enums"]["sex_enum"] | null
           streak_current: number
           streak_last_date: string | null
           streak_longest: number
@@ -183,19 +324,21 @@ export type Database = {
         }
         Insert: {
           age?: number | null
-          available_days?: number[] | null
+          available_days?: number | null
           avatar_url?: string | null
           created_at?: string
-          display_name?: string | null
-          experience_level?: string | null
+          experience_level?:
+            | Database["public"]["Enums"]["experience_level_enum"]
+            | null
           friend_code?: string | null
-          gender?: string | null
+          goal?: Database["public"]["Enums"]["goal_enum"] | null
           height_cm?: number | null
           id: string
           level?: number
-          main_goal?: string | null
-          onboarding_completed_at?: string | null
+          name?: string | null
+          onboarding_completed?: boolean
           phone?: string | null
+          sex?: Database["public"]["Enums"]["sex_enum"] | null
           streak_current?: number
           streak_last_date?: string | null
           streak_longest?: number
@@ -206,19 +349,21 @@ export type Database = {
         }
         Update: {
           age?: number | null
-          available_days?: number[] | null
+          available_days?: number | null
           avatar_url?: string | null
           created_at?: string
-          display_name?: string | null
-          experience_level?: string | null
+          experience_level?:
+            | Database["public"]["Enums"]["experience_level_enum"]
+            | null
           friend_code?: string | null
-          gender?: string | null
+          goal?: Database["public"]["Enums"]["goal_enum"] | null
           height_cm?: number | null
           id?: string
           level?: number
-          main_goal?: string | null
-          onboarding_completed_at?: string | null
+          name?: string | null
+          onboarding_completed?: boolean
           phone?: string | null
+          sex?: Database["public"]["Enums"]["sex_enum"] | null
           streak_current?: number
           streak_last_date?: string | null
           streak_longest?: number
@@ -268,6 +413,211 @@ export type Database = {
         }
         Relationships: []
       }
+      running_protocols: {
+        Row: {
+          blocks: number | null
+          created_at: string
+          id: string
+          intervals: number | null
+          notes: string | null
+          pace_max: number | null
+          pace_min: number | null
+          protocol_type: Database["public"]["Enums"]["running_protocol_enum"]
+          rest_duration_seconds: number | null
+          total_duration_minutes: number | null
+          training_day_id: string
+          work_duration_seconds: number | null
+        }
+        Insert: {
+          blocks?: number | null
+          created_at?: string
+          id?: string
+          intervals?: number | null
+          notes?: string | null
+          pace_max?: number | null
+          pace_min?: number | null
+          protocol_type: Database["public"]["Enums"]["running_protocol_enum"]
+          rest_duration_seconds?: number | null
+          total_duration_minutes?: number | null
+          training_day_id: string
+          work_duration_seconds?: number | null
+        }
+        Update: {
+          blocks?: number | null
+          created_at?: string
+          id?: string
+          intervals?: number | null
+          notes?: string | null
+          pace_max?: number | null
+          pace_min?: number | null
+          protocol_type?: Database["public"]["Enums"]["running_protocol_enum"]
+          rest_duration_seconds?: number | null
+          total_duration_minutes?: number | null
+          training_day_id?: string
+          work_duration_seconds?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "running_protocols_training_day_id_fkey"
+            columns: ["training_day_id"]
+            isOneToOne: false
+            referencedRelation: "training_days"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      session_exercises: {
+        Row: {
+          created_at: string
+          exercise_id: string
+          id: string
+          notes: string | null
+          pair_slot: number | null
+          pr_at: string | null
+          reps: string
+          rest_seconds: number | null
+          rpe_target: number | null
+          sets: number
+          slot: number
+          training_day_id: string
+        }
+        Insert: {
+          created_at?: string
+          exercise_id: string
+          id?: string
+          notes?: string | null
+          pair_slot?: number | null
+          pr_at?: string | null
+          reps: string
+          rest_seconds?: number | null
+          rpe_target?: number | null
+          sets: number
+          slot: number
+          training_day_id: string
+        }
+        Update: {
+          created_at?: string
+          exercise_id?: string
+          id?: string
+          notes?: string | null
+          pair_slot?: number | null
+          pr_at?: string | null
+          reps?: string
+          rest_seconds?: number | null
+          rpe_target?: number | null
+          sets?: number
+          slot?: number
+          training_day_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "session_exercises_exercise_id_fkey"
+            columns: ["exercise_id"]
+            isOneToOne: false
+            referencedRelation: "exercise_pool"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "session_exercises_training_day_id_fkey"
+            columns: ["training_day_id"]
+            isOneToOne: false
+            referencedRelation: "training_days"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      training_days: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          day_name: string
+          day_number: number
+          duration_minutes: number | null
+          id: string
+          objective: string | null
+          session_type: Database["public"]["Enums"]["session_type_enum"]
+          week_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          day_name: string
+          day_number: number
+          duration_minutes?: number | null
+          id?: string
+          objective?: string | null
+          session_type: Database["public"]["Enums"]["session_type_enum"]
+          week_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          day_name?: string
+          day_number?: number
+          duration_minutes?: number | null
+          id?: string
+          objective?: string | null
+          session_type?: Database["public"]["Enums"]["session_type_enum"]
+          week_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "training_days_week_id_fkey"
+            columns: ["week_id"]
+            isOneToOne: false
+            referencedRelation: "weeks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      training_programs: {
+        Row: {
+          active_day: number
+          active_week: number
+          archived_at: string | null
+          available_days: number
+          created_at: string
+          experience_level: Database["public"]["Enums"]["experience_level_enum"]
+          generated_from_engine: string
+          goal: Database["public"]["Enums"]["goal_enum"]
+          id: string
+          reference_velocity: number | null
+          total_weeks: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          active_day?: number
+          active_week?: number
+          archived_at?: string | null
+          available_days: number
+          created_at?: string
+          experience_level: Database["public"]["Enums"]["experience_level_enum"]
+          generated_from_engine?: string
+          goal: Database["public"]["Enums"]["goal_enum"]
+          id?: string
+          reference_velocity?: number | null
+          total_weeks?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          active_day?: number
+          active_week?: number
+          archived_at?: string | null
+          available_days?: number
+          created_at?: string
+          experience_level?: Database["public"]["Enums"]["experience_level_enum"]
+          generated_from_engine?: string
+          goal?: Database["public"]["Enums"]["goal_enum"]
+          id?: string
+          reference_velocity?: number | null
+          total_weeks?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_achievements: {
         Row: {
           achievement_code: string
@@ -294,29 +644,47 @@ export type Database = {
           },
         ]
       }
-      week_plans: {
+      weeks: {
         Row: {
           created_at: string
-          days_distribution: Json
           id: string
-          user_id: string
+          mesocycle_id: string
+          program_id: string
           week_number: number
+          week_type: Database["public"]["Enums"]["week_type_enum"]
         }
         Insert: {
           created_at?: string
-          days_distribution?: Json
           id?: string
-          user_id: string
+          mesocycle_id: string
+          program_id: string
           week_number: number
+          week_type: Database["public"]["Enums"]["week_type_enum"]
         }
         Update: {
           created_at?: string
-          days_distribution?: Json
           id?: string
-          user_id?: string
+          mesocycle_id?: string
+          program_id?: string
           week_number?: number
+          week_type?: Database["public"]["Enums"]["week_type_enum"]
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "weeks_mesocycle_id_fkey"
+            columns: ["mesocycle_id"]
+            isOneToOne: false
+            referencedRelation: "mesocycles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "weeks_program_id_fkey"
+            columns: ["program_id"]
+            isOneToOne: false
+            referencedRelation: "training_programs"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       weight_history: {
         Row: {
@@ -413,7 +781,32 @@ export type Database = {
       gen_friend_code: { Args: never; Returns: string }
     }
     Enums: {
-      [_ in never]: never
+      exercise_category_enum:
+        | "biceps"
+        | "triceps"
+        | "chest"
+        | "lats"
+        | "back"
+        | "trap"
+        | "shoulder"
+        | "rotator_cuff"
+        | "posterior_chain"
+        | "anterior_chain"
+        | "calf"
+        | "core"
+        | "plyometric"
+      experience_level_enum: "beginner" | "intermediate" | "advanced"
+      goal_enum: "fat_loss" | "hypertrophy" | "endurance" | "hybrid"
+      running_protocol_enum:
+        | "z2"
+        | "vo2"
+        | "tempo"
+        | "intervals"
+        | "recovery"
+        | "threshold"
+      session_type_enum: "full_body" | "run_upper" | "run" | "rest"
+      sex_enum: "male" | "female" | "other"
+      week_type_enum: "A" | "B"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -540,6 +933,35 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      exercise_category_enum: [
+        "biceps",
+        "triceps",
+        "chest",
+        "lats",
+        "back",
+        "trap",
+        "shoulder",
+        "rotator_cuff",
+        "posterior_chain",
+        "anterior_chain",
+        "calf",
+        "core",
+        "plyometric",
+      ],
+      experience_level_enum: ["beginner", "intermediate", "advanced"],
+      goal_enum: ["fat_loss", "hypertrophy", "endurance", "hybrid"],
+      running_protocol_enum: [
+        "z2",
+        "vo2",
+        "tempo",
+        "intervals",
+        "recovery",
+        "threshold",
+      ],
+      session_type_enum: ["full_body", "run_upper", "run", "rest"],
+      sex_enum: ["male", "female", "other"],
+      week_type_enum: ["A", "B"],
+    },
   },
 } as const

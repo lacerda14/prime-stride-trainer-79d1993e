@@ -1,87 +1,121 @@
-## Visão geral
+# Migração para o Motor de Personalização PM Hybrid v1.0
 
-Transformar o PM Hybrid Performance System em uma plataforma gamificada (estilo Duolingo + Strava + Whoop), preservando toda a arquitetura mobile-first e a periodização atual carregada de `program-data.json`. A entrega será em **5 fases incrementais**, cada uma funcional por si só — assim podemos validar antes de seguir.
+## Contexto
 
-Recomendo aprovar fase a fase. Esta é a Fase 1 + estrutura de banco. As fases 2–5 vêm depois.
+A app hoje roda em cima de `src/lib/program-data.json` (planilha fixa) com schema já estabelecido em Supabase (`profiles`, `workout_sessions`, `xp_events`, `achievements`, `friendships`, `week_plans`, etc.).
 
----
+O novo modelo exige:
+- 8+ tabelas novas (`training_programs`, `macrocycles`, `mesocycles`, `weeks`, `training_days`, `exercise_pool`, `session_exercises`, `running_protocols`)
+- Um engine de geração que aplique ~30 regras (universais, por objetivo, por disponibilidade, regra de ouro, manguito, panturrilha, etc.)
+- Pool de exercícios extraído das 2 planilhas anexas + documento PM Motor
+- Onboarding atualizado (campos novos: `sex` em vez de `gender`, enums novos para `goal` e `experience_level`, `available_days` agora discreto 3/4/5)
+- Renderização dinâmica em todas as telas (hoje, semanas, treino, corrida, progressão)
 
-## Fase 1 — Fundação (esta entrega)
+Implementar isso num único turno quebra a app inteira. Proponho 5 fases, cada uma entregável e reversível.
 
-### A. Schema de banco (Lovable Cloud)
+## Decisões que preciso confirmar antes de começar
 
-Migration única criando tudo que sustenta o produto novo. Tabelas:
+1. **Compatibilidade com dados existentes**: usuários já cadastrados têm `gender` (4 valores) e `main_goal` (5 valores). O novo schema usa `sex` e `goal` com enums diferentes. Posso (a) renomear colunas via migration e mapear valores, ou (b) manter as antigas e adicionar as novas em paralelo, ou (c) limpar tudo (drop & recreate) — você está em dev então isso é viável.
 
-- **`profiles`** (estender existente): `phone`, `age`, `gender`, `weight_kg`, `height_cm`, `experience_level`, `main_goal`, `available_days` (int[]), `onboarding_completed_at`, `username`, `friend_code`, `xp_total`, `level`, `streak_current`, `streak_longest`, `streak_last_date`, `avatar_url`
-- **`weight_history`** — id, user_id, weight_kg, recorded_at
-- **`workout_sessions`** — id, user_id, week_number, day_key (A/B/C/D/E), scheduled_date, completed_at, duration_min, notes
-- **`run_sessions`** — id, user_id, week_number, scheduled_date, completed_at, distance_km, duration_min, pace
-- **`week_plans`** — id, user_id, week_number, days_distribution (jsonb: {monday: "A", tuesday: null, …}), created_at
-- **`xp_events`** — id, user_id, event_type, xp_amount, source_id, created_at
-- **`achievements`** — catálogo estático (code, title, description, icon, xp_reward, criteria_json)
-- **`user_achievements`** — user_id, achievement_code, unlocked_at
-- **`friendships`** — id, requester_id, addressee_id, status (pending/accepted/blocked), created_at, accepted_at
-- **Preparação futura** (criar vazias, sem UI): `challenges`, `groups`, `group_members`
+2. **Pool de exercícios**: vou extrair de `PM_INICIANTES_48S.xlsx` e `PM_IDOSOS_60-70_48S.xlsx` e popular `exercise_pool` via seed. Confirma que essas planilhas são a fonte canônica do pool?
 
-RLS estrita por `auth.uid()` em tudo. GRANTs para `authenticated` + `service_role`. Trigger `handle_new_user` já existente será atualizada para gerar `username` e `friend_code` únicos.
+3. **Tela `/semanas` e `WeekDistributionModal`**: a distribuição manual de dias que acabamos de construir vira incompatível — o novo motor gera dias já atribuídos. Tudo bem remover esse modal?
 
-Seed de `achievements` na própria migration: Primeiro treino, 7/30/100 dias de streak, 100 treinos, primeiros 100km, semana completa, primeiro PR, etc.
+4. **Gamificação (Fase 1 atual)**: XP/streak/achievements ficam intactos; só mudam as funções de "recordWorkout" para apontar para `training_days` em vez de `workout_sessions` legado.
 
-### B. Onboarding (10 passos)
+## Fases
 
-Nova rota `/onboarding` (pública para usuário logado mas sem `onboarding_completed_at`). Guard global redireciona para lá após login até completar.
+### Fase A — Schema base (1 migration)
+- Drop colunas antigas `gender`, `main_goal` em `profiles`; cria `sex`, `goal` com novos enums; renomeia `available_days` para aceitar 3/4/5; adiciona `name`, `onboarding_completed` (boolean) substituindo `display_name`/`onboarding_completed_at`.
+- Cria tabelas: `training_programs`, `macrocycles`, `mesocycles`, `weeks`, `training_days`, `exercise_pool`, `session_exercises`, `running_protocols`.
+- RLS por `auth.uid()` via `training_programs.user_id`.
+- Mantém `workout_sessions`, `xp_events`, `achievements`, `user_achievements`, `friendships`, `weight_history` (gamificação não muda).
+- Remove `week_plans` (não faz mais sentido com geração dinâmica).
 
-- Layout mobile-first, 1 pergunta por tela, barra de progresso no topo, botão "Continuar" thumb-friendly fixo no rodapé.
-- Passos: nome → telefone → idade → sexo → peso → altura → experiência → objetivo → dias disponíveis → resumo/finalizar.
-- Salva em `profiles` via server function `completeOnboarding`.
-- Cria primeiro registro em `weight_history`.
+### Fase B — Seed do exercise_pool
+- Script Python lê as 2 planilhas + tabelas do PM Motor (seção 6).
+- Insere ~80–120 exercícios com `category`, `equipment`, `movement_pattern`, flags `allowed_beginner/intermediate/advanced`, `shoulder_safe`, `lower_body_pattern`.
+- Migration de seed (INSERT bulk).
 
-### C. Home gamificada
+### Fase C — ProgramGenerationEngine (servidor)
+Arquivo: `src/lib/program-engine.server.ts` + `src/lib/program-engine.functions.ts`.
 
-Reescrever `src/routes/index.tsx`:
+Funções principais:
+- `calcReferenceVelocity(profile)` — V_ref baseado em peso/idade/sexo (doc seção 8).
+- `buildMacroPlan(goal, available_days)` — devolve os 6 mesos com modificadores de objetivo (seções 5.1–5.4) e disponibilidade (seção 9).
+- `selectExercisesForDay(week, dayType, pool, history)` — rotação indexada respeitando: Regra de Ouro (≤2x/meso), SEG≠QUA≠SEX, TER≠QUI, Back≠Front Squat, manguito ≤1/sessão e ≤3/semana, panturrilha 2–3x/semana, core ao final, proibidos sem 1–12.
+- `generateProgram(userId)` — orquestra: cria `training_programs` + 4 macros + 6 mesos + 48 weeks + ~240 training_days + session_exercises + running_protocols.
+- `validateProgram(program)` — checklist seção 10; rejeita e regera se falhar.
 
-- **Card hero**: Nível + XP (com barra para o próximo nível), 🔥 streak atual.
-- **Progresso triplo**: barras de Semana / Mesociclo / Macrociclo (XX% concluída).
-- **Próximo treino** (mantém o que já existe, refinado).
-- **Conquistas recentes** (3 últimos badges).
-- Calculado a partir de `workout_sessions` + `xp_events` + `profiles`.
+Server fn exposta: `generateProgramForCurrentUser()` (auth-protected).
 
-Fórmula de nível: `level = floor(sqrt(xp_total / 100)) + 1` (curva suave estilo Duolingo).
+### Fase D — Onboarding atualizado
+- Reescreve `src/routes/onboarding.tsx` com as 9 etapas exatas (Nome → Telefone → Idade → Sexo → Peso → Altura → Experiência → Objetivo → Dias).
+- Ao concluir: `completeOnboarding(...)` → `generateProgramForCurrentUser()` → redirect para `/`.
+- Validação Zod por etapa.
 
-### D. Sistema de XP + Streak (server-side)
-
-Server function `recordWorkoutComplete(sessionId)`:
-1. marca `workout_sessions.completed_at`
-2. insere `xp_events` (+50)
-3. atualiza streak (`+1` se ontem treinou, `=1` se gap, mantém se hoje)
-4. checa achievements desbloqueados
-5. retorna `{ xpGained, newLevel?, newAchievements[], streakUpdated }`
-
-Equivalente para corrida (+30 XP), PR (+100), semana completa (+250).
-
----
-
-## Fases seguintes (resumo — aprovação separada)
-
-- **Fase 2 — Planejador semanal flexível**: modal ao abrir nova semana, distribuição A/B/C/D/E pelos dias escolhidos, reagenda `workout_sessions`.
-- **Fase 3 — Perfil editável + histórico de peso**: rota `/perfil` com gráfico de evolução, upload de foto via Storage.
-- **Fase 4 — Amigos**: busca por username/friend_code, QR code, aceitar/recusar convites.
-- **Fase 5 — Ranking social**: leaderboard semanal entre amigos por XP/aderência/streak/corridas.
-
----
-
-## O que NÃO muda
-
-- `program-data.json` continua sendo a fonte da periodização (semanas 1–48, exercícios, descansos).
-- Mobile-first absoluto (container `max-w-[480px]`, bottom nav, cards verticais).
-- Paleta PM Hybrid (champagne gold sobre preto profundo).
-- Login Google + email/senha já existentes.
+### Fase E — Migração das telas para leitura dinâmica
+Cada tela troca `program-data.json` por queries no programa gerado:
+- `src/routes/index.tsx` (home gamificada): lê `active_week`/`active_day` do `training_programs`.
+- `src/routes/hoje.tsx`: lê `training_days` + `session_exercises` + `running_protocols` do dia ativo.
+- `src/routes/semanas.tsx`: lista `weeks` agrupadas por meso/macro.
+- `src/routes/treino.tsx`, `/corrida`, `/progressao`, `/historico`: consomem o programa gerado.
+- Deleta `src/lib/mock-data.ts` e `src/lib/program-data.json` (ou move para `_legacy/`).
+- Remove `WeekDistributionModal`.
 
 ## Detalhes técnicos
 
-- Server functions em `src/lib/*.functions.ts` com `requireSupabaseAuth`.
-- Achievements/streak calculados server-side para evitar trapaça.
-- `username` autogerado (`atleta_xxxx`) editável depois; `friend_code` 6 chars alfanuméricos únicos.
-- Guard de onboarding em `__root.tsx` via `onAuthStateChange` + consulta a `profiles.onboarding_completed_at`.
+### Enums (Postgres)
+```sql
+create type experience_level as enum ('beginner','intermediate','advanced');
+create type goal as enum ('fat_loss','hypertrophy','endurance','hybrid');
+create type session_type as enum ('full_body','run_upper','run','rest');
+create type week_type as enum ('A','B');
+create type exercise_category as enum (
+  'biceps','triceps','chest','lats','back','trap','shoulder',
+  'rotator_cuff','posterior_chain','anterior_chain','calf','core','plyometric'
+);
+```
 
-Posso começar pela **Fase 1** assim que aprovado? A migration vem primeiro (precisa do seu OK), depois implemento onboarding + home gamificada + XP no mesmo turno.
+### Tabela `training_programs` (single active per user)
+- Unique constraint: `(user_id) where archived_at is null` para garantir 1 ativo.
+- Coluna `active_week int` + `active_day int` cacheia o progresso atual (atualizada por trigger ao completar treino).
+
+### Engine de geração
+- Determinístico com seed `user_id + created_at` para reprodutibilidade.
+- Roda inteiro em server function (não edge function) — sob nosso runtime TanStack.
+- ~500–800 linhas de TS. Vou organizar em módulos: `pools.ts`, `rules.ts`, `progression.ts`, `validators.ts`, `generator.ts`.
+
+### Migration de dados existentes
+Como estamos em dev e o schema muda muito, recomendo `TRUNCATE` de `profiles` e tabelas dependentes — usuários precisarão refazer onboarding. Confirma?
+
+## Estrutura final de arquivos (novos)
+```text
+src/lib/
+  engine/
+    pools.ts            // pool queries + filtros
+    rules.ts            // validadores universais
+    progression.ts      // prescrições por meso
+    generator.ts        // generateProgram()
+    validators.ts       // checklist seção 10
+  program-engine.functions.ts   // server fns expostas
+  program.queries.ts            // queries para telas
+supabase/migrations/
+  <ts>_motor_v1_schema.sql      // Fase A
+  <ts>_motor_v1_exercise_pool_seed.sql  // Fase B
+```
+
+## O que NÃO faço nesta migração
+- XP/streak/achievements (já implementados, ficam)
+- Amigos/ranking/desafios (arquitetura já existe via `friendships`, sem UI)
+- PRs (preparar coluna em `session_exercises.pr_at` mas sem UI)
+
+## Próximos passos
+
+Preciso da sua confirmação em 3 pontos antes de tocar no schema:
+
+1. **OK para drop+recreate de `profiles` e tabelas dependentes?** (Você perde os usuários atuais — em dev é só refazer onboarding.)
+2. **As 2 planilhas anexas são a fonte canônica do exercise_pool?** Ou existe uma 3ª lista mestre?
+3. **Tudo bem remover `weekplans` + `WeekDistributionModal` agora?** O engine gera os dias atribuídos.
+
+Respondendo essas 3, começo pela Fase A na próxima mensagem.

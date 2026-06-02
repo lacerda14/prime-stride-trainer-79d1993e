@@ -58,19 +58,19 @@ export const getDashboard = createServerFn({ method: "GET" })
   });
 
 // ============================================================
-// POST: complete onboarding
+// POST: complete onboarding (PM Motor v1.0)
 // ============================================================
 
 const onboardingSchema = z.object({
-  display_name: z.string().trim().min(1).max(80),
+  name: z.string().trim().min(1).max(80),
   phone: z.string().trim().max(40).optional().nullable(),
   age: z.number().int().min(10).max(100),
-  gender: z.enum(["male", "female", "other", "prefer_not_to_say"]),
+  sex: z.enum(["male", "female", "other"]),
   weight_kg: z.number().min(20).max(300),
   height_cm: z.number().min(100).max(250),
   experience_level: z.enum(["beginner", "intermediate", "advanced"]),
-  main_goal: z.enum(["weight_loss", "hypertrophy", "aerobic", "hybrid", "general_health"]),
-  available_days: z.array(z.number().int().min(0).max(6)).min(1).max(7),
+  goal: z.enum(["fat_loss", "hypertrophy", "endurance", "hybrid"]),
+  available_days: z.union([z.literal(3), z.literal(4), z.literal(5)]),
 });
 
 export const completeOnboarding = createServerFn({ method: "POST" })
@@ -82,16 +82,16 @@ export const completeOnboarding = createServerFn({ method: "POST" })
     const { error: updateErr } = await supabase
       .from("profiles")
       .update({
-        display_name: data.display_name,
+        name: data.name,
         phone: data.phone ?? null,
         age: data.age,
-        gender: data.gender,
+        sex: data.sex,
         weight_kg: data.weight_kg,
         height_cm: data.height_cm,
         experience_level: data.experience_level,
-        main_goal: data.main_goal,
+        goal: data.goal,
         available_days: data.available_days,
-        onboarding_completed_at: new Date().toISOString(),
+        onboarding_completed: true,
       })
       .eq("id", userId);
     if (updateErr) throw new Error(updateErr.message);
@@ -101,6 +101,8 @@ export const completeOnboarding = createServerFn({ method: "POST" })
       user_id: userId,
       weight_kg: data.weight_kg,
     });
+
+    // TODO Fase C: chamar ProgramGenerationEngine.generateProgramForUser(userId)
 
     return { ok: true };
   });
