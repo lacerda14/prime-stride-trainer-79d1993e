@@ -64,6 +64,42 @@ export const getActiveWorkoutSession = createServerFn({ method: "GET" })
   });
 
 // ============================================================
+// Verifica se já existe sessão concluída para o treino do dia
+// ============================================================
+
+export const getCompletedSessionForDay = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) =>
+    z
+      .object({
+        week_number: z.number().int().min(1).max(120),
+        day_key: z.string().min(1).max(8),
+        local_date: z.string().min(8).max(10),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data, context }): Promise<{ id: string } | null> => {
+    const { supabase, userId } = context;
+    const dayStart = `${data.local_date}T00:00:00.000Z`;
+    const dayEnd = `${data.local_date}T23:59:59.999Z`;
+    const { data: row, error } = await supabase
+      .from("workout_sessions")
+      .select("id")
+      .eq("user_id", userId)
+      .eq("week_number", data.week_number)
+      .eq("day_key", data.day_key)
+      .eq("status", "completed")
+      .gte("finished_at", dayStart)
+      .lte("finished_at", dayEnd)
+      .order("finished_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    return row ? { id: row.id } : null;
+  });
+
+
+// ============================================================
 // Iniciar (ou recuperar) sessão para o treino do dia
 // ============================================================
 
