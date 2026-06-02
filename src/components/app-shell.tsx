@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
+import { RequireAuth } from "@/components/require-auth";
 
 interface AppShellProps {
   children: ReactNode;
@@ -11,6 +12,7 @@ interface AppShellProps {
 
 export function AppShell({ children, title, eyebrow, action }: AppShellProps) {
   return (
+    <RequireAuth>
     <SidebarProvider defaultOpen>
       <div className="flex min-h-screen w-full bg-background">
         <AppSidebar />
@@ -36,5 +38,6 @@ export function AppShell({ children, title, eyebrow, action }: AppShellProps) {
         </div>
       </div>
     </SidebarProvider>
+    </RequireAuth>
   );
 }
