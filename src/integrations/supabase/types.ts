@@ -1031,11 +1031,23 @@ export type Database = {
         Row: {
           completed_at: string | null
           created_at: string
+          current_block: number | null
+          current_exercise_index: number
+          current_interval: number | null
+          current_set: number
+          current_step: number
           day_key: string
           duration_min: number | null
+          duration_seconds: number | null
+          elapsed_seconds: number
+          finished_at: string | null
           id: string
           notes: string | null
           scheduled_date: string | null
+          session_data: Json
+          started_at: string | null
+          status: string
+          total_elapsed_seconds: number
           updated_at: string
           user_id: string
           week_number: number
@@ -1043,11 +1055,23 @@ export type Database = {
         Insert: {
           completed_at?: string | null
           created_at?: string
+          current_block?: number | null
+          current_exercise_index?: number
+          current_interval?: number | null
+          current_set?: number
+          current_step?: number
           day_key: string
           duration_min?: number | null
+          duration_seconds?: number | null
+          elapsed_seconds?: number
+          finished_at?: string | null
           id?: string
           notes?: string | null
           scheduled_date?: string | null
+          session_data?: Json
+          started_at?: string | null
+          status?: string
+          total_elapsed_seconds?: number
           updated_at?: string
           user_id: string
           week_number: number
@@ -1055,11 +1079,23 @@ export type Database = {
         Update: {
           completed_at?: string | null
           created_at?: string
+          current_block?: number | null
+          current_exercise_index?: number
+          current_interval?: number | null
+          current_set?: number
+          current_step?: number
           day_key?: string
           duration_min?: number | null
+          duration_seconds?: number | null
+          elapsed_seconds?: number
+          finished_at?: string | null
           id?: string
           notes?: string | null
           scheduled_date?: string | null
+          session_data?: Json
+          started_at?: string | null
+          status?: string
+          total_elapsed_seconds?: number
           updated_at?: string
           user_id?: string
           week_number?: number
