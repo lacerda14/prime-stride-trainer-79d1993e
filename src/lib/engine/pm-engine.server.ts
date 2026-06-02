@@ -34,6 +34,112 @@ export interface UserProfileInput {
   experience_level: Experience;
   goal: Goal;
   available_days: AvailableDays;
+  /** Lista (pt-BR) de equipamentos disponíveis vinda do onboarding (deriveEquipment).
+   *  Quando vazia/undefined, assume-se academia completa (compat retroativa). */
+  available_equipment?: string[];
+}
+
+// ============================================================
+// Filtro de equipamentos — nunca gerar exercícios sem o equipamento
+// disponível para o usuário (ex.: sem Leg Press, sem barra olímpica, sem rack).
+// ============================================================
+function normEquip(s: string): string {
+  return s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+}
+
+export interface EquipmentAvailability {
+  barbell: boolean;     // barra olímpica utilizável (com rack ou smith)
+  dumbbell: boolean;
+  cable: boolean;
+  machine: boolean;     // alguma máquina disponível
+  sled: boolean;
+  rack: boolean;
+  pullUpBar: boolean;
+  bench: boolean;
+  legPress: boolean;
+  hackSquat: boolean;
+  smith: boolean;
+  legCurl: boolean;
+  legExtension: boolean;
+}
+
+export function resolveEquipmentAvailability(userEquipment?: string[]): EquipmentAvailability {
+  // Compat: sem dados de equipamento => assume academia completa.
+  if (!userEquipment || userEquipment.length === 0) {
+    return {
+      barbell: true, dumbbell: true, cable: true, machine: true, sled: false,
+      rack: true, pullUpBar: true, bench: true, legPress: true, hackSquat: true,
+      smith: true, legCurl: true, legExtension: true,
+    };
+  }
+  const items = userEquipment.map(normEquip);
+  const has = (...terms: string[]) =>
+    items.some((it) => terms.some((t) => it.includes(t)));
+
+  const fullGym = has("academia completa");
+  const rack = fullGym || has("rack");
+  const barbellItem = fullGym || has("barra olimpica", "barra longa", "barbell");
+  const dumbbell = fullGym || has("halter", "dumbbell");
+  const cable = fullGym || has("cabos", "cable");
+  const pullUpBar = fullGym || has("barra fixa", "pull-up", "pull up", "argolas");
+  const bench = fullGym || has("banco");
+  const legPress = fullGym || has("leg press");
+  const hackSquat = fullGym || has("hack squat");
+  const smith = fullGym || has("smith");
+  const legExtension = fullGym || has("cadeira extensora", "leg extension");
+  const legCurl = fullGym || has("mesa flexora", "hamstring curl", "leg curl");
+  const sled = has("treno", "sled");
+  const anyMachine = fullGym || legPress || hackSquat || smith ||
+    legExtension || legCurl || cable || has("maquina", "machine", "pec deck");
+
+  return {
+    // barra olímpica só é "usável" se houver rack ou smith p/ agachamento seguro.
+    barbell: barbellItem && (rack || smith),
+    dumbbell, cable, machine: anyMachine, sled,
+    rack, pullUpBar, bench, legPress, hackSquat, smith, legCurl, legExtension,
+  };
+}
+
+/** Códigos do pool que exigem equipamento específico além da categoria. */
+const EQUIPMENT_CODE_GATES: Record<string, (a: EquipmentAvailability) => boolean> = {
+  leg_press: (a) => a.legPress,
+  leg_press_45: (a) => a.legPress,
+  "45_degree_leg_press": (a) => a.legPress,
+  hack_squat_machine: (a) => a.hackSquat,
+  smith_squat: (a) => a.smith,
+  back_squat: (a) => a.rack || a.smith,
+  front_squat: (a) => a.rack || a.smith,
+  pull_up: (a) => a.pullUpBar,
+  scapular_pull_up: (a) => a.pullUpBar,
+  assisted_pull_up: (a) => a.machine && a.pullUpBar,
+  leg_extension: (a) => a.legExtension,
+  hamstring_curl: (a) => a.legCurl,
+  seated_hamstring_curl: (a) => a.legCurl,
+  incline_db_press: (a) => a.dumbbell && a.bench,
+  incline_db_press_neutral_grip: (a) => a.dumbbell && a.bench,
+  incline_db_curl: (a) => a.dumbbell && a.bench,
+  bench_dip: (a) => a.bench,
+  incline_bench_press: (a) => a.barbell && a.bench,
+};
+
+export function filterPoolByEquipment(
+  pool: ExerciseRow[],
+  userEquipment?: string[],
+): ExerciseRow[] {
+  const avail = resolveEquipmentAvailability(userEquipment);
+  return pool.filter((e) => {
+    const gate = EQUIPMENT_CODE_GATES[e.code];
+    if (gate && !gate(avail)) return false;
+    switch (e.equipment) {
+      case "barbell": return avail.barbell;
+      case "dumbbell": return avail.dumbbell;
+      case "cable": return avail.cable;
+      case "machine": return avail.machine;
+      case "sled": return avail.sled;
+      case "bodyweight": return true;
+      default: return true;
+    }
+  });
 }
 
 // ============================================================
@@ -674,6 +780,10 @@ export interface GenerationResult {
 export function generatePlan(profile: UserProfileInput, exercisePool: ExerciseRow[]): GenerationResult {
   const vref = calcReferenceVelocity(profile);
   const days = activeDays(profile.available_days);
+  // Filtra o pool de exercícios pelos equipamentos disponíveis do usuário.
+  // Garante que nunca selecionamos exercícios que dependem de equipamento ausente.
+  const filteredPool = filterPoolByEquipment(exercisePool, profile.available_equipment);
+  const pool = filteredPool.length > 0 ? filteredPool : exercisePool;
   const weeks: GeneratedWeek[] = [];
 
   // rotação offset por (week, day) para distribuir variedade
@@ -717,7 +827,7 @@ export function generatePlan(profile: UserProfileInput, exercisePool: ExerciseRo
           // pliometria opcional (sem 13+ pode injetar 1 no slot final lower, deixamos fora por enquanto)
 
           const isCore = category === "core";
-          const ex = pickExercise(exercisePool, category, {
+          const ex = pickExercise(pool, category, {
             week: w,
             experience: profile.experience_level,
             usedInDay,
@@ -762,11 +872,11 @@ export function generatePlan(profile: UserProfileInput, exercisePool: ExerciseRo
           const catB = seq[i + 1];
           const isCore = catA === "core";
           const pairId = Math.floor(i / 2) + 1;
-          const exA = pickExercise(exercisePool, catA, {
+          const exA = pickExercise(pool, catA, {
             week: w, experience: profile.experience_level,
             usedInDay, usedInWeek, mesoUsage, rotationOffset: globalOffset++,
           }, isCore);
-          const exB = pickExercise(exercisePool, catB, {
+          const exB = pickExercise(pool, catB, {
             week: w, experience: profile.experience_level,
             usedInDay: new Set([...usedInDay, ...(exA ? [exA.id] : [])]),
             usedInWeek, mesoUsage, rotationOffset: globalOffset++,
