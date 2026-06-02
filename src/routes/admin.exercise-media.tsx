@@ -90,26 +90,39 @@ function CuratorBoard() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const [bulkProgress, setBulkProgress] = useState<{ done: number; total: number; saved: number } | null>(null);
+
   const searchAll = useMutation({
     mutationFn: async () => {
-      const targets = (data ?? []).filter((e) => !e.has_primary).slice(0, 10);
+      const targets = (data ?? []).filter((e) => !e.has_primary);
       let total = 0;
-      for (const e of targets) {
+      setBulkProgress({ done: 0, total: targets.length, saved: 0 });
+      for (let i = 0; i < targets.length; i++) {
+        const e = targets[i];
         try {
           const r = await searchFn({ data: { exercise_id: e.id, max_results: 3 } });
           total += r.saved;
         } catch (err) {
           console.error("search failed", e.name, err);
         }
+        setBulkProgress({ done: i + 1, total: targets.length, saved: total });
+        // pequena pausa para não estourar quota do YouTube
+        await new Promise((r) => setTimeout(r, 200));
       }
       return total;
     },
     onSuccess: (n) => {
-      toast.success(`Agente salvou ${n} candidatos`);
+      toast.success(`Agente salvou ${n} candidatos no total`);
       qc.invalidateQueries({ queryKey: ["admin-exercises"] });
+      setTimeout(() => setBulkProgress(null), 4000);
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => {
+      toast.error(e.message);
+      setBulkProgress(null);
+    },
   });
+
+  const missingCount = (data ?? []).filter((e) => !e.has_primary).length;
 
   return (
     <AppShell title="Curador de Vídeos" eyebrow="Admin">
@@ -129,10 +142,36 @@ function CuratorBoard() {
           </button>
         </div>
         <Input placeholder="Buscar exercício..." value={search} onChange={(e) => setSearch(e.target.value)} className="h-10" />
-        <Button onClick={() => searchAll.mutate()} disabled={searchAll.isPending} className="w-full" variant="outline">
-          {searchAll.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Search className="mr-2 h-4 w-4" />}
-          Rodar agente nos 10 primeiros sem vídeo
-        </Button>
+
+        <div className="space-y-2 rounded-2xl border border-border/60 bg-surface/40 p-3">
+          <Button
+            onClick={() => searchAll.mutate()}
+            disabled={searchAll.isPending || missingCount === 0}
+            className="w-full"
+          >
+            {searchAll.isPending
+              ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Rodando agente...</>
+              : <><Search className="mr-2 h-4 w-4" /> Rodar agente em massa ({missingCount} sem vídeo)</>}
+          </Button>
+          {bulkProgress && (
+            <div>
+              <div className="mb-1 flex justify-between text-[11px] text-muted-foreground">
+                <span>{bulkProgress.done} / {bulkProgress.total} exercícios</span>
+                <span>{bulkProgress.saved} candidatos salvos</span>
+              </div>
+              <div className="h-1.5 w-full overflow-hidden rounded-full bg-surface-elevated">
+                <div
+                  className="h-full bg-primary transition-all"
+                  style={{ width: `${(bulkProgress.done / Math.max(bulkProgress.total, 1)) * 100}%` }}
+                />
+              </div>
+            </div>
+          )}
+          <p className="text-[10px] leading-relaxed text-muted-foreground">
+            O agente vai buscar até 3 candidatos por exercício no YouTube. Pode levar alguns minutos. Não feche esta aba.
+          </p>
+        </div>
+
 
         {isLoading ? (
           <div className="flex h-32 items-center justify-center"><Loader2 className="h-4 w-4 animate-spin text-muted-foreground" /></div>
