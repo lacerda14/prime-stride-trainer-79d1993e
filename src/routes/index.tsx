@@ -8,6 +8,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { getDashboard } from "@/lib/profile.functions";
 import { getTodayTraining } from "@/lib/program.queries";
 import { levelProgress } from "@/lib/gamification";
+import { useLocalToday } from "@/hooks/use-local-today";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -31,6 +32,7 @@ function DashboardContent() {
   const { user } = useAuth();
   const fetchDashboard = useServerFn(getDashboard);
   const fetchToday = useServerFn(getTodayTraining);
+  const localToday = useLocalToday();
 
   const { data: dash } = useQuery({
     queryKey: ["dashboard", user?.id],
@@ -39,8 +41,8 @@ function DashboardContent() {
   });
 
   const { data: programData } = useQuery({
-    queryKey: ["today-training", user?.id],
-    queryFn: () => fetchToday(),
+    queryKey: ["today-training", user?.id, localToday.local_date, localToday.timezone],
+    queryFn: () => fetchToday({ data: localToday }),
     enabled: !!user,
   });
 
@@ -159,9 +161,12 @@ function DashboardContent() {
       <section className="glass rounded-2xl p-4">
         <div className="flex items-center gap-2 text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
           <Calendar className="h-3.5 w-3.5" strokeWidth={1.75} />
-          Próximo treino
+          Treino de hoje
         </div>
-        <div className="mt-2 text-[16px] font-semibold tracking-tight">{today?.day_name ?? "—"}</div>
+        <div className="mt-2 text-[16px] font-semibold tracking-tight">{programData?.calendar.day_name ?? today?.day_name ?? "—"}</div>
+        <div className="num mt-1 text-[11px] font-medium text-primary">
+          Semana {String(activeWeek).padStart(2, "0")} de {totalWeeks}
+        </div>
         <div className="mt-0.5 text-[12px] text-muted-foreground line-clamp-2">
           {today?.objective ?? "Sem treino programado."}
         </div>
