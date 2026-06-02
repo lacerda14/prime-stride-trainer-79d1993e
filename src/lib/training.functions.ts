@@ -4,6 +4,62 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { levelFromXp, XP_REWARDS } from "@/lib/gamification";
 
 // ============================================================
+// Week plan (distribuição dos treinos da semana)
+// ============================================================
+
+export const getWeekPlan = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i) =>
+    z.object({ week_number: z.number().int().min(1).max(60) }).parse(i),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const { data: plan, error } = await supabase
+      .from("week_plans")
+      .select("*")
+      .eq("user_id", userId)
+      .eq("week_number", data.week_number)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    return plan;
+  });
+
+export const saveWeekPlan = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i) =>
+    z
+      .object({
+        week_number: z.number().int().min(1).max(60),
+        days_distribution: z.record(z.string(), z.number().int().min(0).max(6)),
+      })
+      .parse(i),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const { data: existing } = await supabase
+      .from("week_plans")
+      .select("id")
+      .eq("user_id", userId)
+      .eq("week_number", data.week_number)
+      .maybeSingle();
+    if (existing) {
+      const { error } = await supabase
+        .from("week_plans")
+        .update({ days_distribution: data.days_distribution })
+        .eq("id", existing.id);
+      if (error) throw new Error(error.message);
+    } else {
+      const { error } = await supabase.from("week_plans").insert({
+        user_id: userId,
+        week_number: data.week_number,
+        days_distribution: data.days_distribution,
+      });
+      if (error) throw new Error(error.message);
+    }
+    return { ok: true };
+  });
+
+// ============================================================
 // Helper: server-side dia em ISO (UTC) — usuário usa a data local no front,
 // mas no banco gravamos UTC e comparamos por proximidade.
 // ============================================================
