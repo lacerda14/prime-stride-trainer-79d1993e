@@ -186,24 +186,31 @@ function DashboardContent() {
         )}
       </section>
 
-      {/* ── 3. Card COACH IA ── */}
+      {/* ── 3. Card COACH IA — teaser premium ── */}
       <section className="animate-fade-in">
-        <div className="relative overflow-hidden rounded-2xl border border-amber-500/20 bg-gradient-to-br from-amber-500/8 to-surface p-4">
-          <div className="flex items-start gap-3">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-amber-500/30 bg-amber-500/15">
-              <Star className="h-4 w-4 text-amber-400" strokeWidth={2} />
+        <Link
+          to="/coaches"
+          className="relative block overflow-hidden rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/10 via-surface to-surface p-4 transition hover:border-primary/40"
+        >
+          <div className="pointer-events-none absolute -right-10 -top-10 h-28 w-28 rounded-full bg-primary/20 blur-3xl" />
+          <div className="relative flex items-start gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-primary/30 bg-primary/15 shadow-glow">
+              <Star className="h-5 w-5 text-primary" strokeWidth={2} />
             </div>
             <div className="min-w-0 flex-1">
-              <div className="text-[10px] font-medium uppercase tracking-[0.18em] text-amber-400/80">
-                Coach IA · Insight do dia
+              <div className="inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.18em] text-primary">
+                Em breve · Premium
               </div>
-              <p className="mt-1 text-[13px] leading-relaxed text-foreground/90">
-                {coachMessage}
+              <div className="mt-1.5 text-[14px] font-semibold tracking-tight">
+                Coach IA Pessoal
+              </div>
+              <p className="mt-0.5 text-[12px] leading-relaxed text-muted-foreground">
+                Análise do seu treino, recuperação e evolução em tempo real.
               </p>
             </div>
+            <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground" />
           </div>
-          <div className="pointer-events-none absolute -right-8 -top-8 h-24 w-24 rounded-full bg-amber-500/10 blur-2xl" />
-        </div>
+        </Link>
       </section>
 
       {/* ── 4. Card STREAK + XP ── */}
