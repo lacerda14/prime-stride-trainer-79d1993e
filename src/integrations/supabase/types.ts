@@ -859,6 +859,15 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_update_exercise_content: {
+        Args: {
+          p_id: string
+          p_instructions: string
+          p_mistakes: string
+          p_muscles: string[]
+        }
+        Returns: undefined
+      }
       gen_friend_code: { Args: never; Returns: string }
     }
     Enums: {
