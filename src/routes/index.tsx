@@ -403,39 +403,6 @@ function sessionLabel(type: string): string {
   }
 }
 
-function buildCoachMessage({
-  streak,
-  weekCompleted,
-  weekDays,
-  weeklyXp,
-  totalCompleted,
-  level,
-}: {
-  streak: number;
-  weekCompleted: number;
-  weekDays: number;
-  weeklyXp: number;
-  totalCompleted: number;
-  level: number;
-}): string {
-  if (totalCompleted === 0) {
-    return "Bem-vindo ao PM Hybrid. Complete seu primeiro treino e a sua jornada começa de verdade.";
-  }
-  if (streak >= 7) {
-    return `Impressionante — ${streak} dias consecutivos! Consistência nesse nível é o que separa atletas de champions.`;
-  }
-  if (weekCompleted >= weekDays && weekDays > 0) {
-    return `Semana 100% concluída! ${weeklyXp > 0 ? `+${weeklyXp} XP ganhos essa semana.` : "Você está no caminho certo."} Descanse bem e volte mais forte.`;
-  }
-  if (weekCompleted > 0 && weekDays > 0) {
-    const remaining = weekDays - weekCompleted;
-    return `Você já treinou ${weekCompleted} vez${weekCompleted > 1 ? "es" : ""} essa semana. ${remaining} treino${remaining > 1 ? "s" : ""} para fechar a semana — não pare agora.`;
-  }
-  if (level >= 10) {
-    return `Nível ${level}. Você já tem uma base sólida — continue gerenciando carga e descanso com disciplina.`;
-  }
-  return "Cada treino é um passo. Mantenha a consistência e os resultados vêm inevitavelmente.";
-}
 
 interface Milestone {
   label: string;
