@@ -105,6 +105,7 @@ function HojePage() {
   const { user } = useAuth();
   const fetchToday = useServerFn(getTodayTraining);
   const localToday = useLocalToday();
+  const detail = useExerciseDetail();
   const { data, isLoading } = useQuery({
     queryKey: ["today-training", user?.id, localToday.local_date, localToday.timezone],
     queryFn: () => fetchToday({ data: localToday }),
@@ -133,7 +134,6 @@ function HojePage() {
   const week = data.week;
   const strength = today.exercises.filter((e) => e.exercise.category !== "core");
   const core = today.exercises.filter((e) => e.exercise.category === "core");
-  const detail = useExerciseDetail();
 
   return (
     <AppShell
