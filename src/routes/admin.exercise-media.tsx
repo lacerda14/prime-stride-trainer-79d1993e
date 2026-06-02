@@ -360,8 +360,17 @@ function CandidateCard({ c, onApprove, onReject, onSetPrimary, selected, onToggl
   const [preview, setPreview] = useState(false);
   const selectable = !c.is_approved && c.embed_allowed && !!onToggleSelect;
   return (
-    <div className="space-y-2 rounded-2xl border border-border/60 bg-surface/40 p-3">
+    <div className={`space-y-2 rounded-2xl border p-3 transition ${selected ? "border-primary bg-primary/5" : "border-border/60 bg-surface/40"}`}>
       <div className="flex items-start gap-3">
+        {selectable && (
+          <input
+            type="checkbox"
+            checked={!!selected}
+            onChange={onToggleSelect}
+            className="mt-1 h-4 w-4 shrink-0 accent-primary"
+            aria-label="Selecionar candidato"
+          />
+        )}
         <button onClick={() => setPreview((p) => !p)} className="relative h-16 w-24 shrink-0 overflow-hidden rounded-lg bg-surface-elevated">
           {c.thumbnail_url ? <img src={c.thumbnail_url} alt="" className="h-full w-full object-cover" /> : <PlayCircle className="m-auto h-6 w-6 text-muted-foreground" />}
           <PlayCircle className="absolute inset-0 m-auto h-5 w-5 text-white drop-shadow" />
