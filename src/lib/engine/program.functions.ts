@@ -14,7 +14,7 @@ export const generateProgramForCurrentUser = createServerFn({ method: "POST" })
 
     const { data: profile, error: pErr } = await supabase
       .from("profiles")
-      .select("age, sex, weight_kg, height_cm, experience_level, goal, available_days")
+      .select("age, sex, weight_kg, height_cm, experience_level, goal, available_days, equipment")
       .eq("id", userId)
       .single();
     if (pErr) throw new Error(pErr.message);
@@ -31,6 +31,7 @@ export const generateProgramForCurrentUser = createServerFn({ method: "POST" })
       experience_level: profile.experience_level as UserProfileInput["experience_level"],
       goal: profile.goal as UserProfileInput["goal"],
       available_days: profile.available_days as UserProfileInput["available_days"],
+      available_equipment: (profile.equipment ?? []) as string[],
     };
 
     const pool = await loadExercisePool(supabase);
