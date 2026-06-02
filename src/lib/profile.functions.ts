@@ -151,7 +151,22 @@ const onboardingV2Schema = z.object({
   past_injuries: z.array(z.string().min(1).max(60)).max(20).default([]),
   uncomfortable_movements: z.array(z.string().min(1).max(40)).max(20).default([]),
   // S10
-  equipment: z.array(z.string().min(1).max(60)).max(30).default([]),
+  equipment: z.array(z.string().min(1).max(60)).max(60).default([]),
+  gym_setup: z.object({
+    location: z.string().max(60).optional().nullable(),
+    full_gym_completeness: z.string().max(60).optional().nullable(),
+    full_gym_missing: z.array(z.string().max(60)).max(30).default([]),
+    full_gym_missing_other: z.string().max(300).optional().nullable(),
+    condo_equipment: z.array(z.string().max(60)).max(40).default([]),
+    condo_other: z.string().max(300).optional().nullable(),
+    home_equipment: z.array(z.string().max(60)).max(40).default([]),
+    home_other: z.string().max(300).optional().nullable(),
+    box_completeness: z.string().max(10).optional().nullable(),
+    box_equipment: z.array(z.string().max(60)).max(30).default([]),
+    box_other: z.string().max(300).optional().nullable(),
+    mixed_primary: z.string().max(40).optional().nullable(),
+    mixed_other_locations: z.array(z.string().max(40)).max(10).default([]),
+  }).default({}),
   // S11
   preferences: z.array(z.string().min(1).max(40)).max(20).default([]),
   training_style: z.string().max(40).optional().nullable(),
