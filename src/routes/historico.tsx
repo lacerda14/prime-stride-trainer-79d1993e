@@ -5,6 +5,9 @@ import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useAuth } from "@/hooks/use-auth";
 import { listWorkoutHistory } from "@/lib/workout-session.functions";
+import { OfflineNotice } from "@/components/offline-badge";
+import { flushQueue } from "@/lib/offline-sync";
+import { useEffect } from "react";
 
 export const Route = createFileRoute("/historico")({
   head: () => ({
