@@ -1,0 +1,1 @@
+ALTER TABLE public.exercise_pool ADD CONSTRAINT exercise_pool_code_unique UNIQUE (code);
