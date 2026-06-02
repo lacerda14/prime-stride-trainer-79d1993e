@@ -827,7 +827,7 @@ export function generatePlan(profile: UserProfileInput, exercisePool: ExerciseRo
           // pliometria opcional (sem 13+ pode injetar 1 no slot final lower, deixamos fora por enquanto)
 
           const isCore = category === "core";
-          const ex = pickExercise(exercisePool, category, {
+          const ex = pickExercise(pool, category, {
             week: w,
             experience: profile.experience_level,
             usedInDay,
@@ -872,11 +872,11 @@ export function generatePlan(profile: UserProfileInput, exercisePool: ExerciseRo
           const catB = seq[i + 1];
           const isCore = catA === "core";
           const pairId = Math.floor(i / 2) + 1;
-          const exA = pickExercise(exercisePool, catA, {
+          const exA = pickExercise(pool, catA, {
             week: w, experience: profile.experience_level,
             usedInDay, usedInWeek, mesoUsage, rotationOffset: globalOffset++,
           }, isCore);
-          const exB = pickExercise(exercisePool, catB, {
+          const exB = pickExercise(pool, catB, {
             week: w, experience: profile.experience_level,
             usedInDay: new Set([...usedInDay, ...(exA ? [exA.id] : [])]),
             usedInWeek, mesoUsage, rotationOffset: globalOffset++,
