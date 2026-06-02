@@ -110,17 +110,8 @@ function TreinoPage() {
   const search = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
   const [allowRepeat, setAllowRepeat] = useState(() => search?.get("force") === "1");
 
-  // Só redireciona para o resumo se NÃO estiver finalizando uma sessão AGORA
-  // e o usuário não pediu para repetir o treino
-  useEffect(() => {
-    if (completedTodayQ.data?.id && !finishingRef.current && !sessionIdRef.current && !allowRepeat) {
-      navigate({
-        to: "/treino/concluido/$sessionId",
-        params: { sessionId: completedTodayQ.data.id },
-        replace: true,
-      });
-    }
-  }, [completedTodayQ.data, allowRepeat, navigate]);
+  // O redirect para sessão concluída é feito no render (acima), não em useEffect,
+  // para evitar loop e garantir que não dispara durante o finishing.
 
 
   // Constrói a fila de itens
@@ -448,6 +439,13 @@ function TreinoPage() {
   // ----------------------------------------------------------
   // RENDER
   // ----------------------------------------------------------
+
+  // Se já tem treino concluído hoje e não é repeat forçado → redireciona direto
+  // (verificar isso ANTES do spinner para não ficar preso no loading)
+  if (completedTodayQ.data?.id && !sessionId && !allowRepeat && !finishing) {
+    navigate({ to: "/treino/concluido/$sessionId", params: { sessionId: completedTodayQ.data.id }, replace: true });
+    return <FullscreenSpinner />;
+  }
 
   if (todayQ.isLoading || activeQ.isLoading || recoverState.kind === "idle") {
     return <FullscreenSpinner />;
