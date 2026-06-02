@@ -1,6 +1,6 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { AppShell } from "@/components/app-shell";
-import { Watch, Bell, User, Database, Smartphone, RotateCcw, Loader2 } from "lucide-react";
+import { Watch, Bell, User, Database, Smartphone, RotateCcw, Loader2, Activity, Heart, ChevronRight } from "lucide-react";
 import { useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { useQueryClient } from "@tanstack/react-query";
@@ -11,65 +11,97 @@ export const Route = createFileRoute("/configuracoes")({
   head: () => ({
     meta: [
       { title: "Configurações · PM Hybrid" },
-      { name: "description", content: "Preferências e integrações com smartwatches." },
+      { name: "description", content: "Preferências, integrações com wearables e privacidade." },
     ],
   }),
   component: ConfigPage,
 });
 
-const watches = [
-  { name: "Apple Watch", status: "Pronto para conectar" },
-  { name: "Garmin", status: "Pronto para conectar" },
-  { name: "Coros", status: "Pronto para conectar" },
-  { name: "Polar", status: "Pronto para conectar" },
-  { name: "Samsung Watch", status: "Pronto para conectar" },
+const HEALTH_PLATFORMS = [
+  { name: "Apple Health", desc: "iPhone · iCloud Health", status: "Em breve" },
+  { name: "Samsung Health", desc: "Galaxy · Samsung Account", status: "Em breve" },
+];
+
+const WEARABLES = [
+  { name: "Apple Watch", desc: "watchOS 10+", status: "Em breve" },
+  { name: "Garmin", desc: "Forerunner · Fenix · Epix", status: "Em breve" },
+  { name: "Coros", desc: "Pace · Apex · Vertix", status: "Em breve" },
+  { name: "Polar", desc: "Pacer · Vantage · Grit", status: "Em breve" },
 ];
 
 function ConfigPage() {
   return (
     <AppShell eyebrow="Sistema" title="Configurações">
-      <div className="mx-auto max-w-3xl space-y-6 p-4 sm:p-6">
-        <Section icon={User} title="Perfil" description="Informações pessoais e biometria">
-          <Row label="Nome" value="PM Athlete" />
-          <Row label="Peso" value="78 kg" />
-          <Row label="Altura" value="178 cm" />
-          <Row label="Bloco atual" value="Build · Meso 2 · Semana 07" />
-        </Section>
+      <div className="space-y-5 px-5 pb-28 pt-4">
+        <PerfilLink />
 
-        <Section icon={Watch} title="Smartwatches" description="Integração desacoplada — pronta para ativação futura">
-          {watches.map((w) => (
-            <Row
-              key={w.name}
-              label={w.name}
-              value={
-                <button className="rounded-full border border-border bg-surface/60 px-3 py-1 text-[11px] font-medium text-muted-foreground hover:bg-surface-elevated hover:text-foreground">
-                  Conectar
-                </button>
-              }
-              hint={w.status}
-            />
+        <Section icon={Heart} title="Saúde" description="Sincronize seus dados de saúde">
+          {HEALTH_PLATFORMS.map((p) => (
+            <IntegrationRow key={p.name} name={p.name} desc={p.desc} status={p.status} />
           ))}
         </Section>
 
-        <Section icon={Bell} title="Notificações" description="Lembretes de treino e recovery">
+        <Section icon={Watch} title="Wearables" description="Conecte seus dispositivos">
+          {WEARABLES.map((w) => (
+            <IntegrationRow key={w.name} name={w.name} desc={w.desc} status={w.status} />
+          ))}
+        </Section>
+
+        <Section icon={Activity} title="Treino">
+          <Row label="Programa" value="PM Hybrid · 48 semanas" />
+          <Row label="Sincronização" value="Local" hint="Em breve: sincronização em nuvem" />
+        </Section>
+
+        <Section icon={Bell} title="Notificações">
           <Toggle label="Lembrete diário de treino" defaultOn />
           <Toggle label="Resumo semanal" defaultOn />
           <Toggle label="Alerta de deload" />
         </Section>
 
-        <Section icon={Database} title="Dados">
-          <Row label="Programa" value="Híbrido 48 semanas" />
-          <Row label="Sincronização" value="Local" hint="Em breve: sincronização em nuvem" />
-        </Section>
-
         <Section icon={Smartphone} title="Aplicativo">
           <Row label="Versão" value="1.0.0" />
-          <Row label="Tema" value="Dark Premium" />
+          <Row label="Tema" value="Premium Black" />
+        </Section>
+
+        <Section icon={Database} title="Dados">
+          <Row label="Exportar dados" value={<ChevronRight className="h-4 w-4 text-muted-foreground" />} />
+          <Row label="Política de privacidade" value={<ChevronRight className="h-4 w-4 text-muted-foreground" />} />
         </Section>
 
         <DevSection />
       </div>
     </AppShell>
+  );
+}
+
+function PerfilLink() {
+  return (
+    <Link to="/perfil" className="glass flex items-center justify-between rounded-3xl p-5 active:scale-[0.99] transition-transform">
+      <div className="flex items-center gap-3">
+        <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-titanium">
+          <User className="h-5 w-5 text-primary-foreground" />
+        </div>
+        <div>
+          <div className="text-[15px] font-semibold tracking-tight">Editar Perfil</div>
+          <div className="text-[12px] text-muted-foreground">Objetivo · medidas · preferências</div>
+        </div>
+      </div>
+      <ChevronRight className="h-5 w-5 text-muted-foreground" />
+    </Link>
+  );
+}
+
+function IntegrationRow({ name, desc, status }: { name: string; desc: string; status: string }) {
+  return (
+    <div className="flex items-center justify-between py-3.5">
+      <div>
+        <div className="text-[14px] font-medium tracking-tight">{name}</div>
+        <div className="mt-0.5 text-[11.5px] text-muted-foreground">{desc}</div>
+      </div>
+      <button disabled className="rounded-full border border-border bg-surface/60 px-3 py-1 text-[10.5px] font-medium uppercase tracking-[0.14em] text-muted-foreground/70">
+        {status}
+      </button>
+    </div>
   );
 }
 
@@ -95,46 +127,38 @@ function DevSection() {
   };
 
   return (
-    <section className="glass animate-fade-in rounded-2xl p-6">
-      <div className="flex items-start gap-3 border-b border-border pb-4">
-        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/15">
-          <RotateCcw className="h-4 w-4 text-primary" />
+    <section className="rounded-3xl border border-border/50 bg-surface/30 p-5">
+      <div className="flex items-center gap-2.5 pb-3">
+        <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-muted">
+          <RotateCcw className="h-4 w-4 text-muted-foreground" />
         </div>
         <div>
-          <div className="text-sm font-semibold tracking-tight">Admin / Dev</div>
-          <div className="mt-0.5 text-xs text-muted-foreground">Ferramentas de teste — use com cautela.</div>
+          <div className="text-[13px] font-semibold tracking-tight">Admin / Dev</div>
+          <div className="text-[11px] text-muted-foreground">Ferramentas de teste.</div>
         </div>
       </div>
-      <div className="mt-4">
-        <button
-          onClick={handleReset}
-          disabled={loading}
-          className="inline-flex items-center gap-2 rounded-xl border border-border bg-surface/60 px-4 py-2.5 text-[13px] font-medium hover:bg-surface-elevated disabled:opacity-60"
-        >
-          {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4" />}
-          Reset Onboarding
-        </button>
-        <p className="mt-2 text-[11px] text-muted-foreground">
-          Marca <code>onboarding_completed = false</code> e arquiva o programa atual, forçando o fluxo novamente.
-        </p>
-      </div>
+      <button onClick={handleReset} disabled={loading}
+        className="inline-flex items-center gap-2 rounded-xl border border-border bg-surface/60 px-4 py-2.5 text-[12.5px] font-medium disabled:opacity-60">
+        {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4" />}
+        Reset Onboarding
+      </button>
     </section>
   );
 }
 
-function Section({ icon: Icon, title, description, children }: any) {
+function Section({ icon: Icon, title, description, children }: { icon: React.ComponentType<{ className?: string }>; title: string; description?: string; children: React.ReactNode }) {
   return (
-    <section className="glass animate-fade-in rounded-2xl p-6">
-      <div className="flex items-start gap-3 border-b border-border pb-4">
-        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/15">
+    <section className="glass animate-fade-in rounded-3xl p-5">
+      <div className="flex items-start gap-2.5 pb-2">
+        <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary/10">
           <Icon className="h-4 w-4 text-primary" />
         </div>
         <div>
-          <div className="text-sm font-semibold tracking-tight">{title}</div>
-          {description && <div className="mt-0.5 text-xs text-muted-foreground">{description}</div>}
+          <div className="text-[14px] font-semibold tracking-tight">{title}</div>
+          {description && <div className="mt-0.5 text-[11.5px] text-muted-foreground">{description}</div>}
         </div>
       </div>
-      <div className="mt-2 divide-y divide-border/60">{children}</div>
+      <div className="divide-y divide-border/40">{children}</div>
     </section>
   );
 }
@@ -143,10 +167,10 @@ function Row({ label, value, hint }: { label: string; value: React.ReactNode; hi
   return (
     <div className="flex items-center justify-between py-3.5">
       <div>
-        <div className="text-sm font-medium">{label}</div>
+        <div className="text-[14px] font-medium">{label}</div>
         {hint && <div className="mt-0.5 text-[11px] text-muted-foreground">{hint}</div>}
       </div>
-      <div className="text-sm text-muted-foreground">{value}</div>
+      <div className="text-[13px] text-muted-foreground">{value}</div>
     </div>
   );
 }
@@ -154,7 +178,7 @@ function Row({ label, value, hint }: { label: string; value: React.ReactNode; hi
 function Toggle({ label, defaultOn }: { label: string; defaultOn?: boolean }) {
   return (
     <label className="flex cursor-pointer items-center justify-between py-3.5">
-      <span className="text-sm font-medium">{label}</span>
+      <span className="text-[14px] font-medium">{label}</span>
       <input type="checkbox" defaultChecked={defaultOn} className="peer sr-only" />
       <span className="relative h-6 w-11 rounded-full bg-surface-elevated transition-colors peer-checked:bg-primary">
         <span className="absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-foreground transition-transform peer-checked:translate-x-5" />
