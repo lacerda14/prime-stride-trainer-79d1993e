@@ -23,7 +23,7 @@ export function RequireAuth({ children }: { children: ReactNode }) {
 
   // só sabemos o status quando o query terminou com sucesso e devolveu uma row
   const profileLoaded = profileQ.isSuccess && profileQ.data != null;
-  const onboardingCompleted = profileLoaded && profileQ.data!.onboarding_completed === true;
+  void profileLoaded;
   const onboardingMissing = profileLoaded && profileQ.data!.onboarding_completed !== true;
 
   // 1) não autenticado → /auth
