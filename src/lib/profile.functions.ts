@@ -104,10 +104,10 @@ const onboardingV2Schema = z.object({
   // S1
   first_name: z.string().trim().min(1).max(60),
   last_name: z.string().trim().max(80).optional().nullable(),
-  birth_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-  sex: z.enum(["male", "female", "other"]),
-  height_cm: z.number().min(100).max(250),
-  weight_kg: z.number().min(20).max(300),
+  birth_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().nullable(),
+  sex: z.enum(["male", "female", "other", "prefer_not_to_say"]).optional().nullable(),
+  height_cm: z.number().min(50).max(250).optional().nullable(),
+  weight_kg: z.number().min(10).max(500).optional().nullable(),
   waist_cm: z.number().min(20).max(300).optional().nullable(),
   hip_cm: z.number().min(20).max(300).optional().nullable(),
   chest_cm: z.number().min(20).max(300).optional().nullable(),
@@ -115,20 +115,20 @@ const onboardingV2Schema = z.object({
   thigh_cm: z.number().min(10).max(200).optional().nullable(),
   phone: z.string().trim().max(40).optional().nullable(),
   // S2
-  primary_goal: z.enum(PRIMARY_GOALS),
+  primary_goal: z.string().min(1).max(60).optional().nullable(),
   // S3
   secondary_goals: z.array(z.string().min(1).max(60)).max(3).default([]),
   // S4
-  experience_level: z.enum(["beginner", "intermediate", "advanced"]),
-  training_history: z.enum(["none", "lt_6m", "6m_2y", "2_5y", "gt_5y"]),
-  training_location: z.string().min(1).max(60),
-  available_days: z.number().int().min(3).max(6),
-  available_minutes: z.number().int().min(30).max(90),
+  experience_level: z.string().max(40).optional().nullable(),
+  training_history: z.string().max(60).optional().nullable(),
+  training_location: z.string().max(60).optional().nullable(),
+  available_days: z.number().int().min(0).max(14).optional().nullable(),
+  available_minutes: z.number().int().min(0).max(300).optional().nullable(),
   // S5
   sports: z.array(z.string().min(1).max(40)).max(20).default([]),
   sports_frequency: z.record(z.string(), z.number().int().min(0).max(14)).default({}),
   // S6
-  running_mode: z.enum(["desabilitado", "opcional", "integrado", "principal"]),
+  running_mode: z.string().max(40).optional().nullable(),
   running_level: z.string().max(40).optional().nullable(),
   running_continuous_minutes: z.string().max(40).optional().nullable(),
   running_goals: z.array(z.string().min(1).max(80)).max(10).default([]),
@@ -200,8 +200,9 @@ export const completeOnboarding = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
 
-    const age = computeAge(data.birth_date);
-    const dbGoal = mapPrimaryToDbGoal(data.primary_goal);
+    const age = data.birth_date ? computeAge(data.birth_date) : null;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const dbGoal = data.primary_goal ? mapPrimaryToDbGoal(data.primary_goal as any) : null;
     const name = [data.first_name, data.last_name].filter(Boolean).join(" ").trim() || data.first_name;
 
     const { error: updateErr } = await supabase
@@ -215,10 +216,11 @@ export const completeOnboarding = createServerFn({ method: "POST" })
         sex: data.sex,
         weight_kg: data.weight_kg,
         height_cm: data.height_cm,
-        experience_level: data.experience_level,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        experience_level: data.experience_level as any,
         goal: dbGoal,
-        available_days: clampDays(data.available_days),
-        available_minutes: clampMinutes(data.available_minutes),
+        available_days: clampDays(data.available_days ?? 4),
+        available_minutes: clampMinutes(data.available_minutes ?? 60),
         training_history: data.training_history,
         training_location: data.training_location,
         sports: data.sports,
@@ -266,16 +268,21 @@ export const completeOnboarding = createServerFn({ method: "POST" })
       }, { onConflict: "id" });
     if (updateErr) throw new Error(updateErr.message);
 
-    await supabase.from("weight_history").insert({
-      user_id: userId, weight_kg: data.weight_kg,
-    });
+    if (data.weight_kg) {
+      await supabase.from("weight_history").insert({
+        user_id: userId, weight_kg: data.weight_kg,
+      });
+    }
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const input: UserProfileInput = {
-      age, sex: data.sex,
-      weight_kg: data.weight_kg, height_cm: data.height_cm,
-      experience_level: data.experience_level,
-      goal: mapDbToEngineGoal(dbGoal),
-      available_days: clampDays(data.available_days),
+      age:              age ?? 30,
+      sex:              (data.sex as any) ?? "other",
+      weight_kg:        data.weight_kg ?? 70,
+      height_cm:        data.height_cm ?? 170,
+      experience_level: (data.experience_level as any) ?? "beginner",
+      goal:             mapDbToEngineGoal(dbGoal as any) ?? "general_health",
+      available_days:   clampDays(data.available_days ?? 4),
     };
     const pool = await loadExercisePool(supabase);
     if (pool.length === 0) throw new Error("Catálogo de exercícios vazio.");
@@ -309,22 +316,23 @@ export const updateProfile = createServerFn({ method: "POST" })
     }
     // derived fields
     if (rest.birth_date) patch.age = computeAge(rest.birth_date);
-    if (rest.primary_goal) patch.goal = mapPrimaryToDbGoal(rest.primary_goal);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    if (rest.primary_goal) patch.goal = mapPrimaryToDbGoal(rest.primary_goal as any);
     if (rest.first_name || rest.last_name) {
       const fn = (rest.first_name ?? "").trim();
       const ln = (rest.last_name ?? "").trim();
       const composed = [fn, ln].filter(Boolean).join(" ");
       if (composed) patch.name = composed;
     }
-    if (rest.available_days !== undefined) patch.available_days = clampDays(rest.available_days);
-    if (rest.available_minutes !== undefined) patch.available_minutes = clampMinutes(rest.available_minutes);
+    if (rest.available_days != null) patch.available_days = clampDays(rest.available_days);
+    if (rest.available_minutes != null) patch.available_minutes = clampMinutes(rest.available_minutes);
 
     if (Object.keys(patch).length > 0) {
       const { error } = await supabase.from("profiles").update(patch as never).eq("id", userId);
       if (error) throw new Error(error.message);
     }
 
-    if (rest.weight_kg !== undefined) {
+    if (rest.weight_kg != null) {
       await supabase.from("weight_history").insert({
         user_id: userId, weight_kg: rest.weight_kg,
       });
