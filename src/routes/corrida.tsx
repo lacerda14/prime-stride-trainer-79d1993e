@@ -85,21 +85,21 @@ function describeProtocol(r: RunningSessionListItem): string[] {
 function protocolSummary(row: RunningSessionListItem): string {
   const p = row.protocol;
   const intervals = p.intervals_per_block ?? p.intervals;
+  const pace = paceRange(p);
   if (p.blocks && intervals && p.work_duration_seconds) {
     const rest = p.rest_duration_seconds ? ` · ${formatRunSeconds(p.rest_duration_seconds)} descanso` : "";
     const between = p.blocks > 1
       ? ` · Entre blocos: ${p.between_blocks_rest_seconds ? formatRunSeconds(p.between_blocks_rest_seconds) : "obrigatório"}`
       : "";
-    return `${p.blocks}×${intervals} tiros · ${formatRunSeconds(p.work_duration_seconds)} corrida${rest}${between}`;
+    return `${p.blocks}×${intervals} tiros · ${formatRunSeconds(p.work_duration_seconds)} corrida${rest}${between}${pace ? ` · Pace ${pace}` : ""}`;
   }
-  return p.total_duration_minutes ? `${p.total_duration_minutes} min contínuos` : row.protocol.protocol_type;
+  return p.total_duration_minutes ? `${p.total_duration_minutes} min contínuos${pace ? ` · Pace ${pace}` : ""}` : row.protocol.protocol_type;
 }
 
 function RunCard({ row }: { row: RunningSessionListItem }) {
   const [open, setOpen] = useState(false);
   const lines = describeProtocol(row);
   const first = protocolSummary(row);
-  const pace = paceRange(row.protocol);
   const betweenRest = row.protocol.between_blocks_rest_seconds;
   return (
     <div className="glass overflow-hidden rounded-2xl">
@@ -146,11 +146,6 @@ function RunCard({ row }: { row: RunningSessionListItem }) {
                 {line}
               </div>
             ))}
-            {pace && (
-              <div className="num rounded-lg border border-border/60 bg-surface/40 px-4 py-2.5 text-sm">
-                Pace: {pace}
-              </div>
-            )}
           </div>
         </div>
       </div>
