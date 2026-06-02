@@ -106,13 +106,30 @@ export function AppSidebar() {
             <div className="text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
               Atleta
             </div>
-            <div className="mt-0.5 text-sm font-semibold tracking-tight">PM Athlete</div>
-            <div className="num mt-1 text-[11px] text-muted-foreground">
-              Semana 07 · Build · Meso 2
-            </div>
+            <div className="mt-0.5 truncate text-sm font-semibold tracking-tight">{displayName}</div>
+            {user?.email && (
+              <div className="num mt-0.5 truncate text-[11px] text-muted-foreground">{user.email}</div>
+            )}
+            <Button
+              variant="ghost"
+              size="sm"
+              className="mt-2 h-8 w-full justify-start gap-2 px-2 text-[12px] text-muted-foreground hover:text-foreground"
+              onClick={() => signOut()}
+            >
+              <LogOut className="h-3.5 w-3.5" />
+              Sair
+            </Button>
           </div>
         ) : (
-          <div className="mx-auto h-8 w-8 rounded-full bg-primary/20 ring-1 ring-primary/40" />
+          <Button
+            variant="ghost"
+            size="icon"
+            className="mx-auto h-8 w-8 rounded-full bg-primary/10 ring-1 ring-primary/30"
+            onClick={() => signOut()}
+            aria-label="Sair"
+          >
+            <LogOut className="h-3.5 w-3.5" />
+          </Button>
         )}
       </SidebarFooter>
     </Sidebar>
