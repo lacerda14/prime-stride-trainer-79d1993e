@@ -1,8 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { AppShell } from "@/components/app-shell";
-import { WEEKS } from "@/lib/mock-data";
-import { TrendingUp } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
+import { getTopExercises } from "@/lib/program.queries";
+import { useAuth } from "@/hooks/use-auth";
+import { TrendingUp, Loader2 } from "lucide-react";
 
 export const Route = createFileRoute("/progressao")({
   head: () => ({
@@ -14,41 +17,30 @@ export const Route = createFileRoute("/progressao")({
   component: ProgressaoPage,
 });
 
-// Derived from the actual periodization spreadsheet (V19 audited)
-const EXERCISES: string[] = (() => {
-  const counts = new Map<string, number>();
-  for (const w of WEEKS) {
-    for (const d of w.days) {
-      for (const ex of d.strength) {
-        if (!ex.name) continue;
-        counts.set(ex.name, (counts.get(ex.name) ?? 0) + ex.sets);
-      }
-    }
-  }
-  return [...counts.entries()]
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 12)
-    .map(([n]) => n);
-})();
-
 interface Row {
   week: number;
   load: number;
   reps: number;
   rpe: number;
-  manual?: boolean;
 }
 
 function ProgressaoPage() {
-  const [selected, setSelected] = useState(EXERCISES[0] ?? "");
-  const [base, setBase] = useState<{ load: number; reps: number; rpe: number }>({
-    load: 100,
-    reps: 5,
-    rpe: 7,
+  const { user } = useAuth();
+  const fetchTop = useServerFn(getTopExercises);
+  const { data: top, isLoading } = useQuery({
+    queryKey: ["top-exercises", user?.id],
+    queryFn: () => fetchTop(),
+    enabled: !!user,
   });
 
+  const exercises = top ?? [];
+  const [selected, setSelected] = useState<string>("");
+  useEffect(() => {
+    if (!selected && exercises.length > 0) setSelected(exercises[0].name);
+  }, [exercises, selected]);
 
-  // Auto-project loads based on RPE & progressive overload (~2.5% per week, deload every 4th)
+  const [base, setBase] = useState({ load: 100, reps: 5, rpe: 7 });
+
   const rows = useMemo<Row[]>(() => {
     const arr: Row[] = [];
     let load = base.load;
@@ -57,7 +49,12 @@ function ProgressaoPage() {
       if (w > 1) {
         load = isDeload ? Math.round(load * 0.85) : Math.round(load * 1.025);
       }
-      arr.push({ week: w, load, reps: base.reps, rpe: isDeload ? Math.max(5, base.rpe - 2) : base.rpe });
+      arr.push({
+        week: w,
+        load,
+        reps: base.reps,
+        rpe: isDeload ? Math.max(5, base.rpe - 2) : base.rpe,
+      });
     }
     return arr;
   }, [base]);
@@ -69,23 +66,35 @@ function ProgressaoPage() {
           <div className="text-[10px] font-medium uppercase tracking-[0.22em] text-muted-foreground">
             Exercício
           </div>
-          <h2 className="mt-1 text-xl font-semibold tracking-tight">{selected}</h2>
+          <h2 className="mt-1 text-xl font-semibold tracking-tight">
+            {selected || (isLoading ? "Carregando..." : "—")}
+          </h2>
 
-          <div className="-mx-1 mt-3 flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            {EXERCISES.map((e) => (
-              <button
-                key={e}
-                onClick={() => setSelected(e)}
-                className={`shrink-0 rounded-full px-3.5 py-1.5 text-xs font-medium transition-all ${
-                  e === selected
-                    ? "bg-primary text-primary-foreground shadow-glow"
-                    : "border border-border bg-surface/60 text-muted-foreground"
-                }`}
-              >
-                {e}
-              </button>
-            ))}
-          </div>
+          {isLoading ? (
+            <div className="mt-3 flex justify-center py-4 text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" />
+            </div>
+          ) : exercises.length === 0 ? (
+            <div className="mt-3 text-xs text-muted-foreground">
+              Conclua o onboarding para gerar exercícios.
+            </div>
+          ) : (
+            <div className="-mx-1 mt-3 flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              {exercises.map((e) => (
+                <button
+                  key={e.id}
+                  onClick={() => setSelected(e.name)}
+                  className={`shrink-0 rounded-full px-3.5 py-1.5 text-xs font-medium transition-all ${
+                    e.name === selected
+                      ? "bg-primary text-primary-foreground shadow-glow"
+                      : "border border-border bg-surface/60 text-muted-foreground"
+                  }`}
+                >
+                  {e.name}
+                </button>
+              ))}
+            </div>
+          )}
 
           <div className="num mt-5 grid grid-cols-3 gap-2">
             <Field label="Carga" suffix="kg" value={base.load} onChange={(v) => setBase({ ...base, load: v })} />
@@ -155,4 +164,3 @@ function Field({ label, value, onChange, step = 1, suffix }: { label: string; va
     </label>
   );
 }
-
