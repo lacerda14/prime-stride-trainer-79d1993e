@@ -105,7 +105,7 @@ const onboardingV2Schema = z.object({
   first_name: z.string().trim().min(1).max(60),
   last_name: z.string().trim().max(80).optional().nullable(),
   birth_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-  sex: z.enum(["male", "female", "other", "prefer_not_to_say"]),
+  sex: z.enum(["male", "female", "other"]),
   height_cm: z.number().min(100).max(250),
   weight_kg: z.number().min(20).max(300),
   waist_cm: z.number().min(20).max(300).optional().nullable(),
@@ -401,45 +401,6 @@ export const registerProgressPhoto = createServerFn({ method: "POST" })
     });
     if (error) throw new Error(error.message);
     return { ok: true };
-  });
-
-// ============================================================
-// Incremental onboarding save (salva parcialmente por etapa)
-// ============================================================
-
-const onboardingStepSchema = z.object({
-  step: z.number().int().min(0).max(14),
-  data: z.record(z.string(), z.unknown()),
-});
-
-export const saveOnboardingData = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .inputValidator((input) => onboardingStepSchema.parse(input))
-  .handler(async ({ data, context }) => {
-    const { supabase, userId } = context;
-    const patch: Record<string, unknown> = {
-      onboarding_step: data.step,
-      ...data.data,
-    };
-    const { error } = await supabase
-      .from("profiles")
-      .update(patch as never)
-      .eq("id", userId);
-    if (error) throw new Error(error.message);
-    return { ok: true };
-  });
-
-export const loadOnboardingData = createServerFn({ method: "GET" })
-  .middleware([requireSupabaseAuth])
-  .handler(async ({ context }) => {
-    const { supabase, userId } = context;
-    const { data, error } = await supabase
-      .from("profiles")
-      .select("*")
-      .eq("id", userId)
-      .maybeSingle();
-    if (error) throw new Error(error.message);
-    return data;
   });
 
 // ============================================================
