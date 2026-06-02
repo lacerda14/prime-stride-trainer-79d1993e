@@ -69,8 +69,6 @@ function DashboardContent() {
   const today = programData?.today ?? null;
   const activeWeek = summary?.active_week ?? 1;
   const totalWeeks = summary?.total_weeks ?? 48;
-  const weekDays = programData?.week.days.filter((d) => d.session_type !== "rest").length ?? 0;
-  const weekCompleted = programData?.week.days.filter((d) => d.completed_at).length ?? 0;
 
   const rawName =
     (user?.user_metadata?.name as string | undefined) ||
