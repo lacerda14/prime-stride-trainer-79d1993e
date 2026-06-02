@@ -25,7 +25,7 @@ const mockHistory = [
 function HistoricoPage() {
   return (
     <AppShell eyebrow="Atividade" title="Histórico">
-      <div className="mx-auto max-w-4xl space-y-6 p-6 lg:p-10">
+      <div className="mx-auto max-w-4xl space-y-6 p-4 sm:p-6">
         <div className="glass-strong animate-fade-in grid gap-4 rounded-3xl p-7 sm:grid-cols-3">
           <Stat label="Sessões" value="42" hint="últimos 30 dias" />
           <Stat label="Volume total" value="156t" hint="tonelagem" />

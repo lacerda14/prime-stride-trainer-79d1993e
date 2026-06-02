@@ -23,7 +23,7 @@ const watches = [
 function ConfigPage() {
   return (
     <AppShell eyebrow="Sistema" title="Configurações">
-      <div className="mx-auto max-w-3xl space-y-6 p-6 lg:p-10">
+      <div className="mx-auto max-w-3xl space-y-6 p-4 sm:p-6">
         <Section icon={User} title="Perfil" description="Informações pessoais e biometria">
           <Row label="Nome" value="PM Athlete" />
           <Row label="Peso" value="78 kg" />

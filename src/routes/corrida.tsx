@@ -41,7 +41,7 @@ function CorridaPage() {
 
   return (
     <AppShell eyebrow="Corrida" title="Sessões de Running">
-      <div className="mx-auto max-w-4xl space-y-6 p-6 lg:p-10">
+      <div className="mx-auto max-w-4xl space-y-6 p-4 sm:p-6">
         <section className="glass-strong animate-fade-in grid gap-4 rounded-3xl p-7 sm:grid-cols-3">
           <div>
             <Footprints className="h-5 w-5 text-primary" />
