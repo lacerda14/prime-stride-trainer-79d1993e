@@ -1,11 +1,12 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { AppShell } from "@/components/app-shell";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { getProfile, updateProfile } from "@/lib/profile.functions";
 import { toast } from "sonner";
-import { Loader2, Save, User, Target, Calendar, Heart } from "lucide-react";
+import { Loader2, Save, User, Target, Calendar, Heart, Shield, ChevronRight } from "lucide-react";
+import { useIsAdmin } from "@/hooks/use-is-admin";
 
 export const Route = createFileRoute("/perfil")({
   head: () => ({ meta: [{ title: "Perfil · PM Hybrid" }] }),
@@ -32,6 +33,7 @@ function PerfilPage() {
   const qc = useQueryClient();
   const fetch = useServerFn(getProfile);
   const save = useServerFn(updateProfile);
+  const isAdmin = useIsAdmin();
 
   const { data: p, isLoading } = useQuery({
     queryKey: ["profile-edit"],
@@ -161,6 +163,20 @@ function PerfilPage() {
           <Multi label="Preferências" items={PREFERENCES} selected={form.preferences} onToggle={(v) => toggle("preferences", v)} />
           <Multi label="Motivação" items={MOTIVATIONS} selected={form.motivations} onToggle={(v) => toggle("motivations", v)} />
         </Card>
+
+        {isAdmin && (
+          <Card icon={Shield} title="Admin">
+            <Link
+              to="/admin/exercise-media"
+              className="flex items-center justify-between rounded-xl border border-border bg-surface/40 px-4 py-3 text-[14px] font-medium text-foreground transition-colors hover:bg-surface/60"
+            >
+              <span>Curador de Vídeos</span>
+              <ChevronRight className="h-4 w-4 text-muted-foreground" />
+            </Link>
+          </Card>
+        )}
+
+
 
         {regen && (
           <div className="rounded-2xl border border-primary/40 bg-primary/[0.06] p-4 text-[13px] text-foreground">

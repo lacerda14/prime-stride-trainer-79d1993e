@@ -5,9 +5,10 @@ import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { getTodayTraining, type SessionExerciseDTO } from "@/lib/program.queries";
 import { useAuth } from "@/hooks/use-auth";
-import { ChevronDown, Play, Timer, Target, Loader2 } from "lucide-react";
+import { ChevronDown, Play, Timer, Target, Loader2, PlayCircle } from "lucide-react";
 import { runningHeadline, runningInstructions } from "@/lib/format-running";
 import { useLocalToday } from "@/hooks/use-local-today";
+import { ExerciseDetailModal, useExerciseDetail } from "@/components/exercise-detail-modal";
 
 export const Route = createFileRoute("/hoje")({
   head: () => ({
@@ -19,7 +20,7 @@ export const Route = createFileRoute("/hoje")({
   component: HojePage,
 });
 
-function ExerciseCard({ exercise, index }: { exercise: SessionExerciseDTO; index: number }) {
+function ExerciseCard({ exercise, index, onOpenVideo }: { exercise: SessionExerciseDTO; index: number; onOpenVideo: (id: string) => void }) {
   const [open, setOpen] = useState(index === 0);
   const setCount = exercise.sets || 1;
   return (
@@ -34,7 +35,14 @@ function ExerciseCard({ exercise, index }: { exercise: SessionExerciseDTO; index
           </div>
           <div>
             <div className="flex items-center gap-2 text-base font-semibold tracking-tight">
-              {exercise.exercise.name}
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); onOpenVideo(exercise.exercise.id); }}
+                className="inline-flex items-center gap-1.5 text-left transition-colors hover:text-primary"
+              >
+                {exercise.exercise.name}
+                <PlayCircle className="h-3.5 w-3.5 text-muted-foreground" />
+              </button>
               {exercise.pair_slot && (
                 <span className="rounded-full bg-primary/15 px-2 py-0.5 text-[9px] font-medium uppercase tracking-wider text-primary">
                   Biset {exercise.pair_slot}
@@ -97,6 +105,7 @@ function HojePage() {
   const { user } = useAuth();
   const fetchToday = useServerFn(getTodayTraining);
   const localToday = useLocalToday();
+  const detail = useExerciseDetail();
   const { data, isLoading } = useQuery({
     queryKey: ["today-training", user?.id, localToday.local_date, localToday.timezone],
     queryFn: () => fetchToday({ data: localToday }),
@@ -190,7 +199,7 @@ function HojePage() {
           <div>
             <div className="mb-3 text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">Força</div>
             <div className="space-y-3">
-              {strength.map((e, i) => <ExerciseCard key={e.id} exercise={e} index={i} />)}
+              {strength.map((e, i) => <ExerciseCard key={e.id} exercise={e} index={i} onOpenVideo={detail.open} />)}
             </div>
           </div>
         )}
@@ -201,7 +210,14 @@ function HojePage() {
             <div className="mt-3 space-y-2">
               {core.map((c) => (
                 <div key={c.id} className="num flex items-center justify-between rounded-lg border border-border/60 bg-surface/40 px-3 py-2.5 text-sm">
-                  <span className="font-medium">{c.exercise.name}</span>
+                  <button
+                    type="button"
+                    onClick={() => detail.open(c.exercise.id)}
+                    className="inline-flex items-center gap-1.5 font-medium text-left transition-colors hover:text-primary"
+                  >
+                    {c.exercise.name}
+                    <PlayCircle className="h-3 w-3 text-muted-foreground" />
+                  </button>
                   <div className="flex items-center gap-3 text-muted-foreground">
                     <span>{c.sets}x{c.reps}</span>
                     {c.rest_seconds && (
@@ -225,6 +241,7 @@ function HojePage() {
           </Link>
         </div>
       </div>
+      <ExerciseDetailModal {...detail.modalProps} />
     </AppShell>
   );
 }
