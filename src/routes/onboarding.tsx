@@ -228,11 +228,12 @@ function OnboardingPage() {
       case 2: return d.primary_goal !== "";
       case 3: return true; // secundários opcionais
       case 4: return d.experience_level !== "" && d.training_history !== "" &&
-        d.training_location !== "" && d.available_days !== "" && d.available_minutes !== "";
+        d.available_days !== "" && d.available_minutes !== "";
       case 5: return true;
       case 6: return d.running_mode !== "";
       case 7: return d.available_days_list.length > 0 && d.preferred_time !== "";
-      case 8: case 9: case 10: case 11: case 12: case 13: return true;
+      case 10: return d.gym_setup.location !== "";
+      case 8: case 9: case 11: case 12: case 13: return true;
       default: return false;
     }
   }, [step, d]);
