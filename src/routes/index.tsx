@@ -8,6 +8,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { getDashboard } from "@/lib/profile.functions";
 import { levelProgress } from "@/lib/gamification";
+import { WeekDistributionModal } from "@/components/week-distribution-modal";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -70,6 +71,7 @@ function DashboardContent() {
 
   return (
     <div className="space-y-5 p-4">
+      <WeekDistributionModal weekNumber={CURRENT_WEEK_NUMBER} />
       {/* Saudação */}
       <section className="animate-fade-in">
         <div className="text-[11px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
