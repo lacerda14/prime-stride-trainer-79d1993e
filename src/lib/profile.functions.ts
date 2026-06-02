@@ -83,7 +83,8 @@ export const completeOnboarding = createServerFn({ method: "POST" })
 
     const { error: updateErr } = await supabase
       .from("profiles")
-      .update({
+      .upsert({
+        id: userId,
         name: data.name,
         phone: data.phone ?? null,
         age: data.age,
@@ -94,8 +95,7 @@ export const completeOnboarding = createServerFn({ method: "POST" })
         goal: data.goal,
         available_days: data.available_days,
         onboarding_completed: true,
-      })
-      .eq("id", userId);
+      }, { onConflict: "id" });
     if (updateErr) throw new Error(updateErr.message);
 
     // primeiro registro de peso
