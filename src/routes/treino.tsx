@@ -312,6 +312,7 @@ function RunPhaseView({
   const mins = Math.floor(remaining / 60);
   const secs = remaining % 60;
   const accent = phaseAccent(phase.kind);
+  const isBetweenBlocks = phase.kind === "between";
 
   const Icon =
     phase.kind === "work" ? Flame :
@@ -322,14 +323,18 @@ function RunPhaseView({
 
   return (
     <div className="w-full max-w-md text-center">
-      <div className={`inline-flex items-center gap-2 rounded-full border border-border bg-surface/60 px-3 py-1 text-[10px] font-medium uppercase tracking-[0.22em] ${accent}`}>
+      <div className={`inline-flex items-center gap-2 rounded-full border ${isBetweenBlocks ? "border-primary/35 bg-primary/10" : "border-border bg-surface/60"} px-3 py-1 text-[10px] font-medium uppercase tracking-[0.22em] ${accent}`}>
         <Icon className="h-3.5 w-3.5" /> {runPhaseTitle(phase)}
       </div>
 
-      <h1 className="mt-4 text-3xl font-semibold leading-tight tracking-tight lg:text-4xl">
+      <h1 className={`${isBetweenBlocks ? "mt-5 text-4xl text-primary" : "mt-4 text-3xl"} font-semibold leading-tight tracking-tight lg:text-4xl`}>
         {phase.label}
       </h1>
-      {phase.block && phase.totalBlocks ? (
+      {isBetweenBlocks && phase.nextBlock ? (
+        <div className="num mx-auto mt-4 rounded-2xl border border-primary/30 bg-primary/10 px-5 py-3 text-sm font-semibold text-primary">
+          Prepare-se para o bloco {phase.nextBlock}
+        </div>
+      ) : phase.block && phase.totalBlocks ? (
         <div className="num mt-1 text-xs text-muted-foreground">
           Bloco {phase.block} / {phase.totalBlocks}
           {phase.interval && phase.totalIntervals ? ` · Tiro ${phase.interval}/${phase.totalIntervals}` : ""}
@@ -342,6 +347,9 @@ function RunPhaseView({
 
       <div className="num mt-6 space-y-1 text-sm text-muted-foreground">
         <div>{phase.detail}</div>
+        {isBetweenBlocks && phase.completedBlock && phase.totalBlocks && (
+          <div className="text-primary">Fim do bloco {phase.completedBlock}/{phase.totalBlocks}</div>
+        )}
         {paceText && phase.kind === "work" && (
           <div className="text-primary">Pace alvo: {paceText}</div>
         )}
