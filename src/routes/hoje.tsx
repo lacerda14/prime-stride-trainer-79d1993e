@@ -35,7 +35,14 @@ function ExerciseCard({ exercise, index, onOpenVideo }: { exercise: SessionExerc
           </div>
           <div>
             <div className="flex items-center gap-2 text-base font-semibold tracking-tight">
-              {exercise.exercise.name}
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); onOpenVideo(exercise.exercise.id); }}
+                className="inline-flex items-center gap-1.5 text-left transition-colors hover:text-primary"
+              >
+                {exercise.exercise.name}
+                <PlayCircle className="h-3.5 w-3.5 text-muted-foreground" />
+              </button>
               {exercise.pair_slot && (
                 <span className="rounded-full bg-primary/15 px-2 py-0.5 text-[9px] font-medium uppercase tracking-wider text-primary">
                   Biset {exercise.pair_slot}
