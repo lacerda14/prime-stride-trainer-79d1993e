@@ -9,10 +9,10 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as TreinoRouteImport } from './routes/treino'
 import { Route as TreinosRouteImport } from './routes/treinos'
-import { Route as SemanasRouteImport } from './routes/semanas'
+import { Route as TreinoRouteImport } from './routes/treino'
 import { Route as SocialRouteImport } from './routes/social'
+import { Route as SemanasRouteImport } from './routes/semanas'
 import { Route as ProgressaoRouteImport } from './routes/progressao'
 import { Route as PerfilRouteImport } from './routes/perfil'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
@@ -21,30 +21,25 @@ import { Route as HistoricoRouteImport } from './routes/historico'
 import { Route as EvolucaoRouteImport } from './routes/evolucao'
 import { Route as CorridaRouteImport } from './routes/corrida'
 import { Route as ConfiguracoesRouteImport } from './routes/configuracoes'
+import { Route as CoachesRouteImport } from './routes/coaches'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminExerciseMediaRouteImport } from './routes/admin.exercise-media'
-import { Route as CoachesRouteImport } from './routes/coaches'
 import { Route as TreinoConcluidoSessionIdRouteImport } from './routes/treino.concluido.$sessionId'
 
-const TreinoRoute = TreinoRouteImport.update({
-  id: '/treino',
-  path: '/treino',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const TreinosRoute = TreinosRouteImport.update({
   id: '/treinos',
   path: '/treinos',
   getParentRoute: () => rootRouteImport,
 } as any)
+const TreinoRoute = TreinoRouteImport.update({
+  id: '/treino',
+  path: '/treino',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SocialRoute = SocialRouteImport.update({
   id: '/social',
   path: '/social',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const EvolucaoRoute = EvolucaoRouteImport.update({
-  id: '/evolucao',
-  path: '/evolucao',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SemanasRoute = SemanasRouteImport.update({
@@ -75,6 +70,11 @@ const HojeRoute = HojeRouteImport.update({
 const HistoricoRoute = HistoricoRouteImport.update({
   id: '/historico',
   path: '/historico',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EvolucaoRoute = EvolucaoRouteImport.update({
+  id: '/evolucao',
+  path: '/evolucao',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CorridaRoute = CorridaRouteImport.update({
@@ -253,11 +253,25 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/treinos': {
+      id: '/treinos'
+      path: '/treinos'
+      fullPath: '/treinos'
+      preLoaderRoute: typeof TreinosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/treino': {
       id: '/treino'
       path: '/treino'
       fullPath: '/treino'
       preLoaderRoute: typeof TreinoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/social': {
+      id: '/social'
+      path: '/social'
+      fullPath: '/social'
+      preLoaderRoute: typeof SocialRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/semanas': {
@@ -302,13 +316,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof HistoricoRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/corrida': {
-      id: '/corrida'
-      path: '/corrida'
-      fullPath: '/corrida'
-      preLoaderRoute: typeof CorridaRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/evolucao': {
       id: '/evolucao'
       path: '/evolucao'
@@ -316,18 +323,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof EvolucaoRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/social': {
-      id: '/social'
-      path: '/social'
-      fullPath: '/social'
-      preLoaderRoute: typeof SocialRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/treinos': {
-      id: '/treinos'
-      path: '/treinos'
-      fullPath: '/treinos'
-      preLoaderRoute: typeof TreinosRouteImport
+    '/corrida': {
+      id: '/corrida'
+      path: '/corrida'
+      fullPath: '/corrida'
+      preLoaderRoute: typeof CorridaRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/configuracoes': {
@@ -337,18 +337,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ConfiguracoesRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/auth': {
-      id: '/auth'
-      path: '/auth'
-      fullPath: '/auth'
-      preLoaderRoute: typeof AuthRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/coaches': {
       id: '/coaches'
       path: '/coaches'
       fullPath: '/coaches'
       preLoaderRoute: typeof CoachesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth': {
+      id: '/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof AuthRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -407,13 +407,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

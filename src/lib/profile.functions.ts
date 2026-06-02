@@ -18,29 +18,145 @@ export const getProfile = createServerFn({ method: "GET" })
     return data;
   });
 
+export interface PRItem {
+  exercise_name: string;
+  load_kg: number;
+  reps: number | null;
+  achieved_at: string;
+}
+
 export const getDashboard = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     const { supabase, userId } = context;
-    const [profileRes, achievementsRes, recentXpRes, weekSessionsRes] = await Promise.all([
+    const now = Date.now();
+    const sevenDaysAgo = new Date(now - 7 * 24 * 60 * 60 * 1000).toISOString();
+    const fourteenDaysAgo = new Date(now - 14 * 24 * 60 * 60 * 1000).toISOString();
+
+    const [profileRes, achievementsRes, recentXpRes, weekSessionsRes, prSetsRes, volumeSetsRes] = await Promise.all([
       supabase.from("profiles").select("*").eq("id", userId).maybeSingle(),
       supabase.from("user_achievements")
         .select("achievement_code, unlocked_at, achievements(code,title,description,icon,xp_reward)")
         .eq("user_id", userId).order("unlocked_at", { ascending: false }).limit(3),
       supabase.from("xp_events").select("xp_amount, created_at").eq("user_id", userId)
-        .gte("created_at", new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()),
+        .gte("created_at", sevenDaysAgo),
       supabase.from("workout_sessions").select("week_number, completed_at")
         .eq("user_id", userId).not("completed_at", "is", null),
+      // Todos os sets com carga registrada → calcula PRs em memória
+      supabase.from("workout_set_logs")
+        .select("exercise_name, actual_load_kg, actual_reps, created_at")
+        .eq("user_id", userId)
+        .not("actual_load_kg", "is", null)
+        .gt("actual_load_kg", 0)
+        .order("actual_load_kg", { ascending: false })
+        .limit(500),
+      // Volume últimos 14 dias para comparar esta semana vs anterior
+      supabase.from("workout_set_logs")
+        .select("actual_load_kg, actual_reps, created_at")
+        .eq("user_id", userId)
+        .gte("created_at", fourteenDaysAgo)
+        .not("actual_load_kg", "is", null)
+        .not("actual_reps", "is", null),
     ]);
     if (profileRes.error) throw new Error(profileRes.error.message);
+
     const weeklyXp = (recentXpRes.data ?? []).reduce((s, e) => s + (e.xp_amount ?? 0), 0);
-    const totalCompletedWorkouts = (weekSessionsRes.data ?? []).length;
+    const allSessions = weekSessionsRes.data ?? [];
+    const totalCompletedWorkouts = allSessions.length;
+
+    // ── PRs: maior carga por exercício ─────────────────────────
+    const prMap = new Map<string, PRItem>();
+    for (const row of prSetsRes.data ?? []) {
+      const name = row.exercise_name;
+      const load = Number(row.actual_load_kg ?? 0);
+      if (!name || load <= 0) continue;
+      const existing = prMap.get(name);
+      if (!existing || load > existing.load_kg) {
+        prMap.set(name, {
+          exercise_name: name,
+          load_kg: load,
+          reps: row.actual_reps ?? null,
+          achieved_at: row.created_at,
+        });
+      }
+    }
+    const allPRs = [...prMap.values()].sort((a, b) => b.load_kg - a.load_kg);
+    const topPRs = allPRs.slice(0, 3);
+
+    // ── Volume: esta semana vs anterior ────────────────────────
+    const weekStart = now - 7 * 24 * 60 * 60 * 1000;
+    let thisWeekVolume = 0;
+    let prevWeekVolume = 0;
+    let thisWeekSessions = 0;
+    for (const row of volumeSetsRes.data ?? []) {
+      const t = new Date(row.created_at).getTime();
+      const v = Number(row.actual_load_kg ?? 0) * Number(row.actual_reps ?? 0);
+      if (t >= weekStart) thisWeekVolume += v;
+      else prevWeekVolume += v;
+    }
+    thisWeekSessions = allSessions.filter(
+      (s) => s.completed_at && new Date(s.completed_at).getTime() >= weekStart,
+    ).length;
+
+    const streak = profileRes.data?.streak_current ?? 0;
+    const coachInsight = buildCoachInsightServer({
+      streak,
+      thisWeekSessions,
+      thisWeekVolume: Math.round(thisWeekVolume),
+      prevWeekVolume: Math.round(prevWeekVolume),
+      totalCompleted: totalCompletedWorkouts,
+      weeklyXp,
+      topPR: topPRs[0] ?? null,
+    });
+
     return {
       profile: profileRes.data,
       recentAchievements: achievementsRes.data ?? [],
-      weeklyXp, totalCompletedWorkouts,
+      weeklyXp,
+      totalCompletedWorkouts,
+      topPRs,
+      coachInsight,
+      thisWeekVolume: Math.round(thisWeekVolume),
+      prevWeekVolume: Math.round(prevWeekVolume),
+      thisWeekSessions,
     };
   });
+
+function buildCoachInsightServer(d: {
+  streak: number;
+  thisWeekSessions: number;
+  thisWeekVolume: number;
+  prevWeekVolume: number;
+  totalCompleted: number;
+  weeklyXp: number;
+  topPR: PRItem | null;
+}): string {
+  if (d.totalCompleted === 0) {
+    return "Bem-vindo ao PM Hybrid. Complete seu primeiro treino e a sua jornada começa de verdade.";
+  }
+  if (d.prevWeekVolume > 0 && d.thisWeekVolume > 0) {
+    const delta = ((d.thisWeekVolume - d.prevWeekVolume) / d.prevWeekVolume) * 100;
+    if (delta >= 10) {
+      return `Volume de força +${Math.round(delta)}% vs semana passada. Progressão saudável — mantenha a técnica em primeiro lugar.`;
+    }
+    if (delta <= -15) {
+      return `Volume ${Math.round(Math.abs(delta))}% abaixo da semana passada. Pode ser deload ou cansaço acumulado — cuide do sono e da alimentação.`;
+    }
+  }
+  if (d.streak >= 14) {
+    return `${d.streak} dias consecutivos. Esse tipo de consistência é raro — você está construindo algo sólido.`;
+  }
+  if (d.streak >= 7) {
+    return `Você treinou ${d.thisWeekSessions}x essa semana e está em uma sequência de ${d.streak} dias. Continue assim.`;
+  }
+  if (d.thisWeekSessions >= 4) {
+    return `${d.thisWeekSessions} treinos essa semana${d.weeklyXp ? ` · +${d.weeklyXp} XP` : ""}. Frequência ideal para resultado consistente.`;
+  }
+  if (d.topPR) {
+    return `Seu maior PR é ${d.topPR.exercise_name} com ${d.topPR.load_kg}kg. Treine essa semana para superá-lo.`;
+  }
+  return "Cada treino é um passo. Mantenha a consistência e os resultados vêm inevitavelmente.";
+}
 
 // ============================================================
 // Goal mapping

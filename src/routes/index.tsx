@@ -69,8 +69,6 @@ function DashboardContent() {
   const today = programData?.today ?? null;
   const activeWeek = summary?.active_week ?? 1;
   const totalWeeks = summary?.total_weeks ?? 48;
-  const weekDays = programData?.week.days.filter((d) => d.session_type !== "rest").length ?? 0;
-  const weekCompleted = programData?.week.days.filter((d) => d.completed_at).length ?? 0;
 
   const rawName =
     (user?.user_metadata?.name as string | undefined) ||
@@ -80,20 +78,15 @@ function DashboardContent() {
   const name = firstName(rawName);
   const gender = inferGender(rawName);
 
-  // Coach AI insight — gerado localmente com base nos dados reais
-  const coachMessage = buildCoachMessage({
-    streak,
-    weekCompleted,
-    weekDays,
-    weeklyXp: dash?.weeklyXp ?? 0,
-    totalCompleted,
-    level,
-  });
+  // Coach AI insight — gerado no servidor com dados reais (volume, streak, PRs)
+  const coachMessage =
+    dash?.coachInsight ??
+    "Cada treino é um passo. Mantenha a consistência e os resultados vêm inevitavelmente.";
 
-  // PRs (placeholder elegante pois tabela personal_records pode não existir)
+  const topPRs = dash?.topPRs ?? [];
   const recentAchievements = dash?.recentAchievements ?? [];
 
-  // Conquistas próximas — hardcoded milestones como exemplo
+  // Conquistas próximas — milestones de treinos/streak
   const nextMilestones = buildNextMilestones(totalCompleted, streak);
 
   return (
@@ -291,17 +284,58 @@ function DashboardContent() {
         </section>
       )}
 
-      {/* ── 6. Card CONQUISTAS RECENTES / PRs ── */}
+      {/* ── 6. PRs Recentes (recordes pessoais reais) ── */}
       <section className="animate-fade-in">
         <div className="mb-2.5 flex items-center justify-between px-1">
           <div className="text-[11px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
+            PRs recentes
+          </div>
+          {topPRs.length > 0 && (
+            <Link to="/evolucao" className="text-[10px] font-medium text-primary">
+              Ver todos →
+            </Link>
+          )}
+        </div>
+        {topPRs.length > 0 ? (
+          <div className="space-y-2">
+            {topPRs.map((pr) => (
+              <div
+                key={pr.exercise_name}
+                className="flex items-center gap-3 rounded-2xl border border-primary/20 bg-primary/5 p-3.5"
+              >
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/15 text-primary">
+                  <Trophy className="h-5 w-5" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-[13px] font-semibold">{pr.exercise_name}</div>
+                  <div className="text-[11px] text-muted-foreground">
+                    {new Date(pr.achieved_at).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })}
+                    {pr.reps ? ` · ${pr.reps} reps` : ""}
+                  </div>
+                </div>
+                <div className="num shrink-0 text-[14px] font-semibold text-primary">
+                  {pr.load_kg.toLocaleString("pt-BR")}
+                  <span className="ml-1 text-[10px] text-muted-foreground">kg</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="rounded-2xl border border-dashed border-border/60 bg-surface/30 p-5 text-center">
+            <Trophy className="mx-auto h-6 w-6 text-muted-foreground/50" />
+            <p className="mt-2 text-[12px] text-muted-foreground">
+              Registre cargas nos seus treinos para começar a contabilizar PRs.
+            </p>
+          </div>
+        )}
+      </section>
+
+      {/* ── 7. Conquistas desbloqueadas ── */}
+      {recentAchievements.length > 0 && (
+        <section className="animate-fade-in">
+          <div className="mb-2.5 px-1 text-[11px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
             Conquistas recentes
           </div>
-          <span className="text-[10px] text-muted-foreground">
-            {recentAchievements.length} desbloqueadas
-          </span>
-        </div>
-        {recentAchievements.length > 0 ? (
           <div className="space-y-2">
             {recentAchievements.map((a) => {
               const ach = a.achievements as { title: string; description: string; xp_reward: number } | null;
@@ -319,15 +353,8 @@ function DashboardContent() {
               );
             })}
           </div>
-        ) : (
-          <div className="rounded-2xl border border-dashed border-border/60 bg-surface/30 p-5 text-center">
-            <Trophy className="mx-auto h-6 w-6 text-muted-foreground/50" />
-            <p className="mt-2 text-[12px] text-muted-foreground">
-              Complete seu primeiro treino para desbloquear conquistas.
-            </p>
-          </div>
-        )}
-      </section>
+        </section>
+      )}
 
       {/* ── Quick links ── */}
       <section className="animate-fade-in">
@@ -374,39 +401,6 @@ function sessionLabel(type: string): string {
   }
 }
 
-function buildCoachMessage({
-  streak,
-  weekCompleted,
-  weekDays,
-  weeklyXp,
-  totalCompleted,
-  level,
-}: {
-  streak: number;
-  weekCompleted: number;
-  weekDays: number;
-  weeklyXp: number;
-  totalCompleted: number;
-  level: number;
-}): string {
-  if (totalCompleted === 0) {
-    return "Bem-vindo ao PM Hybrid. Complete seu primeiro treino e a sua jornada começa de verdade.";
-  }
-  if (streak >= 7) {
-    return `Impressionante — ${streak} dias consecutivos! Consistência nesse nível é o que separa atletas de champions.`;
-  }
-  if (weekCompleted >= weekDays && weekDays > 0) {
-    return `Semana 100% concluída! ${weeklyXp > 0 ? `+${weeklyXp} XP ganhos essa semana.` : "Você está no caminho certo."} Descanse bem e volte mais forte.`;
-  }
-  if (weekCompleted > 0 && weekDays > 0) {
-    const remaining = weekDays - weekCompleted;
-    return `Você já treinou ${weekCompleted} vez${weekCompleted > 1 ? "es" : ""} essa semana. ${remaining} treino${remaining > 1 ? "s" : ""} para fechar a semana — não pare agora.`;
-  }
-  if (level >= 10) {
-    return `Nível ${level}. Você já tem uma base sólida — continue gerenciando carga e descanso com disciplina.`;
-  }
-  return "Cada treino é um passo. Mantenha a consistência e os resultados vêm inevitavelmente.";
-}
 
 interface Milestone {
   label: string;

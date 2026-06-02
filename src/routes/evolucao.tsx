@@ -136,9 +136,25 @@ function EvolucaoPage() {
                       </span>
                       <span className="text-[13px] text-muted-foreground">kg</span>
                     </div>
-                    <p className="mt-1.5 text-[12px] text-muted-foreground">
-                      Soma de carga × reps de todos os sets registrados.
-                    </p>
+                    {evo.strengthDeltaPct != null ? (
+                      <p
+                        className={`mt-1.5 text-[12px] font-medium ${
+                          evo.strengthDeltaPct >= 0 ? "text-primary" : "text-muted-foreground"
+                        }`}
+                      >
+                        {evo.strengthDeltaPct >= 0 ? "+" : ""}
+                        {evo.strengthDeltaPct}% vs semana anterior
+                        {evo.prevWeekStrengthVolume != null && (
+                          <span className="ml-1 num text-muted-foreground">
+                            ({evo.prevWeekStrengthVolume.toLocaleString("pt-BR")} kg)
+                          </span>
+                        )}
+                      </p>
+                    ) : (
+                      <p className="mt-1.5 text-[12px] text-muted-foreground">
+                        Soma de carga × reps de todos os sets registrados.
+                      </p>
+                    )}
                   </div>
                   <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10">
                     <TrendingUp className="h-5 w-5 text-primary" />
@@ -185,6 +201,33 @@ function EvolucaoPage() {
                   </div>
                 </div>
               </div>
+              {/* Mini barra dos últimos 7 dias (índice 0 = hoje) */}
+              {evo?.daysWithSession30 && (
+                <div className="mt-4">
+                  <div className="text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground mb-2">
+                    Últimos 7 dias
+                  </div>
+                  <div className="flex items-end justify-between gap-1.5">
+                    {evo.daysWithSession30.slice(0, 7).reverse().map((done, i) => {
+                      const d = new Date();
+                      d.setHours(0, 0, 0, 0);
+                      d.setDate(d.getDate() - (6 - i));
+                      const label = d.toLocaleDateString("pt-BR", { weekday: "narrow" });
+                      return (
+                        <div key={i} className="flex flex-1 flex-col items-center gap-1">
+                          <div
+                            className={`w-full rounded-md transition-colors ${
+                              done ? "bg-primary" : "bg-surface border border-border/60"
+                            }`}
+                            style={{ height: done ? "32px" : "10px" }}
+                          />
+                          <div className="text-[9px] text-muted-foreground">{label}</div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
               {(evo?.consistencyPct ?? 0) >= 80 && (
                 <div className="mt-3 flex items-center gap-2 rounded-xl border border-primary/20 bg-primary/5 px-3 py-2 text-[11px] text-primary">
                   <Flame className="h-3.5 w-3.5" />
@@ -221,33 +264,52 @@ function EvolucaoPage() {
                   </div>
                 </div>
 
-                {/* Mini histórico */}
-                {evo.weightHistory.length > 1 && (
+                {/* Gráfico de barras 30 dias */}
+                {evo.weight30d && evo.weight30d.some((p) => p.weight_kg != null) && (
                   <div>
                     <div className="text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground mb-2">
-                      Histórico
+                      Últimos 30 dias
                     </div>
-                    <div className="flex items-end gap-1.5 h-12">
-                      {[...evo.weightHistory].reverse().map((w, i) => {
-                        const allWeights = evo.weightHistory.map((x) => x.weight_kg);
-                        const min = Math.min(...allWeights);
-                        const max = Math.max(...allWeights);
-                        const range = max - min || 1;
-                        const pct = ((w.weight_kg - min) / range) * 100;
-                        const barH = 20 + (pct * 28) / 100; // 20px–48px
-                        return (
-                          <div key={i} className="flex flex-1 flex-col items-center gap-1">
-                            <div
-                              className="w-full rounded-t-sm bg-primary/40"
-                              style={{ height: `${barH}px` }}
-                            />
-                            <div className="num text-[8px] text-muted-foreground">
-                              {w.weight_kg.toFixed(1)}
-                            </div>
+                    {(() => {
+                      const vals = evo.weight30d
+                        .map((p) => p.weight_kg)
+                        .filter((v): v is number => v != null);
+                      const min = Math.min(...vals);
+                      const max = Math.max(...vals);
+                      const range = max - min || 1;
+                      return (
+                        <>
+                          <div className="flex items-end gap-[2px] h-16">
+                            {evo.weight30d.map((p, i) => {
+                              if (p.weight_kg == null) {
+                                return (
+                                  <div
+                                    key={i}
+                                    className="flex-1 rounded-sm bg-surface border border-border/40"
+                                    style={{ height: "4px" }}
+                                  />
+                                );
+                              }
+                              const pct = (p.weight_kg - min) / range;
+                              const h = 12 + pct * 52; // 12px–64px
+                              return (
+                                <div
+                                  key={i}
+                                  className="flex-1 rounded-sm bg-primary/50"
+                                  style={{ height: `${h}px` }}
+                                  title={`${p.date}: ${p.weight_kg.toFixed(1)} kg`}
+                                />
+                              );
+                            })}
                           </div>
-                        );
-                      })}
-                    </div>
+                          <div className="mt-1.5 flex items-center justify-between text-[9px] text-muted-foreground num">
+                            <span>{min.toFixed(1)} kg</span>
+                            <span>30d</span>
+                            <span>{max.toFixed(1)} kg</span>
+                          </div>
+                        </>
+                      );
+                    })()}
                   </div>
                 )}
               </div>
@@ -261,6 +323,51 @@ function EvolucaoPage() {
               />
             )}
           </section>
+
+          {/* ── Recordes Pessoais (PRs) ── */}
+          <section className="animate-fade-in">
+            <SectionHeader icon={<Trophy className="h-4 w-4" />} title="Recordes pessoais" />
+            {evo?.personalRecords && evo.personalRecords.length > 0 ? (
+              <div className="space-y-2">
+                {evo.personalRecords.slice(0, 10).map((pr) => (
+                  <div
+                    key={pr.exercise_name}
+                    className="flex items-center gap-3 rounded-2xl border border-primary/20 bg-primary/5 p-3.5"
+                  >
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/15 text-primary">
+                      <Trophy className="h-5 w-5" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate text-[13px] font-semibold">{pr.exercise_name}</div>
+                      <div className="text-[11px] text-muted-foreground">
+                        {new Date(pr.achieved_at).toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric" })}
+                        {pr.reps ? ` · ${pr.reps} reps` : ""}
+                      </div>
+                    </div>
+                    <div className="num shrink-0 text-[14px] font-semibold text-primary">
+                      {pr.load_kg.toLocaleString("pt-BR")}
+                      <span className="ml-1 text-[10px] text-muted-foreground">kg</span>
+                    </div>
+                  </div>
+                ))}
+                {evo.personalRecords.length > 10 && (
+                  <div className="text-center text-[11px] text-muted-foreground pt-1">
+                    +{evo.personalRecords.length - 10} outros recordes
+                  </div>
+                )}
+              </div>
+            ) : (
+              <PlaceholderCard
+                icon={<Trophy className="h-5 w-5" />}
+                title="Sem PRs registrados"
+                description="Registre cargas durante seus treinos para começar a contabilizar recordes pessoais."
+                ctaLabel="Ir para treino"
+                ctaHref="/hoje"
+              />
+            )}
+          </section>
+
+
 
           {/* ── Medidas ── */}
           <section className="animate-fade-in">
