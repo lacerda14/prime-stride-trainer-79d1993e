@@ -1,7 +1,8 @@
 // PM Hybrid Performance System — Real periodization data
-// Source: PM_V19_CORRECTED_STRUCTURE_LOCKED.xlsx (V18 plan, 48 weeks)
+// Source: PM_V19_AUDITADO_CORRIGIDO.xlsx (V18 plan, 48 weeks) — única fonte oficial
 
 import raw from "./program-data.json";
+
 
 export interface MacroBlock {
   macro: string;
