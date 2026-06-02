@@ -115,7 +115,7 @@ function HojePage() {
     return (
       <AppShell eyebrow="Treino" title="Treino de Hoje">
         <div className="p-8 text-center text-sm text-muted-foreground">
-          Nenhum treino programado. Conclua o onboarding para gerar o programa.
+          Hoje é {data?.calendar.day_name ?? "um dia sem treino"}. Nenhum treino programado para esta data.
         </div>
       </AppShell>
     );
