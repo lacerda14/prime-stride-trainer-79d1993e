@@ -129,10 +129,11 @@ export const PROGRAM_STATS = {
 };
 
 export const DASHBOARD_STATS = {
-  weeklyMinutes: 285,
-  weeklyVolume: 0, // not tracked in V18 spreadsheet — populated as user logs
-  runsCompleted: 2,
-  adherence: 0.9,
-  nextSession: "VO2 + peito/ombro/tríceps",
-  streak: 6,
+  weeklyMinutes: 0,
+  weeklyVolume: 0,
+  runsCompleted: 0,
+  adherence: 0,
+  nextSession: getTodayWorkout().session,
+  streak: 0,
 };
+
