@@ -33,6 +33,7 @@ function PerfilPage() {
   const qc = useQueryClient();
   const fetch = useServerFn(getProfile);
   const save = useServerFn(updateProfile);
+  const isAdmin = useIsAdmin();
 
   const { data: p, isLoading } = useQuery({
     queryKey: ["profile-edit"],
