@@ -71,6 +71,18 @@ export function WeekDistributionModal({ weekNumber }: { weekNumber: number }) {
   const usedDays = Object.values(assignments);
   const hasDuplicates = new Set(usedDays).size !== usedDays.length;
   const allAssigned = trainingDays.every((d) => assignments[d.day] !== undefined);
+  const plannedCount = trainingDays.filter((d) => assignments[d.day] !== undefined).length;
+  const summary = trainingDays
+    .filter((d) => assignments[d.day] !== undefined)
+    .map((d) => {
+      const wd = WEEKDAYS.find((w) => w.v === assignments[d.day])!;
+      return { day: d.day, session: d.session, weekday: wd };
+    })
+    .sort((a, b) => {
+      // Segunda primeiro, Domingo por último
+      const order = (v: number) => (v === 0 ? 7 : v);
+      return order(a.weekday.v) - order(b.weekday.v);
+    });
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
