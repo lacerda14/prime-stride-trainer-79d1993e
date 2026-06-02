@@ -21,7 +21,7 @@ export interface SessionStateDTO {
   phase?: "work" | "rest" | null;
   // tempo real em que a fase atual começou (epoch ms) — usado para timer baseado em timestamp
   phase_started_at_ms?: number | null;
-  session_data?: Record<string, unknown>;
+  session_data?: JsonObject;
 }
 
 export interface ActiveSessionDTO {
@@ -39,7 +39,7 @@ export interface ActiveSessionDTO {
   elapsed_seconds: number;
   total_elapsed_seconds: number;
   duration_seconds: number | null;
-  session_data: Record<string, unknown>;
+  session_data: JsonObject;
 }
 
 // ============================================================
@@ -137,7 +137,7 @@ export const updateWorkoutSessionState = createServerFn({ method: "POST" })
         current_interval: z.number().int().nullable().optional(),
         elapsed_seconds: z.number().int().min(0),
         total_elapsed_seconds: z.number().int().min(0),
-        session_data: z.record(z.unknown()).optional(),
+        session_data: z.record(z.string(), z.any()).optional(),
         status: z.enum(["active", "paused"]).optional(),
       })
       .parse(input),
