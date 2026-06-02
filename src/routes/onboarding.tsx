@@ -612,15 +612,6 @@ function S4({ d, setD }: SP) {
           </div>
         </div>
         <div>
-          <label className={labelCls}>Onde treina</label>
-          <div className="grid grid-cols-2 gap-1.5">
-            {TRAINING_LOCATION_OPTIONS.map((o) => (
-              <PillChoice key={o} active={d.training_location === o}
-                onClick={() => setD({ ...d, training_location: o })}>{o}</PillChoice>
-            ))}
-          </div>
-        </div>
-        <div>
           <label className={labelCls}>Dias por semana</label>
           <div className="grid grid-cols-4 gap-1.5">
             {DAYS_PER_WEEK.map((n) => (
