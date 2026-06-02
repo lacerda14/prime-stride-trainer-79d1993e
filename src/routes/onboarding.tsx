@@ -15,9 +15,90 @@ import {
   SPORTS_OPTIONS, RUNNING_MODES, RUNNING_LEVEL, RUNNING_CONTINUOUS,
   RUNNING_GOALS_OPTIONS, WEEK_DAYS, CARDIO_OPTIONS, PREFERRED_TIMES,
   MEDICAL_CONDITIONS, PAIN_REGIONS, PAST_INJURIES, UNCOMFORTABLE_MOVEMENTS,
-  EQUIPMENT_OPTIONS, PREFERENCES_OPTIONS, TRAINING_STYLES,
+  PREFERENCES_OPTIONS, TRAINING_STYLES,
   MOTIVATIONS_OPTIONS, LIFTS_DONE, EXPERIENCE_OPTIONS,
+  FULL_GYM_COMPLETENESS, FULL_GYM_MISSING_OPTIONS,
+  CONDO_GYM_EQUIPMENT, HOME_EQUIPMENT,
+  BOX_COMPLETENESS, BOX_EQUIPMENT, MIXED_PRIMARY_LOCATIONS,
 } from "@/lib/onboarding-options";
+
+interface GymSetup {
+  location: string;
+  // Academia completa
+  full_gym_completeness: string;
+  full_gym_missing: string[];
+  full_gym_missing_other: string;
+  // Condomínio
+  condo_equipment: string[];
+  condo_other: string;
+  // Casa
+  home_equipment: string[];
+  home_other: string;
+  // Box
+  box_completeness: string;
+  box_equipment: string[];
+  box_other: string;
+  // Misto
+  mixed_primary: string;
+  mixed_other_locations: string[];
+}
+
+const EMPTY_GYM_SETUP: GymSetup = {
+  location: "",
+  full_gym_completeness: "", full_gym_missing: [], full_gym_missing_other: "",
+  condo_equipment: [], condo_other: "",
+  home_equipment: [], home_other: "",
+  box_completeness: "", box_equipment: [], box_other: "",
+  mixed_primary: "", mixed_other_locations: [],
+};
+
+/** Compõe a lista plana de equipamentos para o engine a partir do gym_setup. */
+function deriveEquipment(g: GymSetup): string[] {
+  const set = new Set<string>();
+  switch (g.location) {
+    case "Academia Completa": {
+      if (g.full_gym_completeness === "Algumas máquinas não existem") {
+        // adiciona tudo padrão e remove ausentes
+        ["Rack", "Barra olímpica", "Anilhas", "Halteres", "Banco ajustável",
+         "Leg Press", "Máquina de cabos", "Barra fixa", "Smith", "Hack Squat",
+         "Cadeira Extensora", "Mesa Flexora", "Esteira", "Bicicleta"].forEach((e) => set.add(e));
+        g.full_gym_missing.forEach((m) => set.delete(m));
+      } else {
+        ["Academia completa", "Rack", "Barra olímpica", "Anilhas", "Halteres",
+         "Banco ajustável", "Leg Press", "Máquina de cabos", "Barra fixa",
+         "Smith", "Esteira", "Bicicleta"].forEach((e) => set.add(e));
+      }
+      break;
+    }
+    case "Academia de Condomínio / Prédio":
+      g.condo_equipment.forEach((e) => set.add(e));
+      break;
+    case "Casa":
+      g.home_equipment.forEach((e) => set.add(e));
+      break;
+    case "Box de CrossFit":
+      if (g.box_completeness === "Sim") {
+        ["Remo", "Bike", "SkiErg", "Barra olímpica", "Anilhas bumper",
+         "Caixa de salto", "Kettlebells", "Dumbbells", "Corda", "Argolas",
+         "Barra fixa", "GHD", "Wall Ball"].forEach((e) => set.add(e));
+      } else {
+        g.box_equipment.forEach((e) => set.add(e));
+      }
+      break;
+    case "Misto": {
+      const pickFor = (loc: string) => {
+        if (loc === "Academia") ["Rack", "Barra olímpica", "Halteres", "Máquina de cabos", "Leg Press", "Banco ajustável"].forEach((e) => set.add(e));
+        if (loc === "Condomínio") g.condo_equipment.forEach((e) => set.add(e));
+        if (loc === "Casa") g.home_equipment.forEach((e) => set.add(e));
+        if (loc === "Box") g.box_equipment.forEach((e) => set.add(e));
+      };
+      if (g.mixed_primary) pickFor(g.mixed_primary);
+      g.mixed_other_locations.forEach(pickFor);
+      break;
+    }
+  }
+  return Array.from(set);
+}
 
 export const Route = createFileRoute("/onboarding")({
   head: () => ({ meta: [{ title: "Avaliação · PM Hybrid" }] }),
@@ -42,7 +123,7 @@ interface Data {
   // S4
   experience_level: Experience | "";
   training_history: string;
-  training_location: string;
+  
   available_days: number | "";
   available_minutes: number | "";
   // S5
@@ -68,8 +149,8 @@ interface Data {
   pain_regions: string[];
   past_injuries: string[];
   uncomfortable_movements: string[];
-  // S10
-  equipment: string[];
+  // S10 — local + equipamentos
+  gym_setup: GymSetup;
   // S11
   preferences: string[];
   training_style: string;
@@ -108,7 +189,7 @@ function OnboardingPage() {
     phone: "",
     primary_goal: "",
     secondary_goals: [],
-    experience_level: "", training_history: "", training_location: "",
+    experience_level: "", training_history: "",
     available_days: "", available_minutes: "",
     sports: [], sports_frequency: {},
     running_mode: "", running_level: "", running_continuous_minutes: "",
@@ -116,7 +197,7 @@ function OnboardingPage() {
     available_days_list: [], preferred_time: "",
     medical_conditions: [], medications: "", surgeries: [], medical_restrictions: "",
     current_pain_level: 0, pain_regions: [], past_injuries: [], uncomfortable_movements: [],
-    equipment: [],
+    gym_setup: { ...EMPTY_GYM_SETUP },
     preferences: [], training_style: "", motivations: [],
     perf_max_pushups: "", perf_max_squats: "", perf_max_plank_seconds: "",
     perf_max_run_minutes: "", perf_lifts_done: [],
@@ -147,11 +228,12 @@ function OnboardingPage() {
       case 2: return d.primary_goal !== "";
       case 3: return true; // secundários opcionais
       case 4: return d.experience_level !== "" && d.training_history !== "" &&
-        d.training_location !== "" && d.available_days !== "" && d.available_minutes !== "";
+        d.available_days !== "" && d.available_minutes !== "";
       case 5: return true;
       case 6: return d.running_mode !== "";
       case 7: return d.available_days_list.length > 0 && d.preferred_time !== "";
-      case 8: case 9: case 10: case 11: case 12: case 13: return true;
+      case 10: return d.gym_setup.location !== "";
+      case 8: case 9: case 11: case 12: case 13: return true;
       default: return false;
     }
   }, [step, d]);
@@ -181,7 +263,7 @@ function OnboardingPage() {
           secondary_goals: d.secondary_goals,
           experience_level: d.experience_level as Experience,
           training_history: d.training_history as never,
-          training_location: d.training_location,
+          training_location: d.gym_setup.location,
           available_days: d.available_days as number,
           available_minutes: d.available_minutes as number,
           sports: d.sports, sports_frequency: d.sports_frequency,
@@ -201,7 +283,8 @@ function OnboardingPage() {
           pain_regions: d.pain_regions,
           past_injuries: d.past_injuries,
           uncomfortable_movements: d.uncomfortable_movements,
-          equipment: d.equipment,
+          equipment: deriveEquipment(d.gym_setup),
+          gym_setup: d.gym_setup,
           preferences: d.preferences,
           training_style: d.training_style || null,
           motivations: d.motivations,
@@ -529,15 +612,6 @@ function S4({ d, setD }: SP) {
           </div>
         </div>
         <div>
-          <label className={labelCls}>Onde treina</label>
-          <div className="grid grid-cols-2 gap-1.5">
-            {TRAINING_LOCATION_OPTIONS.map((o) => (
-              <PillChoice key={o} active={d.training_location === o}
-                onClick={() => setD({ ...d, training_location: o })}>{o}</PillChoice>
-            ))}
-          </div>
-        </div>
-        <div>
           <label className={labelCls}>Dias por semana</label>
           <div className="grid grid-cols-4 gap-1.5">
             {DAYS_PER_WEEK.map((n) => (
@@ -752,12 +826,158 @@ function S9({ d, setD }: SP) {
 }
 
 function S10({ d, setD }: SP) {
+  const g = d.gym_setup;
+  const setG = (patch: Partial<GymSetup>) =>
+    setD({ ...d, gym_setup: { ...g, ...patch } });
+
+  const selectLocation = (loc: string) => {
+    // Reset campos condicionais ao trocar de local
+    setD({ ...d, gym_setup: { ...EMPTY_GYM_SETUP, location: loc } });
+  };
+
   return (
     <div className="space-y-6">
-      <Hero eyebrow="10 / 13 · Equipamentos" title="O que você tem disponível?" hint="Selecione tudo que tem acesso. Vamos respeitar na hora de prescrever." />
-      <div className="animate-fade-in">
-        <Multi label="Equipamentos" items={EQUIPMENT_OPTIONS} selected={d.equipment}
-          onToggle={(v) => setD({ ...d, equipment: toggleArr(d.equipment, v) })} />
+      <Hero eyebrow="10 / 13 · Local e equipamentos"
+        title="Onde você treina principalmente?"
+        hint="Vamos prescrever apenas exercícios que você consegue executar." />
+
+      <div className="animate-fade-in space-y-6">
+        <div className="grid gap-2">
+          {TRAINING_LOCATION_OPTIONS.map((o) => (
+            <RowChoice key={o} active={g.location === o} onClick={() => selectLocation(o)}>
+              {o}
+            </RowChoice>
+          ))}
+        </div>
+
+        {/* ACADEMIA COMPLETA */}
+        {g.location === "Academia Completa" && (
+          <div className="space-y-5 pt-2 animate-fade-in">
+            <div>
+              <label className={labelCls}>Sua academia possui equipamentos comuns de musculação?</label>
+              <div className="grid gap-2">
+                {FULL_GYM_COMPLETENESS.map((o) => (
+                  <RowChoice key={o} active={g.full_gym_completeness === o}
+                    onClick={() => setG({ full_gym_completeness: o, full_gym_missing: [], full_gym_missing_other: "" })}>
+                    {o}
+                  </RowChoice>
+                ))}
+              </div>
+            </div>
+
+            {g.full_gym_completeness === "Algumas máquinas não existem" && (
+              <div className="space-y-3 animate-fade-in">
+                <Multi label="Quais equipamentos NÃO existem?" items={FULL_GYM_MISSING_OPTIONS}
+                  selected={g.full_gym_missing}
+                  onToggle={(v) => setG({ full_gym_missing: toggleArr(g.full_gym_missing, v) })} />
+                {g.full_gym_missing.includes("Outro") && (
+                  <div>
+                    <label className={labelCls}>Descreva outros equipamentos ausentes</label>
+                    <textarea className={textareaCls} value={g.full_gym_missing_other} maxLength={300}
+                      placeholder="Ex: não tem máquina de panturrilha..."
+                      onChange={(e) => setG({ full_gym_missing_other: e.target.value })} />
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* CONDOMÍNIO */}
+        {g.location === "Academia de Condomínio / Prédio" && (
+          <div className="space-y-4 pt-2 animate-fade-in">
+            <Multi label="Marque os equipamentos disponíveis" items={CONDO_GYM_EQUIPMENT}
+              selected={g.condo_equipment}
+              onToggle={(v) => setG({ condo_equipment: toggleArr(g.condo_equipment, v) })} />
+            <div>
+              <label className={labelCls}>Existe algum equipamento importante que não apareceu na lista?</label>
+              <textarea className={textareaCls} value={g.condo_other} maxLength={300}
+                placeholder="Ex: Tem um Hack Squat, tem um Multipower..."
+                onChange={(e) => setG({ condo_other: e.target.value })} />
+            </div>
+          </div>
+        )}
+
+        {/* CASA */}
+        {g.location === "Casa" && (
+          <div className="space-y-4 pt-2 animate-fade-in">
+            <Multi label="Quais equipamentos você possui em casa?" items={HOME_EQUIPMENT}
+              selected={g.home_equipment}
+              onToggle={(v) => setG({ home_equipment: toggleArr(g.home_equipment, v) })} />
+            <div>
+              <label className={labelCls}>Existe algum equipamento que não apareceu acima?</label>
+              <textarea className={textareaCls} value={g.home_other} maxLength={300}
+                placeholder="Descreva, se houver"
+                onChange={(e) => setG({ home_other: e.target.value })} />
+            </div>
+          </div>
+        )}
+
+        {/* BOX */}
+        {g.location === "Box de CrossFit" && (
+          <div className="space-y-5 pt-2 animate-fade-in">
+            <div>
+              <label className={labelCls}>Seu box possui equipamentos completos?</label>
+              <div className="grid grid-cols-2 gap-1.5">
+                {BOX_COMPLETENESS.map((o) => (
+                  <PillChoice key={o} active={g.box_completeness === o}
+                    onClick={() => setG({ box_completeness: o, box_equipment: [], box_other: "" })}>
+                    {o}
+                  </PillChoice>
+                ))}
+              </div>
+            </div>
+            {g.box_completeness === "Não" && (
+              <div className="space-y-3 animate-fade-in">
+                <Multi label="Marque o que existe no seu box" items={BOX_EQUIPMENT}
+                  selected={g.box_equipment}
+                  onToggle={(v) => setG({ box_equipment: toggleArr(g.box_equipment, v) })} />
+                {g.box_equipment.includes("Outro") && (
+                  <div>
+                    <label className={labelCls}>Outros equipamentos</label>
+                    <textarea className={textareaCls} value={g.box_other} maxLength={300}
+                      placeholder="Descreva"
+                      onChange={(e) => setG({ box_other: e.target.value })} />
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* MISTO */}
+        {g.location === "Misto" && (
+          <div className="space-y-5 pt-2 animate-fade-in">
+            <div>
+              <label className={labelCls}>Onde você treina com mais frequência?</label>
+              <div className="grid grid-cols-2 gap-1.5">
+                {MIXED_PRIMARY_LOCATIONS.map((o) => (
+                  <PillChoice key={o} active={g.mixed_primary === o}
+                    onClick={() => setG({ mixed_primary: o })}>{o}</PillChoice>
+                ))}
+              </div>
+            </div>
+            <Multi label="Quais outros locais utiliza?" items={MIXED_PRIMARY_LOCATIONS.filter((l) => l !== g.mixed_primary)}
+              selected={g.mixed_other_locations}
+              onToggle={(v) => setG({ mixed_other_locations: toggleArr(g.mixed_other_locations, v) })} />
+
+            {(g.mixed_primary === "Condomínio" || g.mixed_other_locations.includes("Condomínio")) && (
+              <Multi label="Equipamentos no condomínio" items={CONDO_GYM_EQUIPMENT}
+                selected={g.condo_equipment}
+                onToggle={(v) => setG({ condo_equipment: toggleArr(g.condo_equipment, v) })} />
+            )}
+            {(g.mixed_primary === "Casa" || g.mixed_other_locations.includes("Casa")) && (
+              <Multi label="Equipamentos em casa" items={HOME_EQUIPMENT}
+                selected={g.home_equipment}
+                onToggle={(v) => setG({ home_equipment: toggleArr(g.home_equipment, v) })} />
+            )}
+            {(g.mixed_primary === "Box" || g.mixed_other_locations.includes("Box")) && (
+              <Multi label="Equipamentos no box" items={BOX_EQUIPMENT}
+                selected={g.box_equipment}
+                onToggle={(v) => setG({ box_equipment: toggleArr(g.box_equipment, v) })} />
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

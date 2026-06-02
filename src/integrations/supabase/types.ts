@@ -421,6 +421,7 @@ export type Database = {
           first_name: string | null
           friend_code: string | null
           goal: Database["public"]["Enums"]["goal_enum"] | null
+          gym_setup: Json
           height_cm: number | null
           hip_cm: number | null
           id: string
@@ -488,6 +489,7 @@ export type Database = {
           first_name?: string | null
           friend_code?: string | null
           goal?: Database["public"]["Enums"]["goal_enum"] | null
+          gym_setup?: Json
           height_cm?: number | null
           hip_cm?: number | null
           id: string
@@ -555,6 +557,7 @@ export type Database = {
           first_name?: string | null
           friend_code?: string | null
           goal?: Database["public"]["Enums"]["goal_enum"] | null
+          gym_setup?: Json
           height_cm?: number | null
           hip_cm?: number | null
           id?: string
