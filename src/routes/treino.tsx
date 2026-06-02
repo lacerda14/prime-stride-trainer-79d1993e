@@ -11,7 +11,7 @@ export const Route = createFileRoute("/treino")({
       { name: "description", content: "Lock screen mode — modo treino focado." },
     ],
   }),
-  component: TreinoPage,
+  component: () => <RequireAuth><TreinoPage /></RequireAuth>,
 });
 
 interface QueueItem {
