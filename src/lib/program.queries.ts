@@ -299,83 +299,9 @@ export const getWeekDetail = createServerFn({ method: "GET" })
     z.object({ week_number: z.number().int().min(1).max(60) }).parse(input),
   )
   .handler(async ({ data, context }): Promise<WeekDetailDTO | null> => {
-    const { supabase, userId } = context;
-    const programId = await getActiveProgramId(supabase, userId);
+    const programId = await getActiveProgramId(context.supabase, context.userId);
     if (!programId) return null;
-
-    const { data: week, error: wErr } = await supabase
-      .from("weeks")
-      .select(
-        `id,week_number,week_type,
-         mesocycle:mesocycles!inner(id,name,start_week,end_week,method,objective,
-           macrocycle:macrocycles!inner(id,name,objective,dominant_method))`,
-      )
-      .eq("program_id", programId)
-      .eq("week_number", data.week_number)
-      .maybeSingle();
-    if (wErr) throw new Error(wErr.message);
-    if (!week) return null;
-
-    const { data: days, error: dErr } = await supabase
-      .from("training_days")
-      .select(
-        `id,day_number,day_name,session_type,objective,duration_minutes,completed_at,
-         session_exercises(id,slot,pair_slot,sets,reps,rpe_target,rest_seconds,notes,
-           exercise:exercise_pool(id,name,category)),
-         running_protocols(id,protocol_type,total_duration_minutes,blocks,intervals,
-           work_duration_seconds,rest_duration_seconds,pace_min,pace_max,notes)`,
-      )
-      .eq("week_id", week.id)
-      .order("day_number");
-    if (dErr) throw new Error(dErr.message);
-
-    const meso: any = week.mesocycle;
-    const macro: any = meso.macrocycle;
-
-    return {
-      id: week.id,
-      week_number: week.week_number,
-      week_type: week.week_type,
-      meso: {
-        id: meso.id,
-        name: meso.name,
-        start_week: meso.start_week,
-        end_week: meso.end_week,
-        method: meso.method,
-        objective: meso.objective,
-      },
-      macro: {
-        id: macro.id,
-        name: macro.name,
-        objective: macro.objective,
-        dominant_method: macro.dominant_method,
-      },
-      days: (days ?? []).map((d: any) => ({
-        id: d.id,
-        day_number: d.day_number,
-        day_name: d.day_name,
-        session_type: d.session_type,
-        objective: d.objective,
-        duration_minutes: d.duration_minutes,
-        completed_at: d.completed_at,
-        exercises: (d.session_exercises ?? [])
-          .sort((a: any, b: any) => a.slot - b.slot)
-          .map((e: any) => ({
-            id: e.id,
-            slot: e.slot,
-            pair_slot: e.pair_slot,
-            sets: e.sets,
-            reps: e.reps,
-            rpe_target: e.rpe_target,
-            rest_seconds: e.rest_seconds,
-            notes: e.notes,
-            exercise: e.exercise
-              ? { id: e.exercise.id, name: e.exercise.name, category: e.exercise.category }
-              : { id: "", name: "—", category: "unknown" },
-          })),
-        running: (d.running_protocols ?? [])[0] ?? null,
-      })),
-    };
+    return loadWeekDetail(context.supabase, programId, data.week_number);
   });
 
 // ============================================================
@@ -389,97 +315,13 @@ export const getTodayTraining = createServerFn({ method: "GET" })
     week: WeekDetailDTO;
     today: TrainingDayDTO | null;
   } | null> => {
-    const { supabase, userId } = context;
-
-    // Reuse summary logic inline (avoid recursive serverFn call)
-    const { data: prog } = await supabase
-      .from("training_programs")
-      .select("id,total_weeks,active_week,active_day,goal,experience_level,available_days,reference_velocity")
-      .eq("user_id", userId)
-      .is("archived_at", null)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-    if (!prog) return null;
-
-    const summary = await getProgramSummary();
+    const summary = await loadProgramSummary(context.supabase, context.userId);
     if (!summary) return null;
-
-    const { data: week } = await supabase
-      .from("weeks")
-      .select(
-        `id,week_number,week_type,
-         mesocycle:mesocycles!inner(id,name,start_week,end_week,method,objective,
-           macrocycle:macrocycles!inner(id,name,objective,dominant_method))`,
-      )
-      .eq("program_id", prog.id)
-      .eq("week_number", prog.active_week)
-      .maybeSingle();
+    const week = await loadWeekDetail(context.supabase, summary.id, summary.active_week);
     if (!week) return null;
-
-    const { data: days } = await supabase
-      .from("training_days")
-      .select(
-        `id,day_number,day_name,session_type,objective,duration_minutes,completed_at,
-         session_exercises(id,slot,pair_slot,sets,reps,rpe_target,rest_seconds,notes,
-           exercise:exercise_pool(id,name,category)),
-         running_protocols(id,protocol_type,total_duration_minutes,blocks,intervals,
-           work_duration_seconds,rest_duration_seconds,pace_min,pace_max,notes)`,
-      )
-      .eq("week_id", week.id)
-      .order("day_number");
-
-    const meso: any = (week as any).mesocycle;
-    const macro: any = meso.macrocycle;
-    const weekDetail: WeekDetailDTO = {
-      id: week.id,
-      week_number: week.week_number,
-      week_type: week.week_type,
-      meso: {
-        id: meso.id,
-        name: meso.name,
-        start_week: meso.start_week,
-        end_week: meso.end_week,
-        method: meso.method,
-        objective: meso.objective,
-      },
-      macro: {
-        id: macro.id,
-        name: macro.name,
-        objective: macro.objective,
-        dominant_method: macro.dominant_method,
-      },
-      days: (days ?? []).map((d: any) => ({
-        id: d.id,
-        day_number: d.day_number,
-        day_name: d.day_name,
-        session_type: d.session_type,
-        objective: d.objective,
-        duration_minutes: d.duration_minutes,
-        completed_at: d.completed_at,
-        exercises: (d.session_exercises ?? [])
-          .sort((a: any, b: any) => a.slot - b.slot)
-          .map((e: any) => ({
-            id: e.id,
-            slot: e.slot,
-            pair_slot: e.pair_slot,
-            sets: e.sets,
-            reps: e.reps,
-            rpe_target: e.rpe_target,
-            rest_seconds: e.rest_seconds,
-            notes: e.notes,
-            exercise: e.exercise
-              ? { id: e.exercise.id, name: e.exercise.name, category: e.exercise.category }
-              : { id: "", name: "—", category: "unknown" },
-          })),
-        running: (d.running_protocols ?? [])[0] ?? null,
-      })),
-    };
-
     const today =
-      weekDetail.days.find((d) => d.day_number === prog.active_day) ?? weekDetail.days[0] ?? null;
-
-    return { program: summary, week: weekDetail, today };
+      week.days.find((d) => d.day_number === summary.active_day) ?? week.days[0] ?? null;
+    return { program: summary, week, today };
   });
 
 // ============================================================
