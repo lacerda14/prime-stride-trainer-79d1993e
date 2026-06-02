@@ -119,7 +119,13 @@ function OnboardingPage() {
           available_days: data.available_days as AvailableDays,
         },
       });
-      await qc.invalidateQueries({ queryKey: ["profile"] });
+      if (user?.id) {
+        qc.setQueryData(["profile", user.id], (current: unknown) => ({
+          ...(current && typeof current === "object" ? current : {}),
+          onboarding_completed: true,
+        }));
+      }
+      void qc.invalidateQueries({ queryKey: ["profile"] });
       toast.success("Programa sendo gerado... Bem-vindo ao PM Hybrid!");
       navigate({ to: "/", replace: true });
     } catch (e) {
