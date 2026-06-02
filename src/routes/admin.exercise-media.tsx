@@ -232,21 +232,87 @@ function ExerciseDrawer({ exerciseId, exerciseName, onClose }: { exerciseId: str
     qc.invalidateQueries({ queryKey: ["admin-exercises"] });
   };
   const [manualUrl, setManualUrl] = useState("");
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [bulkBusy, setBulkBusy] = useState(false);
+
+  // reset selection ao trocar de exercício
+  useMemo(() => { setSelected(new Set()); }, [exerciseId]);
+
+  const candidates = data ?? [];
+  const approvableIds = candidates.filter((c) => !c.is_approved && c.embed_allowed).map((c) => c.id);
+  const hasPrimary = candidates.some((c) => c.is_primary);
+
+  const toggle = (id: string) =>
+    setSelected((s) => {
+      const n = new Set(s);
+      if (n.has(id)) n.delete(id); else n.add(id);
+      return n;
+    });
+
+  const runBatch = async (ids: string[]) => {
+    if (ids.length === 0) return;
+    setBulkBusy(true);
+    let ok = 0;
+    let primarySet = hasPrimary;
+    for (const id of ids) {
+      try {
+        const set_primary = !primarySet;
+        await approve({ data: { media_id: id, set_primary } });
+        if (set_primary) primarySet = true;
+        ok++;
+      } catch (e) {
+        console.error(e);
+      }
+    }
+    setBulkBusy(false);
+    setSelected(new Set());
+    toast.success(`${ok} candidato(s) aprovado(s)`);
+    invalidate();
+  };
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
       <DialogContent className="max-w-[440px] max-h-[90vh] overflow-y-auto bg-background border-border/60">
         <DialogHeader><DialogTitle className="text-base font-semibold">{exerciseName}</DialogTitle></DialogHeader>
         <div className="space-y-3">
+          {approvableIds.length > 0 && (
+            <div className="sticky top-0 z-10 flex flex-wrap items-center gap-2 rounded-2xl border border-border/60 bg-surface/80 p-2 backdrop-blur">
+              <span className="text-[11px] text-muted-foreground">
+                {selected.size > 0 ? `${selected.size} selecionado(s)` : `${approvableIds.length} para revisar`}
+              </span>
+              <div className="ml-auto flex gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={bulkBusy || selected.size === 0}
+                  onClick={() => runBatch(Array.from(selected))}
+                >
+                  {bulkBusy ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <Check className="mr-1 h-3.5 w-3.5" />}
+                  Aprovar selecionados
+                </Button>
+                <Button
+                  size="sm"
+                  disabled={bulkBusy}
+                  onClick={() => runBatch(approvableIds)}
+                >
+                  {bulkBusy ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <Check className="mr-1 h-3.5 w-3.5" />}
+                  Aprovar todos
+                </Button>
+              </div>
+            </div>
+          )}
+
           {isLoading ? (
             <div className="flex h-32 items-center justify-center"><Loader2 className="h-4 w-4 animate-spin text-muted-foreground" /></div>
-          ) : (data ?? []).length === 0 ? (
+          ) : candidates.length === 0 ? (
             <p className="rounded-xl border border-dashed border-border/60 p-4 text-center text-xs text-muted-foreground">Nenhum candidato ainda. Use a busca do agente.</p>
           ) : (
-            (data ?? []).map((c) => (
+            candidates.map((c) => (
               <CandidateCard
                 key={c.id}
                 c={c}
+                selected={selected.has(c.id)}
+                onToggleSelect={() => toggle(c.id)}
                 onApprove={async (set_primary) => {
                   try { await approve({ data: { media_id: c.id, set_primary } }); toast.success("Aprovado"); invalidate(); }
                   catch (e) { toast.error((e as Error).message); }
@@ -290,11 +356,21 @@ function ExerciseDrawer({ exerciseId, exerciseName, onClose }: { exerciseId: str
   );
 }
 
-function CandidateCard({ c, onApprove, onReject, onSetPrimary }: { c: ExerciseMediaDTO; onApprove: (p: boolean) => void; onReject: () => void; onSetPrimary: () => void }) {
+function CandidateCard({ c, onApprove, onReject, onSetPrimary, selected, onToggleSelect }: { c: ExerciseMediaDTO; onApprove: (p: boolean) => void; onReject: () => void; onSetPrimary: () => void; selected?: boolean; onToggleSelect?: () => void }) {
   const [preview, setPreview] = useState(false);
+  const selectable = !c.is_approved && c.embed_allowed && !!onToggleSelect;
   return (
-    <div className="space-y-2 rounded-2xl border border-border/60 bg-surface/40 p-3">
+    <div className={`space-y-2 rounded-2xl border p-3 transition ${selected ? "border-primary bg-primary/5" : "border-border/60 bg-surface/40"}`}>
       <div className="flex items-start gap-3">
+        {selectable && (
+          <input
+            type="checkbox"
+            checked={!!selected}
+            onChange={onToggleSelect}
+            className="mt-1 h-4 w-4 shrink-0 accent-primary"
+            aria-label="Selecionar candidato"
+          />
+        )}
         <button onClick={() => setPreview((p) => !p)} className="relative h-16 w-24 shrink-0 overflow-hidden rounded-lg bg-surface-elevated">
           {c.thumbnail_url ? <img src={c.thumbnail_url} alt="" className="h-full w-full object-cover" /> : <PlayCircle className="m-auto h-6 w-6 text-muted-foreground" />}
           <PlayCircle className="absolute inset-0 m-auto h-5 w-5 text-white drop-shadow" />
