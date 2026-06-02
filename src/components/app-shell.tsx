@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Flame, CalendarDays, Footprints, TrendingUp, History, LogOut, LayoutDashboard, Settings } from "lucide-react";
+import { Flame, CalendarDays, Footprints, TrendingUp, History, LogOut, LayoutDashboard, Settings, User } from "lucide-react";
 import pmLogo from "@/assets/pm-logo.png.asset.json";
 import { RequireAuth } from "@/components/require-auth";
 import { useAuth } from "@/hooks/use-auth";
@@ -18,12 +18,13 @@ const tabs = [
   { title: "Semanas", url: "/semanas", icon: CalendarDays },
   { title: "Início", url: "/", icon: LayoutDashboard },
   { title: "Corrida", url: "/corrida", icon: Footprints },
-  { title: "Mais", url: "/configuracoes", icon: Settings },
+  { title: "Perfil", url: "/perfil", icon: User },
 ];
 
 const moreLinks = [
   { title: "Progressão", url: "/progressao", icon: TrendingUp },
   { title: "Histórico", url: "/historico", icon: History },
+  { title: "Configurações", url: "/configuracoes", icon: Settings },
 ];
 
 export function AppShell({ children, title, eyebrow, action }: AppShellProps) {
@@ -74,14 +75,14 @@ export function AppShell({ children, title, eyebrow, action }: AppShellProps) {
           <div className="pointer-events-none absolute inset-0 grid-fade opacity-25" />
           <div className="relative">{children}</div>
 
-          {currentPath.startsWith("/configuracoes") && (
-            <div className="relative px-4 pb-6 pt-2">
-              <div className="grid grid-cols-2 gap-2">
+          {currentPath.startsWith("/perfil") && (
+            <div className="relative px-5 pb-6 pt-2">
+              <div className="grid grid-cols-3 gap-2">
                 {moreLinks.map((l) => (
                   <Link
                     key={l.url}
                     to={l.url}
-                    className="flex items-center gap-2 rounded-xl border border-border/60 bg-surface-elevated/50 px-3 py-3 text-[13px] font-medium"
+                    className="flex flex-col items-center gap-1.5 rounded-2xl border border-border/60 bg-surface/40 px-3 py-3 text-[11.5px] font-medium"
                   >
                     <l.icon className="h-4 w-4 text-muted-foreground" />
                     {l.title}
