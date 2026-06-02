@@ -175,6 +175,56 @@ export const listCandidates = createServerFn({ method: "POST" })
   });
 
 // ============================================================
+// Admin: fila global de aprovação (todos os pendentes)
+// ============================================================
+export interface PendingQueueItemDTO {
+  media: ExerciseMediaDTO;
+  exercise_id: string;
+  exercise_name: string;
+  exercise_has_primary: boolean;
+}
+
+export const listPendingQueue = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }): Promise<PendingQueueItemDTO[]> => {
+    const { supabase, userId } = context;
+    await ensureAdmin(supabase, userId);
+
+    const { data: pending, error } = await supabase
+      .from("exercise_media")
+      .select("*")
+      .eq("is_approved", false)
+      .eq("embed_allowed", true)
+      .order("source_quality_score", { ascending: false });
+    if (error) throw new Error(error.message);
+
+    const items = (pending ?? []) as (ExerciseMediaDTO & { exercise_id: string })[];
+    if (items.length === 0) return [];
+
+    const exerciseIds = Array.from(new Set(items.map((m) => m.exercise_id)));
+    const { data: exercises } = await supabase
+      .from("exercise_pool")
+      .select("id,name")
+      .in("id", exerciseIds);
+    const nameById = new Map((exercises ?? []).map((e: any) => [e.id, e.name as string]));
+
+    const { data: approvedPrimaries } = await supabase
+      .from("exercise_media")
+      .select("exercise_id")
+      .eq("is_approved", true)
+      .eq("is_primary", true)
+      .in("exercise_id", exerciseIds);
+    const hasPrimary = new Set((approvedPrimaries ?? []).map((m: any) => m.exercise_id as string));
+
+    return items.map((m) => ({
+      media: m as ExerciseMediaDTO,
+      exercise_id: m.exercise_id,
+      exercise_name: nameById.get(m.exercise_id) ?? "Exercício",
+      exercise_has_primary: hasPrimary.has(m.exercise_id),
+    }));
+  });
+
+// ============================================================
 // Agent: buscar candidatos no YouTube
 // ============================================================
 interface YouTubeItem {
