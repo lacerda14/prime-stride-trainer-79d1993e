@@ -84,6 +84,7 @@ function DashboardContent() {
   const strengthCount = today?.exercises.filter((e) => e.exercise.category !== "core").length ?? 0;
   const coreCount = today?.exercises.filter((e) => e.exercise.category === "core").length ?? 0;
   const runMinutes = today?.running?.total_duration_minutes ?? null;
+  const trainingLabel = today ? sessionLabel(today.session_type) : "Sem treino";
 
   return (
     <div className="space-y-5 p-4">
@@ -167,8 +168,12 @@ function DashboardContent() {
         <div className="num mt-1 text-[11px] font-medium text-primary">
           Semana {String(activeWeek).padStart(2, "0")} de {totalWeeks}
         </div>
-        <div className="mt-0.5 text-[12px] text-muted-foreground line-clamp-2">
-          {today?.objective ?? "Sem treino programado."}
+        <div className="mt-3 grid gap-2 text-[12px]">
+          <DashboardInfo label="Treino" value={trainingLabel} />
+          <DashboardInfo label="Duração" value={today?.duration_minutes ? `${today.duration_minutes} min` : "—"} />
+        </div>
+        <div className="mt-2 text-[12px] text-muted-foreground line-clamp-2">
+          {today?.objective ?? "Sem treino programado para hoje."}
         </div>
         <div className="mt-3 flex flex-wrap items-center gap-1.5 text-[10px] text-muted-foreground">
           {strengthCount > 0 && (
@@ -231,6 +236,25 @@ function DashboardContent() {
         <MiniStat icon={Flame} label="Recorde" value={profile?.streak_longest ?? 0} suffix="d" />
         <MiniStat icon={Footprints} label="Macros" value={summary?.macros.length ?? 0} />
       </section>
+    </div>
+  );
+}
+
+function sessionLabel(type: string): string {
+  switch (type) {
+    case "full_body": return "Full Body";
+    case "run_upper": return "Corrida + Superior";
+    case "run": return "Corrida";
+    case "rest": return "Descanso";
+    default: return type;
+  }
+}
+
+function DashboardInfo({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-center justify-between gap-3 rounded-xl border border-border/60 bg-surface/35 px-3 py-2">
+      <span className="text-muted-foreground">{label}</span>
+      <span className="font-semibold tracking-tight">{value}</span>
     </div>
   );
 }
