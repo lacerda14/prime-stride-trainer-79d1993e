@@ -104,7 +104,20 @@ export const completeOnboarding = createServerFn({ method: "POST" })
       weight_kg: data.weight_kg,
     });
 
-    // TODO Fase C: chamar ProgramGenerationEngine.generateProgramForUser(userId)
+    // Fase C: gera programa de 48 semanas via PM Engine v1.0
+    const input: UserProfileInput = {
+      age: data.age,
+      sex: data.sex,
+      weight_kg: data.weight_kg,
+      height_cm: data.height_cm,
+      experience_level: data.experience_level,
+      goal: data.goal,
+      available_days: data.available_days,
+    };
+    const pool = await loadExercisePool(supabase);
+    if (pool.length === 0) throw new Error("Catálogo de exercícios vazio.");
+    const plan = generatePlan(input, pool);
+    const { program_id } = await persistProgram(supabase, userId, input, plan);
 
-    return { ok: true };
+    return { ok: true, program_id };
   });
