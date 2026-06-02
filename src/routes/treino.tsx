@@ -11,11 +11,11 @@ import { useLocalToday } from "@/hooks/use-local-today";
 import {
   getActiveWorkoutSession,
   startWorkoutSession,
-  updateWorkoutSessionState,
-  completeWorkoutSession,
   abandonWorkoutSession,
   type ActiveSessionDTO,
 } from "@/lib/workout-session.functions";
+import { syncSaveState, syncComplete, flushQueue } from "@/lib/offline-sync";
+import { OfflineBadge } from "@/components/offline-badge";
 
 export const Route = createFileRoute("/treino")({
   head: () => ({
