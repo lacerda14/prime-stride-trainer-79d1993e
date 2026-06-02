@@ -380,11 +380,7 @@ function OnboardingPage() {
     <div className="relative mx-auto flex min-h-screen w-full max-w-[480px] flex-col bg-background">
       {step > 0 && (
         <div className="sticky top-0 z-10 bg-background/85 px-6 pt-7 pb-4 backdrop-blur-2xl">
-          <div className="flex items-center justify-between text-[10px] font-medium uppercase tracking-[0.24em] text-muted-foreground">
-            <span>Etapa {step} de {TOTAL_SECTIONS}</span>
-            <span className="num">{Math.round(pct)}%</span>
-          </div>
-          <div className="mt-3 h-[3px] w-full overflow-hidden rounded-full bg-surface">
+          <div className="h-[3px] w-full overflow-hidden rounded-full bg-surface">
             <div className="h-full bg-titanium transition-all duration-700" style={{ width: `${pct}%` }} />
           </div>
         </div>
