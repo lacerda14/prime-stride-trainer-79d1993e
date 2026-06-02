@@ -71,6 +71,7 @@ function DashboardContent() {
 
   return (
     <div className="space-y-5 p-4">
+      <WeekDistributionModal weekNumber={CURRENT_WEEK_NUMBER} />
       {/* Saudação */}
       <section className="animate-fade-in">
         <div className="text-[11px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
