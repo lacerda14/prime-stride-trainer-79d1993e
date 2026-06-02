@@ -302,6 +302,7 @@ export type Database = {
           available_days: number | null
           avatar_url: string | null
           created_at: string
+          current_week: number
           experience_level:
             | Database["public"]["Enums"]["experience_level_enum"]
             | null
@@ -313,6 +314,7 @@ export type Database = {
           name: string | null
           onboarding_completed: boolean
           phone: string | null
+          program_start_date: string
           sex: Database["public"]["Enums"]["sex_enum"] | null
           streak_current: number
           streak_last_date: string | null
@@ -327,6 +329,7 @@ export type Database = {
           available_days?: number | null
           avatar_url?: string | null
           created_at?: string
+          current_week?: number
           experience_level?:
             | Database["public"]["Enums"]["experience_level_enum"]
             | null
@@ -338,6 +341,7 @@ export type Database = {
           name?: string | null
           onboarding_completed?: boolean
           phone?: string | null
+          program_start_date?: string
           sex?: Database["public"]["Enums"]["sex_enum"] | null
           streak_current?: number
           streak_last_date?: string | null
@@ -352,6 +356,7 @@ export type Database = {
           available_days?: number | null
           avatar_url?: string | null
           created_at?: string
+          current_week?: number
           experience_level?:
             | Database["public"]["Enums"]["experience_level_enum"]
             | null
@@ -363,6 +368,7 @@ export type Database = {
           name?: string | null
           onboarding_completed?: boolean
           phone?: string | null
+          program_start_date?: string
           sex?: Database["public"]["Enums"]["sex_enum"] | null
           streak_current?: number
           streak_last_date?: string | null
