@@ -136,9 +136,25 @@ function EvolucaoPage() {
                       </span>
                       <span className="text-[13px] text-muted-foreground">kg</span>
                     </div>
-                    <p className="mt-1.5 text-[12px] text-muted-foreground">
-                      Soma de carga × reps de todos os sets registrados.
-                    </p>
+                    {evo.strengthDeltaPct != null ? (
+                      <p
+                        className={`mt-1.5 text-[12px] font-medium ${
+                          evo.strengthDeltaPct >= 0 ? "text-primary" : "text-muted-foreground"
+                        }`}
+                      >
+                        {evo.strengthDeltaPct >= 0 ? "+" : ""}
+                        {evo.strengthDeltaPct}% vs semana anterior
+                        {evo.prevWeekStrengthVolume != null && (
+                          <span className="ml-1 num text-muted-foreground">
+                            ({evo.prevWeekStrengthVolume.toLocaleString("pt-BR")} kg)
+                          </span>
+                        )}
+                      </p>
+                    ) : (
+                      <p className="mt-1.5 text-[12px] text-muted-foreground">
+                        Soma de carga × reps de todos os sets registrados.
+                      </p>
+                    )}
                   </div>
                   <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10">
                     <TrendingUp className="h-5 w-5 text-primary" />
