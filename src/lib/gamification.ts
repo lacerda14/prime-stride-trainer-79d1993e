@@ -33,3 +33,14 @@ export const XP_REWARDS = {
   pr: 100,
   weekComplete: 250,
 } as const;
+
+/** Título narrativo para cada faixa de nível */
+export function getTitleForLevel(level: number): string {
+  if (level >= 100) return "Lenda";
+  if (level >= 50) return "Elite";
+  if (level >= 35) return "Competidor";
+  if (level >= 20) return "Avançado";
+  if (level >= 10) return "Atleta";
+  if (level >= 5) return "Consistente";
+  return "Iniciante";
+}

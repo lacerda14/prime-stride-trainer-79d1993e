@@ -10,12 +10,15 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as TreinoRouteImport } from './routes/treino'
+import { Route as TreinosRouteImport } from './routes/treinos'
 import { Route as SemanasRouteImport } from './routes/semanas'
+import { Route as SocialRouteImport } from './routes/social'
 import { Route as ProgressaoRouteImport } from './routes/progressao'
 import { Route as PerfilRouteImport } from './routes/perfil'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as HojeRouteImport } from './routes/hoje'
 import { Route as HistoricoRouteImport } from './routes/historico'
+import { Route as EvolucaoRouteImport } from './routes/evolucao'
 import { Route as CorridaRouteImport } from './routes/corrida'
 import { Route as ConfiguracoesRouteImport } from './routes/configuracoes'
 import { Route as AuthRouteImport } from './routes/auth'
@@ -27,6 +30,21 @@ import { Route as TreinoConcluidoSessionIdRouteImport } from './routes/treino.co
 const TreinoRoute = TreinoRouteImport.update({
   id: '/treino',
   path: '/treino',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TreinosRoute = TreinosRouteImport.update({
+  id: '/treinos',
+  path: '/treinos',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SocialRoute = SocialRouteImport.update({
+  id: '/social',
+  path: '/social',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EvolucaoRoute = EvolucaoRouteImport.update({
+  id: '/evolucao',
+  path: '/evolucao',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SemanasRoute = SemanasRouteImport.update({
@@ -102,13 +120,16 @@ export interface FileRoutesByFullPath {
   '/coaches': typeof CoachesRoute
   '/configuracoes': typeof ConfiguracoesRoute
   '/corrida': typeof CorridaRoute
+  '/evolucao': typeof EvolucaoRoute
   '/historico': typeof HistoricoRoute
   '/hoje': typeof HojeRoute
   '/onboarding': typeof OnboardingRoute
   '/perfil': typeof PerfilRoute
   '/progressao': typeof ProgressaoRoute
   '/semanas': typeof SemanasRoute
+  '/social': typeof SocialRoute
   '/treino': typeof TreinoRouteWithChildren
+  '/treinos': typeof TreinosRoute
   '/admin/exercise-media': typeof AdminExerciseMediaRoute
   '/treino/concluido/$sessionId': typeof TreinoConcluidoSessionIdRoute
 }
@@ -118,13 +139,16 @@ export interface FileRoutesByTo {
   '/coaches': typeof CoachesRoute
   '/configuracoes': typeof ConfiguracoesRoute
   '/corrida': typeof CorridaRoute
+  '/evolucao': typeof EvolucaoRoute
   '/historico': typeof HistoricoRoute
   '/hoje': typeof HojeRoute
   '/onboarding': typeof OnboardingRoute
   '/perfil': typeof PerfilRoute
   '/progressao': typeof ProgressaoRoute
   '/semanas': typeof SemanasRoute
+  '/social': typeof SocialRoute
   '/treino': typeof TreinoRouteWithChildren
+  '/treinos': typeof TreinosRoute
   '/admin/exercise-media': typeof AdminExerciseMediaRoute
   '/treino/concluido/$sessionId': typeof TreinoConcluidoSessionIdRoute
 }
@@ -135,13 +159,16 @@ export interface FileRoutesById {
   '/coaches': typeof CoachesRoute
   '/configuracoes': typeof ConfiguracoesRoute
   '/corrida': typeof CorridaRoute
+  '/evolucao': typeof EvolucaoRoute
   '/historico': typeof HistoricoRoute
   '/hoje': typeof HojeRoute
   '/onboarding': typeof OnboardingRoute
   '/perfil': typeof PerfilRoute
   '/progressao': typeof ProgressaoRoute
   '/semanas': typeof SemanasRoute
+  '/social': typeof SocialRoute
   '/treino': typeof TreinoRouteWithChildren
+  '/treinos': typeof TreinosRoute
   '/admin/exercise-media': typeof AdminExerciseMediaRoute
   '/treino/concluido/$sessionId': typeof TreinoConcluidoSessionIdRoute
 }
@@ -153,13 +180,16 @@ export interface FileRouteTypes {
     | '/coaches'
     | '/configuracoes'
     | '/corrida'
+    | '/evolucao'
     | '/historico'
     | '/hoje'
     | '/onboarding'
     | '/perfil'
     | '/progressao'
     | '/semanas'
+    | '/social'
     | '/treino'
+    | '/treinos'
     | '/admin/exercise-media'
     | '/treino/concluido/$sessionId'
   fileRoutesByTo: FileRoutesByTo
@@ -169,13 +199,16 @@ export interface FileRouteTypes {
     | '/coaches'
     | '/configuracoes'
     | '/corrida'
+    | '/evolucao'
     | '/historico'
     | '/hoje'
     | '/onboarding'
     | '/perfil'
     | '/progressao'
     | '/semanas'
+    | '/social'
     | '/treino'
+    | '/treinos'
     | '/admin/exercise-media'
     | '/treino/concluido/$sessionId'
   id:
@@ -185,13 +218,16 @@ export interface FileRouteTypes {
     | '/coaches'
     | '/configuracoes'
     | '/corrida'
+    | '/evolucao'
     | '/historico'
     | '/hoje'
     | '/onboarding'
     | '/perfil'
     | '/progressao'
     | '/semanas'
+    | '/social'
     | '/treino'
+    | '/treinos'
     | '/admin/exercise-media'
     | '/treino/concluido/$sessionId'
   fileRoutesById: FileRoutesById
@@ -202,13 +238,16 @@ export interface RootRouteChildren {
   CoachesRoute: typeof CoachesRoute
   ConfiguracoesRoute: typeof ConfiguracoesRoute
   CorridaRoute: typeof CorridaRoute
+  EvolucaoRoute: typeof EvolucaoRoute
   HistoricoRoute: typeof HistoricoRoute
   HojeRoute: typeof HojeRoute
   OnboardingRoute: typeof OnboardingRoute
   PerfilRoute: typeof PerfilRoute
   ProgressaoRoute: typeof ProgressaoRoute
   SemanasRoute: typeof SemanasRoute
+  SocialRoute: typeof SocialRoute
   TreinoRoute: typeof TreinoRouteWithChildren
+  TreinosRoute: typeof TreinosRoute
   AdminExerciseMediaRoute: typeof AdminExerciseMediaRoute
 }
 
@@ -268,6 +307,27 @@ declare module '@tanstack/react-router' {
       path: '/corrida'
       fullPath: '/corrida'
       preLoaderRoute: typeof CorridaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/evolucao': {
+      id: '/evolucao'
+      path: '/evolucao'
+      fullPath: '/evolucao'
+      preLoaderRoute: typeof EvolucaoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/social': {
+      id: '/social'
+      path: '/social'
+      fullPath: '/social'
+      preLoaderRoute: typeof SocialRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/treinos': {
+      id: '/treinos'
+      path: '/treinos'
+      fullPath: '/treinos'
+      preLoaderRoute: typeof TreinosRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/configuracoes': {
@@ -332,13 +392,16 @@ const rootRouteChildren: RootRouteChildren = {
   CoachesRoute: CoachesRoute,
   ConfiguracoesRoute: ConfiguracoesRoute,
   CorridaRoute: CorridaRoute,
+  EvolucaoRoute: EvolucaoRoute,
   HistoricoRoute: HistoricoRoute,
   HojeRoute: HojeRoute,
   OnboardingRoute: OnboardingRoute,
   PerfilRoute: PerfilRoute,
   ProgressaoRoute: ProgressaoRoute,
   SemanasRoute: SemanasRoute,
+  SocialRoute: SocialRoute,
   TreinoRoute: TreinoRouteWithChildren,
+  TreinosRoute: TreinosRoute,
   AdminExerciseMediaRoute: AdminExerciseMediaRoute,
 }
 export const routeTree = rootRouteImport
