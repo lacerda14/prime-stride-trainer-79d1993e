@@ -301,7 +301,7 @@ export const updateProfile = createServerFn({ method: "POST" })
     if (rest.available_minutes !== undefined) patch.available_minutes = clampMinutes(rest.available_minutes);
 
     if (Object.keys(patch).length > 0) {
-      const { error } = await supabase.from("profiles").update(patch).eq("id", userId);
+      const { error } = await supabase.from("profiles").update(patch as never).eq("id", userId);
       if (error) throw new Error(error.message);
     }
 
