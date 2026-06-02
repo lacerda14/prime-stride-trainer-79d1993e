@@ -1,6 +1,11 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { AppShell } from "@/components/app-shell";
-import { Watch, Bell, User, Database, Smartphone } from "lucide-react";
+import { Watch, Bell, User, Database, Smartphone, RotateCcw, Loader2 } from "lucide-react";
+import { useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
+import { useQueryClient } from "@tanstack/react-query";
+import { resetOnboarding } from "@/lib/profile.functions";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/configuracoes")({
   head: () => ({
