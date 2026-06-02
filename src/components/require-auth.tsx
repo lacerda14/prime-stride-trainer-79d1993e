@@ -11,6 +11,7 @@ export function RequireAuth({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (r) => r.location.pathname });
   const fetchProfile = useServerFn(getProfile);
+  const isOnboarding = pathname === "/onboarding";
 
   const profileQ = useQuery({
     queryKey: ["profile", user?.id],
@@ -18,6 +19,8 @@ export function RequireAuth({ children }: { children: ReactNode }) {
     enabled: !!user,
     staleTime: 60_000,
   });
+  const profileChecking = profileQ.isLoading || profileQ.isFetching;
+  const onboardingCompleted = profileQ.data?.onboarding_completed === true;
 
   useEffect(() => {
     if (!loading && !user) {
@@ -27,13 +30,13 @@ export function RequireAuth({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!user) return;
-    if (profileQ.isLoading) return;
-    if (!profileQ.data?.onboarding_completed && pathname !== "/onboarding") {
+    if (profileChecking) return;
+    if (!onboardingCompleted && !isOnboarding) {
       navigate({ to: "/onboarding", replace: true });
     }
-  }, [user, profileQ.data, profileQ.isLoading, pathname, navigate]);
+  }, [user, profileChecking, onboardingCompleted, isOnboarding, navigate]);
 
-  if (loading || !user || profileQ.isLoading || !profileQ.data?.onboarding_completed) {
+  if (loading || !user || profileChecking || !onboardingCompleted) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
         <Loader2 className="h-6 w-6 animate-spin text-primary" />
