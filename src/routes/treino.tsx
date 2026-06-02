@@ -551,7 +551,7 @@ function TreinoPage() {
             Total {formatHMS(totalElapsedSeconds)}
           </div>
         </div>
-        <div className="w-10" />
+        <div className="w-10 flex justify-end"><OfflineBadge /></div>
       </header>
 
       <main className="relative flex flex-1 flex-col items-center justify-center px-5 py-4">
