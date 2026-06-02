@@ -20,6 +20,7 @@ import { Route as CorridaRouteImport } from './routes/corrida'
 import { Route as ConfiguracoesRouteImport } from './routes/configuracoes'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AdminExerciseMediaRouteImport } from './routes/admin.exercise-media'
 
 const TreinoRoute = TreinoRouteImport.update({
   id: '/treino',
@@ -76,6 +77,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminExerciseMediaRoute = AdminExerciseMediaRouteImport.update({
+  id: '/admin/exercise-media',
+  path: '/admin/exercise-media',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -89,6 +95,7 @@ export interface FileRoutesByFullPath {
   '/progressao': typeof ProgressaoRoute
   '/semanas': typeof SemanasRoute
   '/treino': typeof TreinoRoute
+  '/admin/exercise-media': typeof AdminExerciseMediaRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -102,6 +109,7 @@ export interface FileRoutesByTo {
   '/progressao': typeof ProgressaoRoute
   '/semanas': typeof SemanasRoute
   '/treino': typeof TreinoRoute
+  '/admin/exercise-media': typeof AdminExerciseMediaRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -116,6 +124,7 @@ export interface FileRoutesById {
   '/progressao': typeof ProgressaoRoute
   '/semanas': typeof SemanasRoute
   '/treino': typeof TreinoRoute
+  '/admin/exercise-media': typeof AdminExerciseMediaRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -131,6 +140,7 @@ export interface FileRouteTypes {
     | '/progressao'
     | '/semanas'
     | '/treino'
+    | '/admin/exercise-media'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -144,6 +154,7 @@ export interface FileRouteTypes {
     | '/progressao'
     | '/semanas'
     | '/treino'
+    | '/admin/exercise-media'
   id:
     | '__root__'
     | '/'
@@ -157,6 +168,7 @@ export interface FileRouteTypes {
     | '/progressao'
     | '/semanas'
     | '/treino'
+    | '/admin/exercise-media'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -171,6 +183,7 @@ export interface RootRouteChildren {
   ProgressaoRoute: typeof ProgressaoRoute
   SemanasRoute: typeof SemanasRoute
   TreinoRoute: typeof TreinoRoute
+  AdminExerciseMediaRoute: typeof AdminExerciseMediaRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -252,6 +265,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/exercise-media': {
+      id: '/admin/exercise-media'
+      path: '/admin/exercise-media'
+      fullPath: '/admin/exercise-media'
+      preLoaderRoute: typeof AdminExerciseMediaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -267,7 +287,18 @@ const rootRouteChildren: RootRouteChildren = {
   ProgressaoRoute: ProgressaoRoute,
   SemanasRoute: SemanasRoute,
   TreinoRoute: TreinoRoute,
+  AdminExerciseMediaRoute: AdminExerciseMediaRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
