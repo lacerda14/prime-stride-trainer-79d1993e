@@ -123,7 +123,7 @@ interface Data {
   // S4
   experience_level: Experience | "";
   training_history: string;
-  training_location: string;
+  
   available_days: number | "";
   available_minutes: number | "";
   // S5
