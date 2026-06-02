@@ -173,6 +173,13 @@ function PerfilPage() {
               <span>Curador de Vídeos</span>
               <ChevronRight className="h-4 w-4 text-muted-foreground" />
             </Link>
+            <Link
+              to="/admin/users"
+              className="flex items-center justify-between rounded-xl border border-border bg-surface/40 px-4 py-3 text-[14px] font-medium text-foreground transition-colors hover:bg-surface/60"
+            >
+              <span>Gerenciar Usuários</span>
+              <ChevronRight className="h-4 w-4 text-muted-foreground" />
+            </Link>
           </Card>
         )}
 
