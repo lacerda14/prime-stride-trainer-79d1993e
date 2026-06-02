@@ -116,6 +116,10 @@ function TreinoPage() {
   }
 
   const completeSet = () => {
+    if (current.kind === "running") {
+      setPhase("work"); setSeconds(0); setIdx((i) => Math.min(queue.length - 1, i + 1));
+      return;
+    }
     if (phase === "work") {
       setPhase("rest"); setSeconds(0); setRunning(true);
     } else {
