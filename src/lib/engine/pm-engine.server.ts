@@ -21,7 +21,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 // ============================================================
 // Tipos de entrada
 // ============================================================
-export type Sex = "male" | "female" | "other";
+export type Sex = "male" | "female" | "other" | "prefer_not_to_say";
 export type Experience = "beginner" | "intermediate" | "advanced";
 export type Goal = "fat_loss" | "hypertrophy" | "endurance" | "hybrid";
 export type AvailableDays = 3 | 4 | 5;

@@ -468,6 +468,7 @@ export type Database = {
           waist_cm: number | null
           weight_kg: number | null
           xp_total: number
+          onboarding_step: number | null
         }
         Insert: {
           age?: number | null
@@ -536,6 +537,7 @@ export type Database = {
           waist_cm?: number | null
           weight_kg?: number | null
           xp_total?: number
+          onboarding_step?: number | null
         }
         Update: {
           age?: number | null
@@ -604,6 +606,7 @@ export type Database = {
           waist_cm?: number | null
           weight_kg?: number | null
           xp_total?: number
+          onboarding_step?: number | null
         }
         Relationships: []
       }
@@ -1152,7 +1155,7 @@ export type Database = {
         | "pace_work"
         | "recovery_run"
       session_type_enum: "full_body" | "run_upper" | "run" | "rest"
-      sex_enum: "male" | "female" | "other"
+      sex_enum: "male" | "female" | "other" | "prefer_not_to_say"
       week_type_enum: "A" | "B"
     }
     CompositeTypes: {
@@ -1329,7 +1332,7 @@ export const Constants = {
         "recovery_run",
       ],
       session_type_enum: ["full_body", "run_upper", "run", "rest"],
-      sex_enum: ["male", "female", "other"],
+      sex_enum: ["male", "female", "other", "prefer_not_to_say"],
       week_type_enum: ["A", "B"],
     },
   },
