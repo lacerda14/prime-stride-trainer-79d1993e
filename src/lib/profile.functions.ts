@@ -256,6 +256,7 @@ export const completeOnboarding = createServerFn({ method: "POST" })
         past_injuries: data.past_injuries,
         uncomfortable_movements: data.uncomfortable_movements,
         equipment: data.equipment,
+        gym_setup: data.gym_setup,
         training_style: data.training_style ?? null,
         perf_max_pushups: data.perf_max_pushups ?? null,
         perf_max_squats: data.perf_max_squats ?? null,
