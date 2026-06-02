@@ -28,6 +28,10 @@ function HistoricoPage() {
     enabled: !!user,
   });
 
+  // tenta drenar a fila offline ao abrir o histórico — assim sessões
+  // concluídas sem internet aparecem assim que reconectar
+  useEffect(() => { void flushQueue(); }, []);
+
   const sessions = data ?? [];
   const totalSeconds = sessions.reduce((acc, s) => acc + (s.duration_seconds ?? 0), 0);
   const totalHours = Math.floor(totalSeconds / 3600);
@@ -36,7 +40,9 @@ function HistoricoPage() {
   return (
     <AppShell eyebrow="Atividade" title="Histórico">
       <div className="space-y-5 p-4">
+        <OfflineNotice />
         <div className="grid grid-cols-3 gap-2">
+
           <Stat label="Sessões" value={String(sessions.length)} hint="concluídas" />
           <Stat
             label="Tempo total"
