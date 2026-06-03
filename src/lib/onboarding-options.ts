@@ -94,7 +94,7 @@ export const EXPERIENCE_OPTIONS = [
 ] as const;
 
 export const SPORTS_OPTIONS = [
-  "Corrida", "CrossFit", "Futebol", "Basquete", "Jiu-Jitsu", "Muay Thai",
+  "Nenhum", "Corrida", "CrossFit", "Futebol", "Basquete", "Jiu-Jitsu", "Muay Thai",
   "Natação", "Ciclismo", "Tênis", "Triathlon", "Vôlei", "Outro",
 ];
 
