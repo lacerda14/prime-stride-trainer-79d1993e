@@ -141,6 +141,7 @@ function ConcluidoPage() {
   const [generalNotes, setGeneralNotes] = useState("");
   const [saving, setSaving] = useState(false);
   const [savedOnce, setSavedOnce] = useState(false);
+  const [newPRs, setNewPRs] = useState<Array<{ label: string; value: number; estimated_1rm: number | null; improvement_pct: number | null }>>([]);
   const [notesOpen, setNotesOpen] = useState(false);
   const [setsOpen, setSetsOpen] = useState(false);
 
