@@ -97,3 +97,93 @@ export const detectAndUpsertPRs = createServerFn({ method: "POST" })
   .handler(async ({ data, context }): Promise<PRDetectionRunResult> => {
     return runPRDetectionForSession(context.supabase, context.userId, data.session_id);
   });
+
+// ============================================================
+// Manual PR entry — usuário pode inserir/editar PRs
+// ============================================================
+const manualPRSchema = z.object({
+  exercise_code: z.string().min(1).max(64),
+  value: z.number().positive().max(100000),
+  secondary_value: z.number().positive().max(100000).nullable().optional(),
+  achieved_at: z.string().datetime().optional(),
+});
+
+export const upsertManualPR = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => manualPRSchema.parse(input))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const code = data.exercise_code as keyof typeof PR_EXERCISE_CODES;
+    const meta = PR_EXERCISE_CODES[code];
+    if (!meta) throw new Error("Exercício inválido para PR.");
+
+    // 1RM Epley quando weight_load + reps
+    let estimated_1rm: number | null = null;
+    if (meta.metric === "weight_load" && data.secondary_value && data.secondary_value > 0) {
+      const reps = data.secondary_value;
+      estimated_1rm = Math.round(data.value * (1 + reps / 30) * 10) / 10;
+    }
+
+    // valor atual para previous_value + history
+    const { data: current } = await supabase
+      .from("personal_records")
+      .select("value, estimated_1rm")
+      .eq("user_id", userId)
+      .eq("exercise_code", code)
+      .maybeSingle();
+
+    const previousValue = current ? Number(current.value) : null;
+    const achievedAt = data.achieved_at ?? new Date().toISOString();
+
+    const { error: upErr } = await supabase.from("personal_records").upsert(
+      {
+        user_id: userId,
+        exercise_code: code,
+        category: meta.category,
+        metric_type: meta.metric,
+        value: data.value,
+        secondary_value: data.secondary_value ?? null,
+        estimated_1rm,
+        previous_value: previousValue,
+        source_session_id: null,
+        achieved_at: achievedAt,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "user_id,exercise_code" },
+    );
+    if (upErr) throw new Error(upErr.message);
+
+    // History (sempre registra a edição manual)
+    const improvement =
+      previousValue != null && previousValue > 0
+        ? Math.round(((data.value - previousValue) / previousValue) * 1000) / 10
+        : null;
+    await supabase.from("pr_history").insert({
+      user_id: userId,
+      exercise_code: code,
+      category: meta.category,
+      metric_type: meta.metric,
+      value: data.value,
+      secondary_value: data.secondary_value ?? null,
+      estimated_1rm,
+      previous_value: previousValue,
+      improvement_pct: improvement,
+      source_session_id: null,
+    });
+
+    return { ok: true };
+  });
+
+export const deletePR = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => z.object({ exercise_code: z.string().min(1).max(64) }).parse(input))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const { error } = await supabase
+      .from("personal_records")
+      .delete()
+      .eq("user_id", userId)
+      .eq("exercise_code", data.exercise_code);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
