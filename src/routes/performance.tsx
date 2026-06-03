@@ -1,12 +1,14 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
+import { useState } from "react";
 import { AppShell } from "@/components/app-shell";
 import { RequireAuth } from "@/components/require-auth";
 import { useAuth } from "@/hooks/use-auth";
-import { getPersonalRecords, getRecentPRs } from "@/lib/personal-records.functions";
+import { getPersonalRecords, getRecentPRs, type PersonalRecordDTO } from "@/lib/personal-records.functions";
 import { PR_EXERCISE_CODES, type PRExerciseCode } from "@/lib/pr-detection.server";
-import { Trophy, TrendingUp, Loader2, ArrowRight, Dumbbell, Footprints } from "lucide-react";
+import { PREditSheet } from "@/components/pr-edit-sheet";
+import { Trophy, TrendingUp, Loader2, ArrowRight, Dumbbell, Footprints, Plus, Pencil } from "lucide-react";
 
 export const Route = createFileRoute("/performance")({
   head: () => ({
@@ -68,6 +70,8 @@ function PerformancePage() {
 
   const isLoading = prs.isLoading || recent.isLoading;
   const prMap = new Map((prs.data ?? []).map((r) => [r.exercise_code, r]));
+  const [editingCode, setEditingCode] = useState<PRExerciseCode | null>(null);
+  const editingPR = editingCode ? prMap.get(editingCode) ?? null : null;
 
   return (
     <AppShell eyebrow="Minha performance" title="PRs & Performance">
@@ -115,7 +119,7 @@ function PerformancePage() {
             <SectionHeader icon={<Dumbbell className="h-4 w-4" />} title="Força" />
             <div className="space-y-2">
               {STRENGTH_ORDER.map((code) => (
-                <PRCard key={code} code={code} pr={prMap.get(code)} />
+                <PRCard key={code} code={code} pr={prMap.get(code)} onEdit={() => setEditingCode(code)} />
               ))}
             </div>
           </section>
@@ -125,7 +129,7 @@ function PerformancePage() {
             <SectionHeader icon={<Footprints className="h-4 w-4" />} title="Corrida" />
             <div className="space-y-2">
               {RUNNING_ORDER.map((code) => (
-                <PRCard key={code} code={code} pr={prMap.get(code)} />
+                <PRCard key={code} code={code} pr={prMap.get(code)} onEdit={() => setEditingCode(code)} />
               ))}
             </div>
           </section>
@@ -144,6 +148,20 @@ function PerformancePage() {
           </Link>
         </div>
       )}
+      <PREditSheet
+        open={editingCode !== null}
+        onOpenChange={(o) => !o && setEditingCode(null)}
+        code={editingCode}
+        current={
+          editingPR
+            ? {
+                value: editingPR.value,
+                secondary_value: editingPR.secondary_value,
+                achieved_at: editingPR.achieved_at,
+              }
+            : null
+        }
+      />
     </AppShell>
   );
 }
@@ -160,6 +178,7 @@ function SectionHeader({ icon, title }: { icon: React.ReactNode; title: string }
 function PRCard({
   code,
   pr,
+  onEdit,
 }: {
   code: PRExerciseCode;
   pr:
@@ -171,18 +190,28 @@ function PRCard({
         achieved_at: string;
       }
     | undefined;
+  onEdit: () => void;
 }) {
   const meta = PR_EXERCISE_CODES[code];
   if (!pr) {
     return (
-      <div className="rounded-2xl border border-dashed border-border/50 bg-surface/30 p-4">
-        <div className="text-[13px] font-semibold text-muted-foreground">{meta.label}</div>
-        <div className="mt-0.5 text-[11px] text-muted-foreground/70">Sem recorde ainda</div>
-      </div>
+      <button
+        onClick={onEdit}
+        className="flex w-full items-center justify-between rounded-2xl border border-dashed border-border/50 bg-surface/30 p-4 text-left transition-colors hover:bg-surface/50 active:scale-[0.99]"
+      >
+        <div>
+          <div className="text-[13px] font-semibold text-muted-foreground">{meta.label}</div>
+          <div className="mt-0.5 text-[11px] text-muted-foreground/70">Toque para registrar</div>
+        </div>
+        <Plus className="h-4 w-4 text-muted-foreground" />
+      </button>
     );
   }
   return (
-    <div className="glass rounded-2xl p-4">
+    <button
+      onClick={onEdit}
+      className="glass w-full rounded-2xl p-4 text-left transition-colors hover:bg-surface/50 active:scale-[0.99]"
+    >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="text-[13px] font-semibold">{meta.label}</div>
@@ -201,9 +230,9 @@ function PRCard({
             )}
           </div>
         </div>
-        <Trophy className="h-5 w-5 shrink-0 text-primary/60" />
+        <Pencil className="h-4 w-4 shrink-0 text-muted-foreground/70" />
       </div>
-    </div>
+    </button>
   );
 }
 
