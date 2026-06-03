@@ -140,11 +140,13 @@ function ExerciseRows({ exercise, onOpenVideo }: { exercise: SessionExerciseDTO;
 }
 
 // Card de exercício simples
-function SingleCard({ exercise, index, onOpenVideo, lastWeights }: {
+function SingleCard({ exercise, index, onOpenVideo, lastWeights, onRequestSwap, isSwapped }: {
   exercise: SessionExerciseDTO;
   index: number;
   onOpenVideo: (id: string) => void;
   lastWeights: Record<string, number | null>;
+  onRequestSwap: (slotId: string, currentPoolId: string, currentName: string) => void;
+  isSwapped: boolean;
 }) {
   const [open, setOpen] = useState(index === 0);
 
@@ -168,6 +170,11 @@ function SingleCard({ exercise, index, onOpenVideo, lastWeights }: {
                 {exercise.exercise.name}
                 <PlayCircle className="h-3.5 w-3.5 text-muted-foreground" />
               </button>
+              {isSwapped && (
+                <span className="rounded-full border border-primary/30 bg-primary/10 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-widest text-primary">
+                  Trocado
+                </span>
+              )}
             </div>
             <div className="num mt-0.5 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
               <span>{exercise.sets}×{exercise.reps}</span>
@@ -189,6 +196,14 @@ function SingleCard({ exercise, index, onOpenVideo, lastWeights }: {
             {Array.from({ length: exercise.sets || 1 }).map((_, i) => (
               <SetRow key={i} exerciseId={exercise.id} setNum={i + 1} reps={exercise.reps} lastWeight={lastWeights[exercise.exercise.id]} />
             ))}
+            <button
+              type="button"
+              onClick={() => onRequestSwap(exercise.id, exercise.exercise.id, exercise.exercise.name)}
+              className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl border border-border bg-surface/40 px-3 py-2 text-[11px] font-semibold text-muted-foreground transition-colors hover:text-primary"
+            >
+              <ArrowRightLeft className="h-3.5 w-3.5" />
+              {isSwapped ? "Trocar novamente" : "Sugerir alternativa"}
+            </button>
             {exercise.rest_seconds && (
               <div className="flex items-center justify-center gap-2 rounded-xl border border-primary/20 bg-primary/5 py-2 text-xs font-medium text-primary">
                 <Timer className="h-3.5 w-3.5" /> Descanso: {exercise.rest_seconds}s após cada série
