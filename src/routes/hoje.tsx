@@ -1,15 +1,36 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AppShell } from "@/components/app-shell";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { getTodayTraining, type SessionExerciseDTO } from "@/lib/program.queries";
 import { getLastWeightsForExercises } from "@/lib/workout-logs.functions";
 import { useAuth } from "@/hooks/use-auth";
-import { ChevronDown, Play, Timer, Target, Loader2, PlayCircle } from "lucide-react";
+import { ChevronDown, Play, Timer, Target, Loader2, PlayCircle, ArrowRightLeft } from "lucide-react";
 import { runningHeadline, runningInstructions } from "@/lib/format-running";
 import { useLocalToday } from "@/hooks/use-local-today";
 import { ExerciseDetailModal, useExerciseDetail } from "@/components/exercise-detail-modal";
+import { ExerciseSwapSheet } from "@/components/exercise-swap-sheet";
+import type { SwapSuggestion } from "@/lib/exercise-swap.functions";
+
+// Swap aplicado a um exercício do dia (overlay puramente visual / local)
+type AppliedSwap = { id: string; name: string; category: string };
+type SwapMap = Record<string, AppliedSwap>;
+
+function swapKey(date: string) { return `hoje_swaps_${date}`; }
+function loadSwaps(date: string): SwapMap {
+  try { return JSON.parse(localStorage.getItem(swapKey(date)) ?? "{}") as SwapMap; }
+  catch { return {}; }
+}
+function persistSwaps(date: string, m: SwapMap) {
+  try { localStorage.setItem(swapKey(date), JSON.stringify(m)); } catch { /* noop */ }
+}
+
+function applySwap(e: SessionExerciseDTO, swaps: SwapMap): SessionExerciseDTO {
+  const s = swaps[e.id];
+  if (!s) return e;
+  return { ...e, exercise: { id: s.id, name: s.name, category: s.category } };
+}
 
 export const Route = createFileRoute("/hoje")({
   head: () => ({
@@ -119,11 +140,13 @@ function ExerciseRows({ exercise, onOpenVideo }: { exercise: SessionExerciseDTO;
 }
 
 // Card de exercício simples
-function SingleCard({ exercise, index, onOpenVideo, lastWeights }: {
+function SingleCard({ exercise, index, onOpenVideo, lastWeights, onRequestSwap, isSwapped }: {
   exercise: SessionExerciseDTO;
   index: number;
   onOpenVideo: (id: string) => void;
   lastWeights: Record<string, number | null>;
+  onRequestSwap: (slotId: string, currentPoolId: string, currentName: string) => void;
+  isSwapped: boolean;
 }) {
   const [open, setOpen] = useState(index === 0);
 
@@ -147,6 +170,11 @@ function SingleCard({ exercise, index, onOpenVideo, lastWeights }: {
                 {exercise.exercise.name}
                 <PlayCircle className="h-3.5 w-3.5 text-muted-foreground" />
               </button>
+              {isSwapped && (
+                <span className="rounded-full border border-primary/30 bg-primary/10 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-widest text-primary">
+                  Trocado
+                </span>
+              )}
             </div>
             <div className="num mt-0.5 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
               <span>{exercise.sets}×{exercise.reps}</span>
@@ -168,6 +196,14 @@ function SingleCard({ exercise, index, onOpenVideo, lastWeights }: {
             {Array.from({ length: exercise.sets || 1 }).map((_, i) => (
               <SetRow key={i} exerciseId={exercise.id} setNum={i + 1} reps={exercise.reps} lastWeight={lastWeights[exercise.exercise.id]} />
             ))}
+            <button
+              type="button"
+              onClick={() => onRequestSwap(exercise.id, exercise.exercise.id, exercise.exercise.name)}
+              className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl border border-border bg-surface/40 px-3 py-2 text-[11px] font-semibold text-muted-foreground transition-colors hover:text-primary"
+            >
+              <ArrowRightLeft className="h-3.5 w-3.5" />
+              {isSwapped ? "Trocar novamente" : "Sugerir alternativa"}
+            </button>
             {exercise.rest_seconds && (
               <div className="flex items-center justify-center gap-2 rounded-xl border border-primary/20 bg-primary/5 py-2 text-xs font-medium text-primary">
                 <Timer className="h-3.5 w-3.5" /> Descanso: {exercise.rest_seconds}s após cada série
@@ -181,12 +217,14 @@ function SingleCard({ exercise, index, onOpenVideo, lastWeights }: {
 }
 
 // Card de biset — agrupa todos os exercícios do par
-function BisetCard({ exercises, slot, index, onOpenVideo, lastWeights }: {
+function BisetCard({ exercises, slot, index, onOpenVideo, lastWeights, onRequestSwap, swappedIds }: {
   exercises: SessionExerciseDTO[];
   slot: number;
   index: number;
   onOpenVideo: (id: string) => void;
   lastWeights: Record<string, number | null>;
+  onRequestSwap: (slotId: string, currentPoolId: string, currentName: string) => void;
+  swappedIds: Set<string>;
 }) {
   const [open, setOpen] = useState(index === 0);
   const restSeconds = exercises.find((e) => e.rest_seconds)?.rest_seconds;
@@ -271,7 +309,23 @@ function BisetCard({ exercises, slot, index, onOpenVideo, lastWeights }: {
               </div>
             ))}
 
+            {/* Botões de swap por exercício do biset */}
+            <div className="mb-3 grid grid-cols-2 gap-2">
+              {exercises.map((ex) => (
+                <button
+                  key={`swap-${ex.id}`}
+                  type="button"
+                  onClick={() => onRequestSwap(ex.id, ex.exercise.id, ex.exercise.name)}
+                  className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-border bg-surface/40 px-2 py-1.5 text-[10.5px] font-semibold text-muted-foreground transition-colors hover:text-primary"
+                >
+                  <ArrowRightLeft className="h-3 w-3" />
+                  {swappedIds.has(ex.id) ? "Trocar novamente" : "Trocar"}
+                </button>
+              ))}
+            </div>
+
             {/* Descanso após biset completo */}
+
             {restSeconds && (
               <div className="flex items-center justify-center gap-2 rounded-xl border border-primary/20 bg-primary/5 py-2.5 text-xs font-medium text-primary">
                 <Timer className="h-3.5 w-3.5" /> Descanse {restSeconds}s antes da próxima rodada
@@ -299,7 +353,28 @@ function HojePage() {
     enabled: !!user,
   });
 
-  const exerciseIds = data?.today?.exercises.map((e) => e.exercise.id) ?? [];
+  // Swaps locais para o dia (persistidos por data)
+  const [swaps, setSwaps] = useState<SwapMap>({});
+  useEffect(() => {
+    setSwaps(loadSwaps(localToday.local_date));
+  }, [localToday.local_date]);
+
+  const [swapTarget, setSwapTarget] = useState<
+    { slotId: string; poolId: string; name: string } | null
+  >(null);
+
+  const handleApplySwap = (sug: SwapSuggestion) => {
+    if (!swapTarget) return;
+    const next: SwapMap = {
+      ...swaps,
+      [swapTarget.slotId]: { id: sug.id, name: sug.name, category: sug.category },
+    };
+    setSwaps(next);
+    persistSwaps(localToday.local_date, next);
+    setSwapTarget(null);
+  };
+
+  const exerciseIds = data?.today?.exercises.map((e) => applySwap(e, swaps).exercise.id) ?? [];
   const { data: lastWeights = {} } = useQuery({
     queryKey: ["last-weights", user?.id, exerciseIds.join(",")],
     queryFn: () => fetchWeights({ data: { exercise_ids: exerciseIds } }),
@@ -326,8 +401,10 @@ function HojePage() {
 
   const today = data.today;
   const week  = data.week;
-  const strength = today.exercises.filter((e) => e.exercise.category !== "core");
-  const core     = today.exercises.filter((e) => e.exercise.category === "core");
+  // Aplica swaps locais antes de filtrar/agrupar
+  const displayExercises = today.exercises.map((e) => applySwap(e, swaps));
+  const strength = displayExercises.filter((e) => e.exercise.category !== "core");
+  const core     = displayExercises.filter((e) => e.exercise.category === "core");
   const groups   = groupExercises(strength);
 
   return (
@@ -395,13 +472,32 @@ function HojePage() {
           <div>
             <div className="mb-3 text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">Força</div>
             <div className="space-y-3">
-              {groups.map((g) =>
-                g.kind === "single" ? (
-                  <SingleCard key={g.exercise.id} exercise={g.exercise} index={g.index} onOpenVideo={detail.open} lastWeights={lastWeights} />
+              {groups.map((g) => {
+                const onRequestSwap = (slotId: string, poolId: string, name: string) =>
+                  setSwapTarget({ slotId, poolId, name });
+                return g.kind === "single" ? (
+                  <SingleCard
+                    key={g.exercise.id}
+                    exercise={g.exercise}
+                    index={g.index}
+                    onOpenVideo={detail.open}
+                    lastWeights={lastWeights}
+                    onRequestSwap={onRequestSwap}
+                    isSwapped={!!swaps[g.exercise.id]}
+                  />
                 ) : (
-                  <BisetCard key={`biset-${g.slot}`} exercises={g.exercises} slot={g.slot} index={g.index} onOpenVideo={detail.open} lastWeights={lastWeights} />
-                )
-              )}
+                  <BisetCard
+                    key={`biset-${g.slot}`}
+                    exercises={g.exercises}
+                    slot={g.slot}
+                    index={g.index}
+                    onOpenVideo={detail.open}
+                    lastWeights={lastWeights}
+                    onRequestSwap={onRequestSwap}
+                    swappedIds={new Set(g.exercises.filter((e) => swaps[e.id]).map((e) => e.id))}
+                  />
+                );
+              })}
             </div>
           </div>
         )}
@@ -412,22 +508,30 @@ function HojePage() {
             <div className="text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">Core</div>
             <div className="mt-3 space-y-2">
               {core.map((c) => (
-                <div key={c.id} className="num flex items-center justify-between rounded-lg border border-border/60 bg-surface/40 px-3 py-2.5 text-sm">
+                <div key={c.id} className="num flex items-center justify-between gap-3 rounded-lg border border-border/60 bg-surface/40 px-3 py-2.5 text-sm">
                   <button
                     type="button"
                     onClick={() => detail.open(c.exercise.id)}
-                    className="inline-flex items-center gap-1.5 font-medium text-left transition-colors hover:text-primary"
+                    className="inline-flex items-center gap-1.5 font-medium text-left transition-colors hover:text-primary min-w-0"
                   >
-                    {c.exercise.name}
-                    <PlayCircle className="h-3 w-3 text-muted-foreground" />
+                    <span className="truncate">{c.exercise.name}</span>
+                    <PlayCircle className="h-3 w-3 shrink-0 text-muted-foreground" />
                   </button>
-                  <div className="flex items-center gap-3 text-muted-foreground">
+                  <div className="flex shrink-0 items-center gap-2 text-muted-foreground">
                     <span>{c.sets}x{c.reps}</span>
                     {c.rest_seconds && (
                       <span className="inline-flex items-center gap-1 rounded-md bg-primary/10 px-1.5 py-0.5 text-[10px] text-primary">
                         <Timer className="h-3 w-3" /> {c.rest_seconds}s
                       </span>
                     )}
+                    <button
+                      type="button"
+                      onClick={() => setSwapTarget({ slotId: c.id, poolId: c.exercise.id, name: c.exercise.name })}
+                      className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-border bg-surface/60 transition-colors hover:text-primary"
+                      aria-label="Trocar exercício"
+                    >
+                      <ArrowRightLeft className="h-3 w-3" />
+                    </button>
                   </div>
                 </div>
               ))}
@@ -445,6 +549,13 @@ function HojePage() {
         </div>
       </div>
       <ExerciseDetailModal {...detail.modalProps} />
+      <ExerciseSwapSheet
+        open={!!swapTarget}
+        exerciseId={swapTarget?.poolId ?? null}
+        exerciseName={swapTarget?.name ?? ""}
+        onClose={() => setSwapTarget(null)}
+        onSelect={handleApplySwap}
+      />
     </AppShell>
   );
 }
