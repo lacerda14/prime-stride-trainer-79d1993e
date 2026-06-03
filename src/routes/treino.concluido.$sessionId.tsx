@@ -237,6 +237,7 @@ function ConcluidoPage() {
           running_log: runningPayload,
           general_notes: generalNotes || null,
           perceived_effort: generalEffort ? Number(generalEffort) : null,
+          duration_feedback: durationFeedback || null,
         },
       });
       setSavedOnce(true);
