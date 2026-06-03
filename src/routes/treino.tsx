@@ -427,22 +427,20 @@ function TreinoPage() {
     setFinishing(true);
     const sid = sessionId!;
 
-    // Timeout de segurança: se demorar mais de 8s, navega de qualquer forma
-    const safetyTimer = setTimeout(() => {
-      navigate({ to: "/treino/concluido/$sessionId", params: { sessionId: sid }, replace: true });
-    }, 8000);
+    // Navega imediatamente para a tela de resumo — a finalização roda em background.
+    // A tela de resumo já lida com o estado "ainda sincronizando".
+    navigate({ to: "/treino/concluido/$sessionId", params: { sessionId: sid }, replace: true });
 
-    syncComplete({ session_id: sid, total_elapsed_seconds: totalElapsedSeconds })
+    void syncComplete({ session_id: sid, total_elapsed_seconds: totalElapsedSeconds })
       .then(() => {
         try { localStorage.removeItem(lsKey(sid)); } catch { /* noop */ }
         qc.invalidateQueries({ queryKey: ["active-workout-session", user?.id] });
         qc.invalidateQueries({ queryKey: ["workout-history", user?.id] });
+        qc.invalidateQueries({ queryKey: ["completed-session", sid] });
       })
-      .finally(() => {
-        clearTimeout(safetyTimer);
-        navigate({ to: "/treino/concluido/$sessionId", params: { sessionId: sid }, replace: true });
-      });
+      .catch(() => { /* offline-sync já enfileira */ });
   }, [finished, finishing, sessionId, totalElapsedSeconds, qc, user?.id, navigate]);
+
 
 
   // drena a fila ao montar (caso tenha sobrado de uma sessão anterior)
