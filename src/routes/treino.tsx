@@ -785,8 +785,13 @@ function TreinoPage() {
           <div className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground truncate">
             {current.kind === "run" ? current.protocolName : `Bloco ${step + 1} / ${queue.length}`}
           </div>
-          <div className="text-[11px] font-medium text-muted-foreground">
-            Total {formatHMS(totalElapsedSeconds)}
+          <div className="text-[11px] font-medium text-muted-foreground flex items-center justify-center gap-2">
+            <span>Total {formatHMS(totalElapsedSeconds)}</span>
+            {liveVolume > 0 && (
+              <span className="inline-flex items-center gap-1 text-primary">
+                <BarChart3 className="h-3 w-3" /> {formatVolume(liveVolume)}
+              </span>
+            )}
           </div>
         </div>
         <div className="w-10 flex justify-end"><OfflineBadge /></div>
