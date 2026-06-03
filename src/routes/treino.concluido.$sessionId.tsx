@@ -21,7 +21,7 @@ import { getCompletedSession, saveWorkoutLogs, type SetLogDTO } from "@/lib/work
 import { getWeekDetail } from "@/lib/program.queries";
 import { estimateCalories } from "@/lib/calories";
 import { toast } from "sonner";
-import { Slider } from "@/components/ui/slider";
+
 import {
   AlertDialog,
   AlertDialogAction,
