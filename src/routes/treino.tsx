@@ -231,6 +231,13 @@ function TreinoPage() {
   // total acumulado da sessão inteira (somando fases já fechadas)
   const [totalAccumMs, setTotalAccumMs] = useState(0);
 
+  // Logs por set (volume ao vivo + autosave)
+  const [setLogs, setSetLogs] = useState<Record<string, SetLogState>>({});
+  // Inputs visíveis do set atual (kg + reps)
+  const [liveLoad, setLiveLoad] = useState("");
+  const [liveReps, setLiveReps] = useState("");
+  const appendSetLogFn = useServerFn(appendSetLog);
+
   // ticker visual
   const [, setTick] = useState(0);
   useEffect(() => {
