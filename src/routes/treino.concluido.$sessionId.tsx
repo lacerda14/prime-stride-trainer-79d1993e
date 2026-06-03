@@ -171,6 +171,9 @@ function ConcluidoPage() {
     const sum = completedQ.data.session.completed_summary ?? null;
     if (sum?.perceived_effort != null) setGeneralEffort(String(sum.perceived_effort));
     if (sum?.general_notes) setGeneralNotes(sum.general_notes);
+    if (sum?.duration_feedback === "too_short" || sum?.duration_feedback === "ok" || sum?.duration_feedback === "too_long") {
+      setDurationFeedback(sum.duration_feedback);
+    }
   }, [planned, completedQ.data]);
 
   // Estimativa de calorias em tempo real
