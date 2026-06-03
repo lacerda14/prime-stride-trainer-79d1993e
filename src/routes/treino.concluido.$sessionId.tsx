@@ -79,14 +79,17 @@ interface SetRow {
   notes: string;
 }
 
-// Mapeamento emoji → RPE
-const EFFORT_OPTIONS = [
-  { emoji: "😰", label: "Pesado demais", rpe: "9" },
-  { emoji: "😤", label: "Difícil",        rpe: "8" },
-  { emoji: "💪", label: "Perfeito",       rpe: "7" },
-  { emoji: "😊", label: "Tranquilo",      rpe: "5" },
-  { emoji: "😌", label: "Leve demais",    rpe: "3" },
-] as const;
+// Mapeia intensidade 0-10 → emoji + rótulo
+function effortMeta(value: number): { emoji: string; label: string; tone: string } {
+  if (value <= 1) return { emoji: "😴", label: "Muito leve", tone: "text-muted-foreground" };
+  if (value <= 3) return { emoji: "😌", label: "Leve", tone: "text-muted-foreground" };
+  if (value <= 5) return { emoji: "🙂", label: "Moderado", tone: "text-foreground" };
+  if (value <= 6) return { emoji: "💪", label: "Firme", tone: "text-primary" };
+  if (value <= 7) return { emoji: "😤", label: "Difícil", tone: "text-primary" };
+  if (value <= 8) return { emoji: "🥵", label: "Muito difícil", tone: "text-primary" };
+  if (value <= 9) return { emoji: "🔥", label: "Quase máximo", tone: "text-primary" };
+  return { emoji: "💀", label: "Máximo absoluto", tone: "text-primary" };
+}
 
 // ============================================================
 // Página
