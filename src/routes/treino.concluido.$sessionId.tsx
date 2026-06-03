@@ -143,6 +143,7 @@ function ConcluidoPage() {
   const [saving, setSaving] = useState(false);
   const [savedOnce, setSavedOnce] = useState(false);
   const [newPRs, setNewPRs] = useState<Array<{ label: string; value: number; estimated_1rm: number | null; improvement_pct: number | null }>>([]);
+  const [readiness, setReadiness] = useState<{ score: number; decision: { message: string } } | null>(null);
   const [notesOpen, setNotesOpen] = useState(false);
   const [setsOpen, setSetsOpen] = useState(false);
 
