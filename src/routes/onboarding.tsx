@@ -1,22 +1,19 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { ArrowLeft, ArrowRight, Check, Loader2, Upload, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/use-auth";
-import { completeOnboarding, getProfile, registerProgressPhoto } from "@/lib/profile.functions";
+import { completeOnboarding, getProfile } from "@/lib/profile.functions";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getLocalToday } from "@/lib/local-today";
-import { supabase } from "@/integrations/supabase/client";
 import pmLogo from "@/assets/pm-logo.png.asset.json";
 import {
   PRIMARY_GOAL_OPTIONS,
   SECONDARY_GOALS,
   TRAINING_HISTORY_OPTIONS,
-  HAD_STRUCTURED_PROGRAM_OPTIONS,
   TRAINING_LOCATION_OPTIONS,
   TRAINING_LOCATION_DB_VALUE,
-  DAYS_PER_WEEK,
   MINUTES_PER_SESSION,
   SPORTS_OPTIONS,
   RUNNING_MODES,
@@ -27,15 +24,12 @@ import {
   CARDIO_OPTIONS,
   PREFERRED_TIMES,
   MEDICAL_CONDITIONS,
-  HAD_SURGERY_OPTIONS,
-  LAST_CHECKUP_OPTIONS,
   PAIN_REGIONS,
   PAST_INJURIES,
   UNCOMFORTABLE_MOVEMENTS,
   PREFERENCES_OPTIONS,
   TRAINING_STYLES,
   MOTIVATIONS_OPTIONS,
-  LIFTS_DONE,
   EXPERIENCE_OPTIONS,
   FULL_GYM_COMPLETENESS,
   FULL_GYM_MISSING_OPTIONS,
@@ -44,29 +38,20 @@ import {
   BOX_COMPLETENESS,
   BOX_EQUIPMENT,
   MIXED_PRIMARY_LOCATIONS,
-  PROFESSIONAL_ACTIVITY_OPTIONS,
-  SLEEP_HOURS_OPTIONS,
-  WATER_INTAKE_OPTIONS,
-  ALCOHOL_FREQUENCY_OPTIONS,
 } from "@/lib/onboarding-options";
 
 interface GymSetup {
   location: string;
-  // Academia completa
   full_gym_completeness: string;
   full_gym_missing: string[];
   full_gym_missing_other: string;
-  // Condomínio
   condo_equipment: string[];
   condo_other: string;
-  // Casa
   home_equipment: string[];
   home_other: string;
-  // Box
   box_completeness: string;
   box_equipment: string[];
   box_other: string;
-  // Misto
   mixed_primary: string;
   mixed_other_locations: string[];
 }
@@ -80,13 +65,11 @@ const EMPTY_GYM_SETUP: GymSetup = {
   mixed_primary: "", mixed_other_locations: [],
 };
 
-/** Compõe a lista plana de equipamentos para o engine a partir do gym_setup. */
 function deriveEquipment(g: GymSetup): string[] {
   const set = new Set<string>();
   switch (g.location) {
     case "Academia Completa": {
       if (g.full_gym_completeness === "Algumas máquinas não existem") {
-        // adiciona tudo padrão e remove ausentes
         ["Rack", "Barra olímpica", "Anilhas", "Halteres", "Banco ajustável",
          "Leg Press", "Máquina de cabos", "Barra fixa", "Smith", "Hack Squat",
          "Cadeira Extensora", "Mesa Flexora", "Esteira", "Bicicleta"].forEach((e) => set.add(e));
@@ -137,83 +120,50 @@ type Sex = "male" | "female" | "other";
 type Experience = "beginner" | "intermediate" | "advanced";
 
 interface Data {
-  // S1
-  first_name: string; last_name: string;
+  // Perfil
+  first_name: string;
   birth_date: string; sex: Sex | "";
   height_cm: number | ""; weight_kg: number | "";
-  waist_cm: number | ""; hip_cm: number | "";
-  chest_cm: number | ""; arm_cm: number | ""; thigh_cm: number | "";
-  phone: string;
-  // S2
+  // Objetivo
   primary_goal: string;
-  // S3
   secondary_goals: string[];
-  // S4
+  // Experiência + disponibilidade
   experience_level: Experience | "";
   training_history: string;
-  had_structured_program: string;
-  available_days: number | "";
-  available_minutes: number | "";
   available_days_list: string[];
+  available_minutes: number | "";
   preferred_time: string;
-  // Contato de emergência
-  emergency_contact_name: string;
-  emergency_contact_phone: string;
-  // Esportes
-  sports: string[];
-  sports_frequency: Record<string, number>;
-  sports_notes: string;
-  // Corrida
+  // Cardio + esportes
   running_mode: string;
   running_level: string;
   running_continuous_minutes: string;
   running_goals: string[];
   running_preferred_days: string[];
   cardio_preference: string;
-  // Saúde
+  sports: string[];
+  // Saúde + lesões
   medical_conditions: string[];
-  medications: string;
-  surgeries: { name: string; year?: string }[];
-  medical_restrictions: string;
-  had_surgery: string;
-  last_medical_checkup: string;
-  // Hábitos
-  professional_activity: string;
-  sleep_hours: number | "";
-  water_intake: string;
-  smokes: boolean;
-  alcohol_frequency: string;
-  // Lesões
   current_pain_level: number;
   pain_regions: string[];
-  pain_intensity: Record<string, number>;
   past_injuries: string[];
   uncomfortable_movements: string[];
-  limitations_notes: string;
-  // Local + equipamentos
+  health_notes: string;
+  // Local
   gym_setup: GymSetup;
   // Preferências
   preferences: string[];
   training_style: string;
   motivations: string[];
-  // Performance
-  perf_max_pushups: number | "";
-  perf_max_squats: number | "";
-  perf_max_plank_seconds: number | "";
-  perf_max_run_minutes: number | "";
-  perf_longest_run_km: number | "";
-  perf_lifts_done: string[];
 }
 
-const TOTAL_SECTIONS = 13;
-const TOTAL_STEPS = TOTAL_SECTIONS + 1; // + splash
+// 7 seções de conteúdo + splash
+const TOTAL_STEPS = 8;
 
 function OnboardingPage() {
   const navigate = useNavigate();
   const { user, loading } = useAuth();
   const fetchProfile = useServerFn(getProfile);
   const submit = useServerFn(completeOnboarding);
-  const registerPhoto = useServerFn(registerProgressPhoto);
   const qc = useQueryClient();
 
   const profileQ = useQuery({
@@ -225,29 +175,20 @@ function OnboardingPage() {
   const [step, setStep] = useState(0);
   const [saving, setSaving] = useState(false);
   const [d, setD] = useState<Data>({
-    first_name: "", last_name: "", birth_date: "", sex: "",
+    first_name: "", birth_date: "", sex: "",
     height_cm: "", weight_kg: "",
-    waist_cm: "", hip_cm: "", chest_cm: "", arm_cm: "", thigh_cm: "",
-    phone: "",
-    emergency_contact_name: "", emergency_contact_phone: "",
     primary_goal: "",
     secondary_goals: [],
-    experience_level: "", training_history: "", had_structured_program: "",
-    available_days: "", available_minutes: "",
-    available_days_list: [], preferred_time: "",
-    sports: [], sports_frequency: {}, sports_notes: "",
+    experience_level: "", training_history: "",
+    available_days_list: [], available_minutes: "", preferred_time: "",
     running_mode: "", running_level: "", running_continuous_minutes: "",
     running_goals: [], running_preferred_days: [], cardio_preference: "",
-    medical_conditions: [], medications: "", surgeries: [], medical_restrictions: "",
-    had_surgery: "", last_medical_checkup: "",
-    professional_activity: "", sleep_hours: "", water_intake: "",
-    smokes: false, alcohol_frequency: "",
-    current_pain_level: 0, pain_regions: [], pain_intensity: {},
-    past_injuries: [], uncomfortable_movements: [], limitations_notes: "",
+    sports: [],
+    medical_conditions: [],
+    current_pain_level: 0, pain_regions: [], past_injuries: [],
+    uncomfortable_movements: [], health_notes: "",
     gym_setup: { ...EMPTY_GYM_SETUP },
     preferences: [], training_style: "", motivations: [],
-    perf_max_pushups: "", perf_max_squats: "", perf_max_plank_seconds: "",
-    perf_max_run_minutes: "", perf_longest_run_km: "", perf_lifts_done: [],
   });
 
   useEffect(() => {
@@ -261,11 +202,10 @@ function OnboardingPage() {
     if (profileQ.data?.onboarding_completed === true && !force) {
       navigate({ to: "/", replace: true });
     }
-
     if (profileQ.data && !d.first_name) {
       const fullName = (profileQ.data.name as string | null) ?? "";
-      const [fn, ...rest] = fullName.split(" ");
-      if (fn) setD((x) => ({ ...x, first_name: fn, last_name: rest.join(" ") }));
+      const [fn] = fullName.split(" ");
+      if (fn) setD((x) => ({ ...x, first_name: fn }));
     }
   }, [profileQ.data, navigate, d.first_name]);
 
@@ -275,14 +215,12 @@ function OnboardingPage() {
       case 1: return d.first_name.trim() !== "" && d.birth_date !== "" &&
         d.sex !== "" && typeof d.height_cm === "number" && typeof d.weight_kg === "number";
       case 2: return d.primary_goal !== "";
-      case 3: return true; // secundários opcionais
-      case 4: return d.experience_level !== "" && d.training_history !== "" &&
-        d.available_days !== "" && d.available_minutes !== "";
-      case 5: return true;
-      case 6: return d.running_mode !== "";
-      case 7: return d.available_days_list.length > 0 && d.preferred_time !== "";
-      case 10: return d.gym_setup.location !== "";
-      case 8: case 9: case 11: case 12: case 13: return true;
+      case 3: return d.experience_level !== "" && d.training_history !== "" &&
+        d.available_days_list.length > 0 && d.available_minutes !== "" && d.preferred_time !== "";
+      case 4: return d.running_mode !== "";
+      case 5: return true; // saúde toda opcional
+      case 6: return d.gym_setup.location !== "";
+      case 7: return true; // preferências opcionais
       default: return false;
     }
   }, [step, d]);
@@ -297,17 +235,10 @@ function OnboardingPage() {
       await submit({
         data: {
           first_name: d.first_name.trim(),
-          last_name: d.last_name.trim() || null,
           birth_date: d.birth_date,
           sex: d.sex as Sex,
           height_cm: d.height_cm as number,
           weight_kg: d.weight_kg as number,
-          waist_cm: typeof d.waist_cm === "number" ? d.waist_cm : null,
-          hip_cm: typeof d.hip_cm === "number" ? d.hip_cm : null,
-          chest_cm: typeof d.chest_cm === "number" ? d.chest_cm : null,
-          arm_cm: typeof d.arm_cm === "number" ? d.arm_cm : null,
-          thigh_cm: typeof d.thigh_cm === "number" ? d.thigh_cm : null,
-          phone: d.phone.trim() || null,
           primary_goal: d.primary_goal as never,
           secondary_goals: d.secondary_goals,
           experience_level: d.experience_level as Experience,
@@ -315,21 +246,21 @@ function OnboardingPage() {
           training_location: d.gym_setup.location
             ? (TRAINING_LOCATION_DB_VALUE[d.gym_setup.location as keyof typeof TRAINING_LOCATION_DB_VALUE] ?? d.gym_setup.location)
             : null,
-          available_days: d.available_days as number,
+          available_days: d.available_days_list.length,
           available_minutes: d.available_minutes as number,
-          sports: d.sports, sports_frequency: d.sports_frequency,
+          available_days_list: d.available_days_list,
+          preferred_time: d.preferred_time || null,
+          sports: d.sports, sports_frequency: {},
           running_mode: d.running_mode as never,
           running_level: d.running_level || null,
           running_continuous_minutes: d.running_continuous_minutes || null,
           running_goals: d.running_goals,
           running_preferred_days: d.running_preferred_days,
           cardio_preference: d.cardio_preference || null,
-          available_days_list: d.available_days_list,
-          preferred_time: d.preferred_time || null,
           medical_conditions: d.medical_conditions,
-          medications: d.medications || null,
-          surgeries: d.surgeries,
-          medical_restrictions: d.medical_restrictions || null,
+          medications: null,
+          surgeries: [],
+          medical_restrictions: d.health_notes.trim() || null,
           current_pain_level: d.current_pain_level,
           pain_regions: d.pain_regions,
           past_injuries: d.past_injuries,
@@ -339,11 +270,6 @@ function OnboardingPage() {
           preferences: d.preferences,
           training_style: d.training_style || null,
           motivations: d.motivations,
-          perf_max_pushups: typeof d.perf_max_pushups === "number" ? d.perf_max_pushups : null,
-          perf_max_squats: typeof d.perf_max_squats === "number" ? d.perf_max_squats : null,
-          perf_max_plank_seconds: typeof d.perf_max_plank_seconds === "number" ? d.perf_max_plank_seconds : null,
-          perf_max_run_minutes: typeof d.perf_max_run_minutes === "number" ? d.perf_max_run_minutes : null,
-          perf_lifts_done: d.perf_lifts_done,
           program_start_date: getLocalToday().local_date,
         },
       });
@@ -365,7 +291,6 @@ function OnboardingPage() {
 
   const forceView = typeof window !== "undefined" && new URLSearchParams(window.location.search).get("force") === "1";
   if (loading || !user || profileQ.isPending || (profileQ.data?.onboarding_completed === true && !forceView)) {
-
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
         <Loader2 className="h-6 w-6 animate-spin text-primary" />
@@ -395,12 +320,6 @@ function OnboardingPage() {
         {step === 5 && <S5 d={d} setD={setD} />}
         {step === 6 && <S6 d={d} setD={setD} />}
         {step === 7 && <S7 d={d} setD={setD} />}
-        {step === 8 && <S8 d={d} setD={setD} />}
-        {step === 9 && <S9 d={d} setD={setD} />}
-        {step === 10 && <S10 d={d} setD={setD} />}
-        {step === 11 && <S11 d={d} setD={setD} />}
-        {step === 12 && <S12 d={d} setD={setD} />}
-        {step === 13 && <S13 userId={user.id} registerPhoto={registerPhoto} />}
       </div>
 
       {step > 0 && (
@@ -432,114 +351,6 @@ function OnboardingPage() {
 }
 
 // ============================================================
-// Step patch builder (for incremental save)
-// ============================================================
-
-function buildStepPatch(step: number, d: Data): Record<string, unknown> {
-  switch (step) {
-    case 1:
-      return {
-        first_name: d.first_name.trim(),
-        last_name: d.last_name.trim() || null,
-        birth_date: d.birth_date || null,
-        sex: d.sex || null,
-        height_cm: typeof d.height_cm === "number" ? d.height_cm : null,
-        weight_kg: typeof d.weight_kg === "number" ? d.weight_kg : null,
-        phone: d.phone.trim() || null,
-        emergency_contact_name: d.emergency_contact_name.trim() || null,
-        emergency_contact_phone: d.emergency_contact_phone.trim() || null,
-        waist_cm: typeof d.waist_cm === "number" ? d.waist_cm : null,
-        hip_cm: typeof d.hip_cm === "number" ? d.hip_cm : null,
-        chest_cm: typeof d.chest_cm === "number" ? d.chest_cm : null,
-        arm_cm: typeof d.arm_cm === "number" ? d.arm_cm : null,
-        thigh_cm: typeof d.thigh_cm === "number" ? d.thigh_cm : null,
-      };
-    case 2:
-      return { primary_goal: d.primary_goal };
-    case 3:
-      return { secondary_goals: d.secondary_goals };
-    case 4:
-      return {
-        experience_level: d.experience_level || null,
-        training_history: d.training_history || null,
-        had_structured_program: d.had_structured_program || null,
-      };
-    case 5:
-      return {
-        available_days: typeof d.available_days === "number" ? d.available_days : null,
-        available_minutes: typeof d.available_minutes === "number" ? d.available_minutes : null,
-        available_days_list: d.available_days_list,
-        preferred_time: d.preferred_time || null,
-      };
-    case 6:
-      return {
-        training_location: d.gym_setup.location
-          ? (TRAINING_LOCATION_DB_VALUE[d.gym_setup.location as keyof typeof TRAINING_LOCATION_DB_VALUE] ?? d.gym_setup.location)
-          : null,
-        gym_setup: d.gym_setup,
-        equipment: deriveEquipment(d.gym_setup),
-      };
-    case 7:
-      return {
-        running_mode: d.running_mode || null,
-        running_level: d.running_level || null,
-        running_continuous_minutes: d.running_continuous_minutes || null,
-        running_goals: d.running_goals,
-        running_preferred_days: d.running_preferred_days,
-        cardio_preference: d.cardio_preference || null,
-      };
-    case 8:
-      return {
-        sports: d.sports,
-        sports_frequency: d.sports_frequency,
-        sports_notes: d.sports_notes || null,
-      };
-    case 9:
-      return {
-        professional_activity: d.professional_activity || null,
-        sleep_hours: d.sleep_hours || null,
-        water_intake: d.water_intake || null,
-        smokes: d.smokes,
-        alcohol_frequency: d.alcohol_frequency || null,
-      };
-    case 10:
-      return {
-        medical_conditions: d.medical_conditions,
-        medications: d.medications || null,
-        had_surgery: d.had_surgery || null,
-        medical_restrictions: d.medical_restrictions || null,
-        last_medical_checkup: d.last_medical_checkup || null,
-      };
-    case 11:
-      return {
-        current_pain_level: d.current_pain_level,
-        pain_regions: d.pain_regions,
-        pain_intensity: d.pain_intensity,
-        past_injuries: d.past_injuries,
-        uncomfortable_movements: d.uncomfortable_movements,
-        limitations_notes: d.limitations_notes || null,
-      };
-    case 12:
-      return {
-        preferences: d.preferences,
-        training_style: d.training_style || null,
-        motivations: d.motivations,
-      };
-    case 13:
-      return {
-        perf_max_pushups: typeof d.perf_max_pushups === "number" ? d.perf_max_pushups : null,
-        perf_max_squats: typeof d.perf_max_squats === "number" ? d.perf_max_squats : null,
-        perf_max_plank_seconds: typeof d.perf_max_plank_seconds === "number" ? d.perf_max_plank_seconds : null,
-        perf_max_run_minutes: typeof d.perf_max_run_minutes === "number" ? d.perf_max_run_minutes : null,
-        perf_longest_run_km: typeof d.perf_longest_run_km === "number" ? d.perf_longest_run_km : null,
-        perf_lifts_done: d.perf_lifts_done,
-      };
-    default:
-      return {};
-  }
-}
-
-// ============================================================
 // Primitives
 // ============================================================
 
@@ -554,7 +365,7 @@ function Splash({ onStart }: { onStart: () => void }) {
         Vamos calibrar<br />o seu programa
       </h1>
       <p className="mt-5 max-w-[340px] text-[15px] leading-relaxed text-muted-foreground">
-        Em poucos minutos respondemos algumas perguntas e geramos uma periodização única para você — força, corrida e condicionamento em equilíbrio.
+        7 telas rápidas e geramos uma periodização única para você — força, corrida e condicionamento em equilíbrio.
       </p>
       <button onClick={onStart}
         className="mt-12 flex h-14 w-full max-w-[280px] items-center justify-center gap-2 rounded-2xl bg-titanium text-[15px] font-semibold text-primary-foreground shadow-glow active:scale-[0.99]">
@@ -565,11 +376,10 @@ function Splash({ onStart }: { onStart: () => void }) {
   );
 }
 
-function Hero({ eyebrow, title, hint }: { eyebrow: string; title: string; hint?: string }) {
+function Hero({ title, hint }: { title: string; hint?: string }) {
   return (
     <div className="animate-fade-in">
-      <div className="text-[10px] font-medium uppercase tracking-[0.28em] text-muted-foreground">{eyebrow}</div>
-      <h1 className="mt-3 text-[30px] font-semibold leading-[1.1] tracking-tight text-titanium">{title}</h1>
+      <h1 className="text-[30px] font-semibold leading-[1.1] tracking-tight text-titanium">{title}</h1>
       {hint && <p className="mt-3 text-[14px] leading-relaxed text-muted-foreground">{hint}</p>}
     </div>
   );
@@ -578,7 +388,7 @@ function Hero({ eyebrow, title, hint }: { eyebrow: string; title: string; hint?:
 const inputCls =
   "h-14 w-full rounded-2xl border border-border bg-surface/40 px-5 text-[16px] font-medium tracking-tight outline-none placeholder:text-muted-foreground/50 focus:border-primary/50 focus:bg-surface/60 transition-colors";
 const textareaCls =
-  "min-h-[100px] w-full rounded-2xl border border-border bg-surface/40 p-4 text-[15px] font-medium tracking-tight outline-none placeholder:text-muted-foreground/50 focus:border-primary/50 focus:bg-surface/60 transition-colors";
+  "min-h-[88px] w-full rounded-2xl border border-border bg-surface/40 p-4 text-[15px] font-medium tracking-tight outline-none placeholder:text-muted-foreground/50 focus:border-primary/50 focus:bg-surface/60 transition-colors";
 const labelCls = "text-[11px] font-medium uppercase tracking-[0.2em] text-muted-foreground mb-2 block";
 
 function BigChoice({ active, title, hint, onClick }: { active: boolean; title: string; hint: string; onClick: () => void }) {
@@ -647,22 +457,17 @@ const toggleArr = (arr: string[], v: string, max?: number) => {
 
 type SP = { d: Data; setD: React.Dispatch<React.SetStateAction<Data>> };
 
+// 1 · Perfil
 function S1({ d, setD }: SP) {
   return (
     <div className="space-y-6">
-      <Hero eyebrow="1 / 13 · Perfil" title="Vamos te conhecer" hint="Esses dados calibram cada prescrição do seu plano." />
+      <Hero title="Vamos te conhecer" hint="O básico para calibrar a prescrição." />
       <div className="animate-fade-in space-y-5">
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className={labelCls}>Nome</label>
-            <input className={inputCls} value={d.first_name} maxLength={60} autoFocus
-              onChange={(e) => setD({ ...d, first_name: e.target.value })} />
-          </div>
-          <div>
-            <label className={labelCls}>Sobrenome</label>
-            <input className={inputCls} value={d.last_name} maxLength={80}
-              onChange={(e) => setD({ ...d, last_name: e.target.value })} />
-          </div>
+        <div>
+          <label className={labelCls}>Nome</label>
+          <input className={inputCls} value={d.first_name} maxLength={60} autoFocus
+            placeholder="Como você quer ser chamado"
+            onChange={(e) => setD({ ...d, first_name: e.target.value })} />
         </div>
         <div>
           <label className={labelCls}>Data de nascimento</label>
@@ -693,64 +498,38 @@ function S1({ d, setD }: SP) {
               onChange={(e) => setD({ ...d, weight_kg: e.target.value === "" ? "" : Number(e.target.value) })} />
           </div>
         </div>
-
-        <details className="rounded-2xl border border-border/60 bg-surface/30 px-4 py-3">
-          <summary className="cursor-pointer text-[13px] font-medium text-muted-foreground">Circunferências (opcional)</summary>
-          <div className="mt-4 grid grid-cols-2 gap-3">
-            {([
-              ["waist_cm", "Cintura"], ["hip_cm", "Quadril"],
-              ["chest_cm", "Peito"], ["arm_cm", "Braço"], ["thigh_cm", "Coxa"],
-            ] as const).map(([k, label]) => (
-              <div key={k}>
-                <label className={labelCls}>{label} · cm</label>
-                <input type="number" inputMode="decimal" className={inputCls} step="0.1"
-                  value={d[k] as number | ""}
-                  onChange={(e) => setD({ ...d, [k]: e.target.value === "" ? "" : Number(e.target.value) } as Data)} />
-              </div>
-            ))}
-          </div>
-        </details>
-
-        <div>
-          <label className={labelCls}>Telefone · opcional</label>
-          <input type="tel" className={inputCls} placeholder="(11) 99999-9999"
-            value={d.phone} onChange={(e) => setD({ ...d, phone: e.target.value })} maxLength={40} />
-        </div>
       </div>
     </div>
   );
 }
 
+// 2 · Objetivo
 function S2({ d, setD }: SP) {
   return (
     <div className="space-y-6">
-      <Hero eyebrow="2 / 13 · Objetivo principal" title="Qual é o seu foco?" hint="Escolha apenas um — é a direção principal do seu programa." />
-      <div className="animate-fade-in grid gap-2">
-        {PRIMARY_GOAL_OPTIONS.map((g) => (
-          <BigChoice key={g.v} active={d.primary_goal === g.v} title={g.label} hint={g.hint}
-            onClick={() => setD({ ...d, primary_goal: g.v })} />
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function S3({ d, setD }: SP) {
-  return (
-    <div className="space-y-6">
-      <Hero eyebrow="3 / 13 · Objetivos secundários" title="O que mais te interessa?" hint="Selecione até 3 — opcional." />
-      <div className="animate-fade-in">
-        <Multi label="Objetivos adicionais" items={SECONDARY_GOALS} selected={d.secondary_goals} max={3}
+      <Hero title="Qual é o seu foco?" hint="Escolha o objetivo principal e, se quiser, até 3 secundários." />
+      <div className="animate-fade-in space-y-6">
+        <div>
+          <label className={labelCls}>Objetivo principal</label>
+          <div className="grid gap-2">
+            {PRIMARY_GOAL_OPTIONS.map((g) => (
+              <BigChoice key={g.v} active={d.primary_goal === g.v} title={g.label} hint={g.hint}
+                onClick={() => setD({ ...d, primary_goal: g.v })} />
+            ))}
+          </div>
+        </div>
+        <Multi label="Objetivos secundários (opcional)" items={SECONDARY_GOALS} selected={d.secondary_goals} max={3}
           onToggle={(v) => setD({ ...d, secondary_goals: toggleArr(d.secondary_goals, v, 3) })} />
       </div>
     </div>
   );
 }
 
-function S4({ d, setD }: SP) {
+// 3 · Experiência + disponibilidade
+function S3({ d, setD }: SP) {
   return (
     <div className="space-y-6">
-      <Hero eyebrow="4 / 13 · Experiência de treino" title="Sua rotina atual" hint="Como você treina hoje." />
+      <Hero title="Sua rotina de treino" hint="Experiência e quando você consegue treinar." />
       <div className="animate-fade-in space-y-6">
         <div>
           <label className={labelCls}>Nível</label>
@@ -770,12 +549,15 @@ function S4({ d, setD }: SP) {
             ))}
           </div>
         </div>
+        <Multi label="Dias da semana que pode treinar" items={WEEK_DAYS}
+          selected={d.available_days_list}
+          onToggle={(v) => setD({ ...d, available_days_list: toggleArr(d.available_days_list, v) })} />
         <div>
-          <label className={labelCls}>Dias por semana</label>
+          <label className={labelCls}>Horário preferido</label>
           <div className="grid grid-cols-4 gap-1.5">
-            {DAYS_PER_WEEK.map((n) => (
-              <PillChoice key={n} active={d.available_days === n}
-                onClick={() => setD({ ...d, available_days: n })}>{n} dias</PillChoice>
+            {PREFERRED_TIMES.map((o) => (
+              <PillChoice key={o} active={d.preferred_time === o}
+                onClick={() => setD({ ...d, preferred_time: o })}>{o}</PillChoice>
             ))}
           </div>
         </div>
@@ -793,55 +575,24 @@ function S4({ d, setD }: SP) {
   );
 }
 
-function S5({ d, setD }: SP) {
+// 4 · Cardio + esportes
+function S4({ d, setD }: SP) {
   return (
     <div className="space-y-6">
-      <Hero eyebrow="5 / 13 · Esportes" title="Outras atividades" hint="Selecione o que pratica. Vamos considerar na sua recuperação." />
-      <div className="animate-fade-in space-y-5">
-        <Multi label="Esportes praticados" items={SPORTS_OPTIONS} selected={d.sports}
-          onToggle={(v) => {
-            const next = toggleArr(d.sports, v);
-            const freq = { ...d.sports_frequency };
-            if (!next.includes(v)) delete freq[v];
-            setD({ ...d, sports: next, sports_frequency: freq });
-          }} />
-        {d.sports.length > 0 && (
-          <div className="space-y-3">
-            <label className={labelCls}>Frequência semanal</label>
-            {d.sports.map((s) => (
-              <div key={s} className="flex items-center justify-between rounded-xl border border-border bg-surface/40 px-4 py-3">
-                <span className="text-[14px] font-medium">{s}</span>
-                <input type="number" min={0} max={14} inputMode="numeric"
-                  className="h-10 w-20 rounded-lg border border-border bg-background px-3 text-center text-[14px] font-semibold outline-none focus:border-primary/50"
-                  value={d.sports_frequency[s] ?? ""}
-                  placeholder="0"
-                  onChange={(e) => setD({
-                    ...d,
-                    sports_frequency: { ...d.sports_frequency, [s]: Number(e.target.value) || 0 },
-                  })} />
-              </div>
+      <Hero title="Cardio e outras atividades" hint="Define se o programa terá corrida e como considerar seus outros esportes." />
+      <div className="animate-fade-in space-y-6">
+        <div>
+          <label className={labelCls}>Como a corrida entra no seu plano?</label>
+          <div className="grid gap-2">
+            {RUNNING_MODES.map((r) => (
+              <BigChoice key={r.v} active={d.running_mode === r.v} title={r.label} hint={r.hint}
+                onClick={() => setD({ ...d, running_mode: r.v })} />
             ))}
           </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function S6({ d, setD }: SP) {
-  return (
-    <div className="space-y-6">
-      <Hero eyebrow="6 / 13 · Corrida e cardio" title="Como a corrida entra no seu plano?" hint="Esta resposta define se o programa terá ou não corrida." />
-      <div className="animate-fade-in space-y-6">
-        <div className="grid gap-2">
-          {RUNNING_MODES.map((r) => (
-            <BigChoice key={r.v} active={d.running_mode === r.v} title={r.label} hint={r.hint}
-              onClick={() => setD({ ...d, running_mode: r.v })} />
-          ))}
         </div>
 
         {d.running_mode !== "" && d.running_mode !== "desabilitado" && (
-          <div className="space-y-5 pt-2">
+          <div className="space-y-5">
             <div>
               <label className={labelCls}>Seu nível atual de corrida</label>
               <div className="grid grid-cols-2 gap-1.5">
@@ -852,7 +603,7 @@ function S6({ d, setD }: SP) {
               </div>
             </div>
             <div>
-              <label className={labelCls}>Quanto tempo consegue correr contínuo hoje</label>
+              <label className={labelCls}>Quanto tempo corre contínuo hoje</label>
               <div className="grid gap-1.5">
                 {RUNNING_CONTINUOUS.map((o) => (
                   <RowChoice key={o} active={d.running_continuous_minutes === o}
@@ -878,89 +629,24 @@ function S6({ d, setD }: SP) {
             ))}
           </div>
         </div>
+
+        <Multi label="Outros esportes que pratica (opcional)" items={SPORTS_OPTIONS} selected={d.sports}
+          onToggle={(v) => setD({ ...d, sports: toggleArr(d.sports, v) })} />
       </div>
     </div>
   );
 }
 
-function S7({ d, setD }: SP) {
+// 5 · Saúde + lesões
+function S5({ d, setD }: SP) {
   return (
     <div className="space-y-6">
-      <Hero eyebrow="7 / 13 · Disponibilidade" title="Quando você pode treinar?" />
-      <div className="animate-fade-in space-y-5">
-        <Multi label="Dias da semana que pode treinar" items={WEEK_DAYS}
-          selected={d.available_days_list}
-          onToggle={(v) => setD({ ...d, available_days_list: toggleArr(d.available_days_list, v) })} />
-        <div>
-          <label className={labelCls}>Horário preferido</label>
-          <div className="grid grid-cols-4 gap-1.5">
-            {PREFERRED_TIMES.map((o) => (
-              <PillChoice key={o} active={d.preferred_time === o}
-                onClick={() => setD({ ...d, preferred_time: o })}>{o}</PillChoice>
-            ))}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function S8({ d, setD }: SP) {
-  const addSurgery = () => setD({ ...d, surgeries: [...d.surgeries, { name: "", year: "" }] });
-  const updateSurgery = (i: number, key: "name" | "year", v: string) => {
-    const s = [...d.surgeries]; s[i] = { ...s[i], [key]: v }; setD({ ...d, surgeries: s });
-  };
-  const rmSurgery = (i: number) => setD({ ...d, surgeries: d.surgeries.filter((_, idx) => idx !== i) });
-
-  return (
-    <div className="space-y-6">
-      <Hero eyebrow="8 / 13 · Saúde" title="Histórico médico" hint="Tudo confidencial — usado apenas para adaptar seu plano." />
+      <Hero title="Saúde e lesões" hint="Tudo confidencial — usado apenas para adaptar exercícios." />
       <div className="animate-fade-in space-y-6">
         <Multi label="Diagnósticos médicos" items={MEDICAL_CONDITIONS}
           selected={d.medical_conditions}
           onToggle={(v) => setD({ ...d, medical_conditions: toggleArr(d.medical_conditions, v) })} />
-        <div>
-          <label className={labelCls}>Faz uso contínuo de medicamentos? Quais?</label>
-          <textarea className={textareaCls} value={d.medications} maxLength={500}
-            placeholder="Ex: Losartana 50mg, vitamina D..."
-            onChange={(e) => setD({ ...d, medications: e.target.value })} />
-        </div>
-        <div>
-          <label className={labelCls}>Cirurgias realizadas</label>
-          <div className="space-y-2">
-            {d.surgeries.map((s, i) => (
-              <div key={i} className="flex items-center gap-2">
-                <input className={`${inputCls} h-12`} value={s.name} placeholder="Tipo (ex: menisco)"
-                  onChange={(e) => updateSurgery(i, "name", e.target.value)} />
-                <input className={`${inputCls} h-12 w-24`} value={s.year ?? ""} placeholder="Ano"
-                  maxLength={10} onChange={(e) => updateSurgery(i, "year", e.target.value)} />
-                <button onClick={() => rmSurgery(i)} className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-border bg-surface/40">
-                  <X className="h-4 w-4" />
-                </button>
-              </div>
-            ))}
-            <button onClick={addSurgery}
-              className="w-full rounded-xl border border-dashed border-border bg-surface/20 px-4 py-3 text-[13px] font-medium text-muted-foreground hover:text-foreground">
-              + Adicionar cirurgia
-            </button>
-          </div>
-        </div>
-        <div>
-          <label className={labelCls}>Restrição médica para exercícios</label>
-          <textarea className={textareaCls} value={d.medical_restrictions} maxLength={500}
-            placeholder="Descreva, se houver"
-            onChange={(e) => setD({ ...d, medical_restrictions: e.target.value })} />
-        </div>
-      </div>
-    </div>
-  );
-}
 
-function S9({ d, setD }: SP) {
-  return (
-    <div className="space-y-6">
-      <Hero eyebrow="9 / 13 · Lesões e dores" title="Como você se sente hoje?" hint="Vamos adaptar exercícios para evitar desconforto." />
-      <div className="animate-fade-in space-y-6">
         <div>
           <label className={labelCls}>Dor atual · {d.current_pain_level} / 10</label>
           <input type="range" min={0} max={10} value={d.current_pain_level}
@@ -970,145 +656,105 @@ function S9({ d, setD }: SP) {
             <span>Sem dor</span><span>Dor intensa</span>
           </div>
         </div>
+
         <Multi label="Regiões com dor ou lesão" items={PAIN_REGIONS}
           selected={d.pain_regions}
           onToggle={(v) => setD({ ...d, pain_regions: toggleArr(d.pain_regions, v) })} />
+
         <Multi label="Lesões anteriores" items={PAST_INJURIES}
           selected={d.past_injuries}
           onToggle={(v) => setD({ ...d, past_injuries: toggleArr(d.past_injuries, v) })} />
+
         <Multi label="Movimentos que causam desconforto" items={UNCOMFORTABLE_MOVEMENTS}
           selected={d.uncomfortable_movements}
           onToggle={(v) => setD({ ...d, uncomfortable_movements: toggleArr(d.uncomfortable_movements, v) })} />
+
+        <div>
+          <label className={labelCls}>Algo importante a saber? (opcional)</label>
+          <textarea className={textareaCls} value={d.health_notes} maxLength={500}
+            placeholder="Ex: cirurgia de menisco em 2022, uso losartana..."
+            onChange={(e) => setD({ ...d, health_notes: e.target.value })} />
+        </div>
       </div>
     </div>
   );
 }
 
-function S10({ d, setD }: SP) {
+// 6 · Local + equipamentos
+function S6({ d, setD }: SP) {
   const g = d.gym_setup;
   const setG = (patch: Partial<GymSetup>) =>
     setD({ ...d, gym_setup: { ...g, ...patch } });
 
   const selectLocation = (loc: string) => {
-    // Reset campos condicionais ao trocar de local
     setD({ ...d, gym_setup: { ...EMPTY_GYM_SETUP, location: loc } });
   };
 
   return (
     <div className="space-y-6">
-      <Hero eyebrow="10 / 13 · Local e equipamentos"
-        title="Onde você treina principalmente?"
-        hint="Vamos prescrever apenas exercícios que você consegue executar." />
+      <Hero title="Onde você treina?" hint="Só vamos prescrever exercícios que você consegue executar." />
 
       <div className="animate-fade-in space-y-6">
         <div className="grid gap-2">
           {TRAINING_LOCATION_OPTIONS.map((o) => (
-            <RowChoice key={o} active={g.location === o} onClick={() => selectLocation(o)}>
-              {o}
-            </RowChoice>
+            <RowChoice key={o} active={g.location === o} onClick={() => selectLocation(o)}>{o}</RowChoice>
           ))}
         </div>
 
-        {/* ACADEMIA COMPLETA */}
         {g.location === "Academia Completa" && (
-          <div className="space-y-5 pt-2 animate-fade-in">
+          <div className="space-y-5 animate-fade-in">
             <div>
-              <label className={labelCls}>Sua academia possui equipamentos comuns de musculação?</label>
+              <label className={labelCls}>Sua academia tem equipamentos comuns?</label>
               <div className="grid gap-2">
                 {FULL_GYM_COMPLETENESS.map((o) => (
                   <RowChoice key={o} active={g.full_gym_completeness === o}
-                    onClick={() => setG({ full_gym_completeness: o, full_gym_missing: [], full_gym_missing_other: "" })}>
-                    {o}
-                  </RowChoice>
+                    onClick={() => setG({ full_gym_completeness: o, full_gym_missing: [] })}>{o}</RowChoice>
                 ))}
               </div>
             </div>
-
             {g.full_gym_completeness === "Algumas máquinas não existem" && (
-              <div className="space-y-3 animate-fade-in">
-                <Multi label="Quais equipamentos NÃO existem?" items={FULL_GYM_MISSING_OPTIONS}
-                  selected={g.full_gym_missing}
-                  onToggle={(v) => setG({ full_gym_missing: toggleArr(g.full_gym_missing, v) })} />
-                {g.full_gym_missing.includes("Outro") && (
-                  <div>
-                    <label className={labelCls}>Descreva outros equipamentos ausentes</label>
-                    <textarea className={textareaCls} value={g.full_gym_missing_other} maxLength={300}
-                      placeholder="Ex: não tem máquina de panturrilha..."
-                      onChange={(e) => setG({ full_gym_missing_other: e.target.value })} />
-                  </div>
-                )}
-              </div>
+              <Multi label="Quais NÃO existem?" items={FULL_GYM_MISSING_OPTIONS}
+                selected={g.full_gym_missing}
+                onToggle={(v) => setG({ full_gym_missing: toggleArr(g.full_gym_missing, v) })} />
             )}
           </div>
         )}
 
-        {/* CONDOMÍNIO */}
         {g.location === "Academia de Condomínio / Prédio" && (
-          <div className="space-y-4 pt-2 animate-fade-in">
-            <Multi label="Marque os equipamentos disponíveis" items={CONDO_GYM_EQUIPMENT}
-              selected={g.condo_equipment}
-              onToggle={(v) => setG({ condo_equipment: toggleArr(g.condo_equipment, v) })} />
-            <div>
-              <label className={labelCls}>Existe algum equipamento importante que não apareceu na lista?</label>
-              <textarea className={textareaCls} value={g.condo_other} maxLength={300}
-                placeholder="Ex: Tem um Hack Squat, tem um Multipower..."
-                onChange={(e) => setG({ condo_other: e.target.value })} />
-            </div>
-          </div>
+          <Multi label="Equipamentos disponíveis" items={CONDO_GYM_EQUIPMENT}
+            selected={g.condo_equipment}
+            onToggle={(v) => setG({ condo_equipment: toggleArr(g.condo_equipment, v) })} />
         )}
 
-        {/* CASA */}
         {g.location === "Casa" && (
-          <div className="space-y-4 pt-2 animate-fade-in">
-            <Multi label="Quais equipamentos você possui em casa?" items={HOME_EQUIPMENT}
-              selected={g.home_equipment}
-              onToggle={(v) => setG({ home_equipment: toggleArr(g.home_equipment, v) })} />
-            <div>
-              <label className={labelCls}>Existe algum equipamento que não apareceu acima?</label>
-              <textarea className={textareaCls} value={g.home_other} maxLength={300}
-                placeholder="Descreva, se houver"
-                onChange={(e) => setG({ home_other: e.target.value })} />
-            </div>
-          </div>
+          <Multi label="Equipamentos que você tem em casa" items={HOME_EQUIPMENT}
+            selected={g.home_equipment}
+            onToggle={(v) => setG({ home_equipment: toggleArr(g.home_equipment, v) })} />
         )}
 
-        {/* BOX */}
         {g.location === "Box de CrossFit" && (
-          <div className="space-y-5 pt-2 animate-fade-in">
+          <div className="space-y-5 animate-fade-in">
             <div>
-              <label className={labelCls}>Seu box possui equipamentos completos?</label>
+              <label className={labelCls}>Seu box é completo?</label>
               <div className="grid grid-cols-2 gap-1.5">
                 {BOX_COMPLETENESS.map((o) => (
                   <PillChoice key={o} active={g.box_completeness === o}
-                    onClick={() => setG({ box_completeness: o, box_equipment: [], box_other: "" })}>
-                    {o}
-                  </PillChoice>
+                    onClick={() => setG({ box_completeness: o, box_equipment: [] })}>{o}</PillChoice>
                 ))}
               </div>
             </div>
             {g.box_completeness === "Não" && (
-              <div className="space-y-3 animate-fade-in">
-                <Multi label="Marque o que existe no seu box" items={BOX_EQUIPMENT}
-                  selected={g.box_equipment}
-                  onToggle={(v) => setG({ box_equipment: toggleArr(g.box_equipment, v) })} />
-                {g.box_equipment.includes("Outro") && (
-                  <div>
-                    <label className={labelCls}>Outros equipamentos</label>
-                    <textarea className={textareaCls} value={g.box_other} maxLength={300}
-                      placeholder="Descreva"
-                      onChange={(e) => setG({ box_other: e.target.value })} />
-                  </div>
-                )}
-              </div>
+              <Multi label="Marque o que existe no seu box" items={BOX_EQUIPMENT}
+                selected={g.box_equipment}
+                onToggle={(v) => setG({ box_equipment: toggleArr(g.box_equipment, v) })} />
             )}
           </div>
         )}
 
-        {/* MISTO */}
         {g.location === "Misto" && (
-          <div className="space-y-5 pt-2 animate-fade-in">
+          <div className="space-y-5 animate-fade-in">
             <div>
-              <label className={labelCls}>Onde você treina com mais frequência?</label>
+              <label className={labelCls}>Onde treina com mais frequência?</label>
               <div className="grid grid-cols-2 gap-1.5">
                 {MIXED_PRIMARY_LOCATIONS.map((o) => (
                   <PillChoice key={o} active={g.mixed_primary === o}
@@ -1116,7 +762,7 @@ function S10({ d, setD }: SP) {
                 ))}
               </div>
             </div>
-            <Multi label="Quais outros locais utiliza?" items={MIXED_PRIMARY_LOCATIONS.filter((l) => l !== g.mixed_primary)}
+            <Multi label="Outros locais que usa" items={MIXED_PRIMARY_LOCATIONS.filter((l) => l !== g.mixed_primary)}
               selected={g.mixed_other_locations}
               onToggle={(v) => setG({ mixed_other_locations: toggleArr(g.mixed_other_locations, v) })} />
 
@@ -1142,12 +788,13 @@ function S10({ d, setD }: SP) {
   );
 }
 
-function S11({ d, setD }: SP) {
+// 7 · Preferências
+function S7({ d, setD }: SP) {
   return (
     <div className="space-y-6">
-      <Hero eyebrow="11 / 13 · Preferências" title="Como você gosta de treinar?" />
+      <Hero title="Como você gosta de treinar?" hint="Última etapa — tudo opcional." />
       <div className="animate-fade-in space-y-6">
-        <Multi label="O que você mais gosta" items={PREFERENCES_OPTIONS}
+        <Multi label="O que mais gosta" items={PREFERENCES_OPTIONS}
           selected={d.preferences}
           onToggle={(v) => setD({ ...d, preferences: toggleArr(d.preferences, v) })} />
         <div>
@@ -1163,103 +810,6 @@ function S11({ d, setD }: SP) {
           selected={d.motivations}
           onToggle={(v) => setD({ ...d, motivations: toggleArr(d.motivations, v) })} />
       </div>
-    </div>
-  );
-}
-
-function S12({ d, setD }: SP) {
-  return (
-    <div className="space-y-6">
-      <Hero eyebrow="12 / 13 · Avaliação de performance" title="Seus números atuais"
-        hint="Tudo opcional — quanto mais souber, melhor a estimativa de cargas iniciais." />
-      <div className="animate-fade-in space-y-5">
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className={labelCls}>Máx. flexões</label>
-            <input type="number" inputMode="numeric" min={0} className={inputCls}
-              value={d.perf_max_pushups}
-              onChange={(e) => setD({ ...d, perf_max_pushups: e.target.value === "" ? "" : Number(e.target.value) })} />
-          </div>
-          <div>
-            <label className={labelCls}>Máx. agachamentos livres</label>
-            <input type="number" inputMode="numeric" min={0} className={inputCls}
-              value={d.perf_max_squats}
-              onChange={(e) => setD({ ...d, perf_max_squats: e.target.value === "" ? "" : Number(e.target.value) })} />
-          </div>
-          <div>
-            <label className={labelCls}>Prancha máx · segundos</label>
-            <input type="number" inputMode="numeric" min={0} className={inputCls}
-              value={d.perf_max_plank_seconds}
-              onChange={(e) => setD({ ...d, perf_max_plank_seconds: e.target.value === "" ? "" : Number(e.target.value) })} />
-          </div>
-          <div>
-            <label className={labelCls}>Maior corrida contínua · min</label>
-            <input type="number" inputMode="numeric" min={0} className={inputCls}
-              value={d.perf_max_run_minutes}
-              onChange={(e) => setD({ ...d, perf_max_run_minutes: e.target.value === "" ? "" : Number(e.target.value) })} />
-          </div>
-        </div>
-        <Multi label="Já executou:" items={LIFTS_DONE} selected={d.perf_lifts_done}
-          onToggle={(v) => setD({ ...d, perf_lifts_done: toggleArr(d.perf_lifts_done, v) })} />
-      </div>
-    </div>
-  );
-}
-
-function S13({ userId, registerPhoto }: {
-  userId: string;
-  registerPhoto: (opts: { data: { photo_type: "frente" | "lado" | "costas"; storage_path: string } }) => Promise<unknown>;
-}) {
-  const [uploading, setUploading] = useState<string | null>(null);
-  const [uploaded, setUploaded] = useState<Record<string, boolean>>({});
-
-  const upload = async (type: "frente" | "lado" | "costas", file: File) => {
-    setUploading(type);
-    try {
-      const ext = file.name.split(".").pop() || "jpg";
-      const path = `${userId}/${type}-${Date.now()}.${ext}`;
-      const { error } = await supabase.storage.from("progress-photos").upload(path, file, {
-        contentType: file.type, upsert: false,
-      });
-      if (error) throw error;
-      await registerPhoto({ data: { photo_type: type, storage_path: path } });
-      setUploaded((u) => ({ ...u, [type]: true }));
-      toast.success(`Foto (${type}) enviada.`);
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Falha no upload.");
-    } finally {
-      setUploading(null);
-    }
-  };
-
-  return (
-    <div className="space-y-6">
-      <Hero eyebrow="13 / 13 · Fotos de progresso" title="Tire suas fotos iniciais"
-        hint="Opcional e 100% privado. Só você consegue ver." />
-      <div className="animate-fade-in grid gap-3">
-        {(["frente", "lado", "costas"] as const).map((type) => (
-          <label key={type}
-            className={`flex cursor-pointer items-center justify-between rounded-2xl border px-5 py-4 transition-all ${
-              uploaded[type] ? "border-primary/60 bg-primary/[0.08]" : "border-border bg-surface/40 hover:bg-surface/60"
-            }`}>
-            <div>
-              <div className="text-[15px] font-semibold capitalize">{type}</div>
-              <div className="text-[12px] text-muted-foreground">
-                {uploaded[type] ? "Enviada" : "Toque para enviar"}
-              </div>
-            </div>
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-titanium text-primary-foreground">
-              {uploading === type ? <Loader2 className="h-4 w-4 animate-spin" /> :
-               uploaded[type] ? <Check className="h-4 w-4" /> : <Upload className="h-4 w-4" />}
-            </div>
-            <input type="file" accept="image/*" className="hidden"
-              onChange={(e) => { const f = e.target.files?.[0]; if (f) upload(type, f); }} />
-          </label>
-        ))}
-      </div>
-      <p className="text-center text-[12px] text-muted-foreground">
-        Pode pular esta etapa e enviar depois no seu perfil.
-      </p>
     </div>
   );
 }
