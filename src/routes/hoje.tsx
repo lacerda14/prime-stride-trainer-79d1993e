@@ -472,13 +472,32 @@ function HojePage() {
           <div>
             <div className="mb-3 text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">Força</div>
             <div className="space-y-3">
-              {groups.map((g) =>
-                g.kind === "single" ? (
-                  <SingleCard key={g.exercise.id} exercise={g.exercise} index={g.index} onOpenVideo={detail.open} lastWeights={lastWeights} />
+              {groups.map((g) => {
+                const onRequestSwap = (slotId: string, poolId: string, name: string) =>
+                  setSwapTarget({ slotId, poolId, name });
+                return g.kind === "single" ? (
+                  <SingleCard
+                    key={g.exercise.id}
+                    exercise={g.exercise}
+                    index={g.index}
+                    onOpenVideo={detail.open}
+                    lastWeights={lastWeights}
+                    onRequestSwap={onRequestSwap}
+                    isSwapped={!!swaps[g.exercise.id]}
+                  />
                 ) : (
-                  <BisetCard key={`biset-${g.slot}`} exercises={g.exercises} slot={g.slot} index={g.index} onOpenVideo={detail.open} lastWeights={lastWeights} />
-                )
-              )}
+                  <BisetCard
+                    key={`biset-${g.slot}`}
+                    exercises={g.exercises}
+                    slot={g.slot}
+                    index={g.index}
+                    onOpenVideo={detail.open}
+                    lastWeights={lastWeights}
+                    onRequestSwap={onRequestSwap}
+                    swappedIds={new Set(g.exercises.filter((e) => swaps[e.id]).map((e) => e.id))}
+                  />
+                );
+              })}
             </div>
           </div>
         )}
