@@ -225,6 +225,7 @@ export const saveWorkoutLogs = createServerFn({ method: "POST" })
         planned_rpe: s.planned_rpe ?? null,
         actual_rpe: s.actual_rpe ?? null,
         notes: s.notes ?? null,
+        set_status: s.set_status ?? "completed",
       }));
       const { error: uErr } = await (supabase as unknown as {
         from: (t: string) => {
