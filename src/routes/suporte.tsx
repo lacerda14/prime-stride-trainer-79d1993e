@@ -176,7 +176,7 @@ function SuportePage() {
             className="flex items-center gap-3 rounded-2xl border border-border/60 bg-surface/40 px-4 py-3.5 transition active:scale-[0.99]"
           >
             <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-border/60 bg-surface-elevated/60">
-              <Mail className="h-4.5 w-4.5 text-muted-foreground" />
+              <Mail className="h-4 w-4 text-muted-foreground" />
             </div>
             <div className="flex-1">
               <div className="text-[13px] font-semibold">Prefere e-mail?</div>
