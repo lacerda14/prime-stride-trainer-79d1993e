@@ -273,7 +273,16 @@ export const saveWorkoutLogs = createServerFn({ method: "POST" })
       .eq("user_id", userId);
     if (upErr) throw new Error(upErr.message);
 
-    return { ok: true };
+    // Detecta PRs após salvar logs (idempotente)
+    let newPRs: PRDetectedItem[] = [];
+    try {
+      const r = await runPRDetectionForSession(supabase, userId, data.session_id);
+      newPRs = r.newPRs;
+    } catch {
+      // PR detection nunca deve quebrar o save
+    }
+
+    return { ok: true, newPRs };
   });
 
 // ============================================================
