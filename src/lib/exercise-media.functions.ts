@@ -256,30 +256,40 @@ function parseIsoDuration(iso: string): number {
 }
 
 const TRUSTED_CHANNELS = [
+  // PT-BR (prioridade)
+  "leandro twin",
+  "renato cariani",
+  "ironberg",
+  "felipe franco",
+  "muzy",
+  "paulo muzy",
+  "gabriel peixoto",
+  "growth supplements",
+  "ju tavares",
+  "caio bottura",
+  "instituto reab",
+  "fisio explica",
+  "rodrigo lamonier",
+  "treino mestre",
+  "hipertrofia.org",
+  "saúde na rotina",
+  // EN (fallback)
   "athlean-x",
   "jeff nippard",
   "squat university",
   "renaissance periodization",
   "calisthenicmovement",
-  "thenx",
   "fitnessfaqs",
-  "scottherman",
-  "buff dudes",
-  "stronger by science",
-  "mind pump",
   "barbell medicine",
   "alan thrall",
-  "juggernaut training",
-  "rebel performance",
   "knees over toes guy",
-  "global triathlon network",
-  "running channel",
 ];
 
 function scoreVideo(detail: YouTubeVideoDetail, durationSec: number): number {
   let score = 50;
   const channel = detail.snippet.channelTitle.toLowerCase();
   const title = detail.snippet.title.toLowerCase();
+  const description = (detail.snippet.description ?? "").toLowerCase();
 
   // duration: prefer 30s-4min demos
   if (durationSec >= 30 && durationSec <= 240) score += 20;
@@ -290,9 +300,16 @@ function scoreVideo(detail: YouTubeVideoDetail, durationSec: number): number {
   // trusted channel boost
   if (TRUSTED_CHANNELS.some((t) => channel.includes(t))) score += 25;
 
-  // title hints
-  if (/(how to|tutorial|technique|form|execution|proper|guide|demo)/i.test(title)) score += 8;
-  if (/(challenge|fail|prank|reaction|workout vlog)/i.test(title)) score -= 20;
+  // PT-BR boost — título/descrição em português
+  const ptHints = /(como fazer|execução|técnica|forma correta|passo a passo|aprenda|erros comuns|dicas)/i;
+  if (ptHints.test(title)) score += 15;
+  else if (ptHints.test(description)) score += 5;
+
+  // English title hints (fallback)
+  if (/(how to|tutorial|technique|form|execution|proper|guide|demo)/i.test(title)) score += 6;
+
+  // junk filter
+  if (/(challenge|desafio|prank|pegadinha|reaction|reação|vlog|treino completo|workout vlog)/i.test(title)) score -= 25;
 
   // views/likes
   const views = parseInt(detail.statistics.viewCount ?? "0", 10);
@@ -335,10 +352,12 @@ export const searchVideosForExercise = createServerFn({ method: "POST" })
       .object({
         exercise_id: z.string().uuid(),
         max_results: z.number().int().min(1).max(10).default(5),
+        auto_approve: z.boolean().default(false),
+        auto_approve_min_score: z.number().int().min(0).max(100).default(70),
       })
       .parse(input),
   )
-  .handler(async ({ data, context }): Promise<SearchVideosResultDTO> => {
+  .handler(async ({ data, context }): Promise<SearchVideosResultDTO & { auto_approved?: number }> => {
     const { supabase, userId } = context;
     await ensureAdmin(supabase, userId);
 
@@ -352,9 +371,9 @@ export const searchVideosForExercise = createServerFn({ method: "POST" })
       .single();
     if (exErr) throw new Error(exErr.message);
 
-    // Search
-    const q = `${ex.name} exercise proper form technique`;
-    const searchUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&videoEmbeddable=true&safeSearch=strict&maxResults=${data.max_results}&q=${encodeURIComponent(q)}&key=${apiKey}`;
+    // Search — PT-BR
+    const q = `${ex.name} como fazer execução técnica correta`;
+    const searchUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&videoEmbeddable=true&safeSearch=strict&relevanceLanguage=pt&regionCode=BR&maxResults=${data.max_results}&q=${encodeURIComponent(q)}&key=${apiKey}`;
     const searchRes = await fetch(searchUrl);
     if (!searchRes.ok) {
       const txt = await searchRes.text();
@@ -422,7 +441,203 @@ export const searchVideosForExercise = createServerFn({ method: "POST" })
       }
     }
 
-    return { saved, candidates: saved_rows };
+    // Auto-aprovação opcional: melhor candidato acima do threshold vira primário
+    let auto_approved = 0;
+    if (data.auto_approve && saved_rows.length > 0) {
+      const { data: existingPrimary } = await supabase
+        .from("exercise_media")
+        .select("id")
+        .eq("exercise_id", data.exercise_id)
+        .eq("is_approved", true)
+        .eq("is_primary", true)
+        .maybeSingle();
+
+      if (!existingPrimary) {
+        const best = [...saved_rows]
+          .filter((r) => (r.source_quality_score ?? 0) >= data.auto_approve_min_score && r.embed_allowed)
+          .sort((a, b) => (b.source_quality_score ?? 0) - (a.source_quality_score ?? 0))[0];
+        if (best) {
+          await supabase
+            .from("exercise_media")
+            .update({ is_primary: false })
+            .eq("exercise_id", data.exercise_id);
+          await supabase
+            .from("exercise_media")
+            .update({
+              is_approved: true,
+              is_primary: true,
+              reviewed_by: userId,
+              reviewed_at: new Date().toISOString(),
+            })
+            .eq("id", best.id);
+          auto_approved = 1;
+        }
+      }
+    }
+
+    return { saved, candidates: saved_rows, auto_approved };
+  });
+
+// ============================================================
+// Admin: busca em massa para todos os exercícios sem vídeo primário
+// ============================================================
+export interface BulkSearchResultDTO {
+  processed: number;
+  total_saved: number;
+  total_auto_approved: number;
+  errors: { exercise_id: string; exercise_name: string; message: string }[];
+  stopped_reason?: "quota_exceeded" | "limit_reached" | null;
+}
+
+export const bulkSearchMissingVideos = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) =>
+    z
+      .object({
+        limit: z.number().int().min(1).max(50).default(20),
+        max_results: z.number().int().min(1).max(5).default(3),
+        auto_approve: z.boolean().default(true),
+        auto_approve_min_score: z.number().int().min(0).max(100).default(70),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data, context }): Promise<BulkSearchResultDTO> => {
+    const { supabase, userId } = context;
+    await ensureAdmin(supabase, userId);
+
+    const apiKey = process.env.YOUTUBE_API_KEY;
+    if (!apiKey) throw new Error("YOUTUBE_API_KEY not configured");
+
+    const { data: exercises, error } = await supabase
+      .from("exercise_pool")
+      .select("id,name")
+      .order("name");
+    if (error) throw new Error(error.message);
+
+    const { data: media } = await supabase
+      .from("exercise_media")
+      .select("exercise_id,is_approved,is_primary");
+    const hasPrimary = new Set(
+      ((media ?? []) as { exercise_id: string; is_approved: boolean; is_primary: boolean }[])
+        .filter((m) => m.is_approved && m.is_primary)
+        .map((m) => m.exercise_id),
+    );
+
+    const missing = (exercises ?? [])
+      .filter((e: any) => !hasPrimary.has(e.id))
+      .slice(0, data.limit) as { id: string; name: string }[];
+
+    const result: BulkSearchResultDTO = {
+      processed: 0,
+      total_saved: 0,
+      total_auto_approved: 0,
+      errors: [],
+      stopped_reason: null,
+    };
+
+    for (const ex of missing) {
+      const q = `${ex.name} como fazer execução técnica correta`;
+      const searchUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&videoEmbeddable=true&safeSearch=strict&relevanceLanguage=pt&regionCode=BR&maxResults=${data.max_results}&q=${encodeURIComponent(q)}&key=${apiKey}`;
+      const searchRes = await fetch(searchUrl);
+      if (!searchRes.ok) {
+        const txt = await searchRes.text();
+        const err = youtubeApiError(searchRes.status, txt);
+        result.errors.push({ exercise_id: ex.id, exercise_name: ex.name, message: err?.message ?? "erro" });
+        if (err?.code === "quota_exceeded") {
+          result.stopped_reason = "quota_exceeded";
+          break;
+        }
+        continue;
+      }
+      const searchJson = (await searchRes.json()) as { items: YouTubeItem[] };
+      const ids = (searchJson.items ?? []).map((it) => it.id.videoId).filter(Boolean);
+      if (ids.length === 0) {
+        result.processed += 1;
+        continue;
+      }
+
+      const detailUrl = `https://www.googleapis.com/youtube/v3/videos?part=contentDetails,status,statistics,snippet&id=${ids.join(",")}&key=${apiKey}`;
+      const detailRes = await fetch(detailUrl);
+      if (!detailRes.ok) {
+        const txt = await detailRes.text();
+        const err = youtubeApiError(detailRes.status, txt);
+        result.errors.push({ exercise_id: ex.id, exercise_name: ex.name, message: err?.message ?? "erro" });
+        if (err?.code === "quota_exceeded") {
+          result.stopped_reason = "quota_exceeded";
+          break;
+        }
+        continue;
+      }
+      const detailJson = (await detailRes.json()) as { items: YouTubeVideoDetail[] };
+
+      const candidates = detailJson.items.map((v) => {
+        const durationSec = parseIsoDuration(v.contentDetails.duration);
+        const score = scoreVideo(v, durationSec);
+        const thumb =
+          searchJson.items.find((s) => s.id.videoId === v.id)?.snippet.thumbnails?.high?.url ??
+          searchJson.items.find((s) => s.id.videoId === v.id)?.snippet.thumbnails?.medium?.url ??
+          null;
+        return {
+          exercise_id: ex.id,
+          media_type: "youtube_embed" as const,
+          source: "youtube",
+          external_id: v.id,
+          title: v.snippet.title,
+          url: `https://www.youtube.com/watch?v=${v.id}`,
+          embed_url: `https://www.youtube.com/embed/${v.id}`,
+          thumbnail_url: thumb,
+          duration_seconds: durationSec,
+          channel_name: v.snippet.channelTitle,
+          instructor_name: v.snippet.channelTitle,
+          source_quality_score: score,
+          embed_allowed: v.status.embeddable,
+          is_primary: false,
+          is_approved: false,
+          created_by_agent: true,
+          reason_for_recommendation: `Score ${score}/100. ${TRUSTED_CHANNELS.some((t) => v.snippet.channelTitle.toLowerCase().includes(t)) ? "Canal confiável. " : ""}Duração ${durationSec}s.`,
+          safety_notes: score < 70 ? "Score abaixo de 70 — revisar manualmente." : null,
+        };
+      });
+
+      const savedRows: ExerciseMediaDTO[] = [];
+      for (const c of candidates) {
+        const { data: row, error: upErr } = await supabase
+          .from("exercise_media")
+          .upsert(c, { onConflict: "exercise_id,source,external_id", ignoreDuplicates: false })
+          .select("*")
+          .single();
+        if (!upErr && row) {
+          savedRows.push(row as ExerciseMediaDTO);
+          result.total_saved += 1;
+        }
+      }
+
+      if (data.auto_approve && savedRows.length > 0) {
+        const best = [...savedRows]
+          .filter((r) => (r.source_quality_score ?? 0) >= data.auto_approve_min_score && r.embed_allowed)
+          .sort((a, b) => (b.source_quality_score ?? 0) - (a.source_quality_score ?? 0))[0];
+        if (best) {
+          await supabase
+            .from("exercise_media")
+            .update({ is_primary: false })
+            .eq("exercise_id", ex.id);
+          await supabase
+            .from("exercise_media")
+            .update({
+              is_approved: true,
+              is_primary: true,
+              reviewed_by: userId,
+              reviewed_at: new Date().toISOString(),
+            })
+            .eq("id", best.id);
+          result.total_auto_approved += 1;
+        }
+      }
+
+      result.processed += 1;
+    }
+
+    return result;
   });
 
 // ============================================================
