@@ -430,14 +430,10 @@ export const searchVideosForExercise = createServerFn({ method: "POST" })
     let saved = 0;
     const saved_rows: ExerciseMediaDTO[] = [];
     for (const c of candidates) {
-      const { data: row, error } = await supabase
-        .from("exercise_media")
-        .upsert(c, { onConflict: "exercise_id,source,external_id", ignoreDuplicates: false })
-        .select("*")
-        .single();
-      if (!error && row) {
+      const row = await upsertCandidate(supabase, c);
+      if (row) {
         saved += 1;
-        saved_rows.push(row as ExerciseMediaDTO);
+        saved_rows.push(row);
       }
     }
 
