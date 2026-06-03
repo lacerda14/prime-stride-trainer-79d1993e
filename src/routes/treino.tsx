@@ -51,6 +51,7 @@ function TreinoRouteComponent() {
 type StrengthItem = {
   kind: "strength";
   name: string;
+  exerciseId: string | null;
   set: number;
   totalSets: number;
   reps: string;
@@ -67,6 +68,16 @@ type RunItem = {
 };
 
 type QueueItem = StrengthItem | RunItem;
+
+interface SetLogState {
+  load: string;
+  reps: string;
+  completed: boolean;
+}
+
+function setKey(exerciseIndex: number, setNumber: number): string {
+  return `${exerciseIndex}:${setNumber}`;
+}
 
 function lsKey(sessionId: string) {
   return `pm-workout-session:${sessionId}`;
