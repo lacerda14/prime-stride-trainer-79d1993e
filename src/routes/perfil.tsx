@@ -5,7 +5,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { getProfile, updateProfile } from "@/lib/profile.functions";
 import { toast } from "sonner";
-import { Loader2, Save, User, Target, Calendar, Heart, Shield, ChevronRight } from "lucide-react";
+import { Loader2, Save, User, Target, Calendar, Heart, Shield, ChevronRight, Trophy } from "lucide-react";
 import { useIsAdmin } from "@/hooks/use-is-admin";
 
 export const Route = createFileRoute("/perfil")({
