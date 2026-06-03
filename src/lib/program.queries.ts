@@ -228,15 +228,15 @@ async function loadProgramSummary(
   userId: string,
   calendar?: z.infer<typeof localTodaySchema>,
 ): Promise<ProgramSummary | null> {
+  const programId = await ensureValidActiveProgram(supabase, userId);
+  if (!programId) return null;
+
   const { data: prog, error: pErr } = await supabase
     .from("training_programs")
     .select(
       "id,total_weeks,active_week,active_day,goal,experience_level,available_days,reference_velocity",
     )
-    .eq("user_id", userId)
-    .is("archived_at", null)
-    .order("created_at", { ascending: false })
-    .limit(1)
+    .eq("id", programId)
     .maybeSingle();
   if (pErr) throw new Error(pErr.message);
   if (!prog) return null;
@@ -425,7 +425,7 @@ export const getWeekDetail = createServerFn({ method: "GET" })
     z.object({ week_number: z.number().int().min(1).max(60) }).parse(input),
   )
   .handler(async ({ data, context }): Promise<WeekDetailDTO | null> => {
-    const programId = await getActiveProgramId(context.supabase, context.userId);
+    const programId = await ensureValidActiveProgram(context.supabase, context.userId);
     if (!programId) return null;
     return loadWeekDetail(context.supabase, programId, data.week_number);
   });
@@ -489,7 +489,7 @@ export const getRunningSessions = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<RunningSessionListItem[]> => {
     const { supabase, userId } = context;
-    const programId = await getActiveProgramId(supabase, userId);
+    const programId = await ensureValidActiveProgram(supabase, userId);
     if (!programId) return [];
 
     const { data, error } = await supabase
@@ -545,7 +545,7 @@ export const getTopExercises = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<{ id: string; name: string; usage: number }[]> => {
     const { supabase, userId } = context;
-    const programId = await getActiveProgramId(supabase, userId);
+    const programId = await ensureValidActiveProgram(supabase, userId);
     if (!programId) return [];
 
     const { data, error } = await supabase
