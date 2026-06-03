@@ -423,16 +423,21 @@ export const completeWorkoutSession = createServerFn({ method: "POST" })
       })
       .eq("id", userId);
 
+    // 5) Detecta PRs desta sessão
+    const prResult = await runPRDetectionForSession(supabase, userId, data.session_id);
+    const finalXp = newXp + prResult.xpGained;
+
     return {
-      xpGained: xpGain,
-      newXpTotal: newXp,
+      xpGained: xpGain + prResult.xpGained,
+      newXpTotal: finalXp,
       oldLevel,
-      newLevel,
-      leveledUp: newLevel > oldLevel,
+      newLevel: levelFromXp(finalXp),
+      leveledUp: levelFromXp(finalXp) > oldLevel,
       streakCurrent,
       streakLongest,
       durationSeconds: data.total_elapsed_seconds,
       newAchievements,
+      newPRs: prResult.newPRs,
     };
   });
 
