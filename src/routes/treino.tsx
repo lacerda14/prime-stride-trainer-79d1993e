@@ -890,12 +890,24 @@ function StrengthView({
   mins,
   secs,
   countdown,
+  liveLoad,
+  liveReps,
+  onLoadChange,
+  onRepsChange,
+  onSwap,
+  onReorder,
 }: {
   current: StrengthItem;
   phaseLabel: string;
   mins: number;
   secs: number;
   countdown: boolean;
+  liveLoad: string;
+  liveReps: string;
+  onLoadChange: (v: string) => void;
+  onRepsChange: (v: string) => void;
+  onSwap: () => void;
+  onReorder: () => void;
 }) {
   return (
     <div className="w-full max-w-md text-center">
@@ -923,9 +935,52 @@ function StrengthView({
         <div>Set <span className="text-foreground">{current.set}</span> / {current.totalSets}</div>
         <div>REST <span className="text-foreground">{current.rest}s</span></div>
       </div>
+
+      {!countdown && (
+        <div className="mt-6 flex items-center justify-center gap-3">
+          <label className="flex flex-col items-start text-left">
+            <span className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Carga (kg)</span>
+            <input
+              type="number"
+              inputMode="decimal"
+              value={liveLoad}
+              onChange={(e) => onLoadChange(e.target.value)}
+              placeholder="0"
+              className="num mt-1 w-24 rounded-xl border border-border bg-surface/60 px-3 py-2 text-center text-base font-semibold"
+            />
+          </label>
+          <label className="flex flex-col items-start text-left">
+            <span className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Reps</span>
+            <input
+              type="number"
+              inputMode="numeric"
+              value={liveReps}
+              onChange={(e) => onRepsChange(e.target.value)}
+              placeholder={String(current.reps)}
+              className="num mt-1 w-20 rounded-xl border border-border bg-surface/60 px-3 py-2 text-center text-base font-semibold"
+            />
+          </label>
+        </div>
+      )}
+
+      <div className="mt-6 flex items-center justify-center gap-2">
+        <button
+          onClick={onSwap}
+          className="rounded-full border border-border bg-surface/60 px-4 py-2 text-xs font-semibold text-foreground active:scale-95"
+        >
+          Trocar exercício
+        </button>
+        <button
+          onClick={onReorder}
+          className="rounded-full border border-border bg-surface/60 px-4 py-2 text-xs font-semibold text-foreground active:scale-95"
+        >
+          Reordenar
+        </button>
+      </div>
     </div>
   );
 }
+
 
 function RunPhaseView({
   phase,
