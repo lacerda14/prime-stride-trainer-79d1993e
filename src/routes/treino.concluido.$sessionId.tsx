@@ -675,12 +675,40 @@ function ConcluidoPage() {
             </button>
           </div>
 
-          <button
-            onClick={() => navigate({ to: "/treino", search: { force: "1" } as never })}
-            className="w-full rounded-full border border-border/30 bg-transparent py-2.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground active:opacity-70"
-          >
-            Repetir treino hoje
-          </button>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <button
+                className="w-full rounded-full border border-border/30 bg-transparent py-2.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground active:opacity-70"
+              >
+                Repetir treino hoje
+              </button>
+            </AlertDialogTrigger>
+            <AlertDialogContent className="max-w-sm rounded-2xl">
+              <AlertDialogHeader>
+                <AlertDialogTitle className="flex items-center gap-2">
+                  <span className="text-xl">⚠️</span> Não recomendado
+                </AlertDialogTitle>
+                <AlertDialogDescription className="text-sm leading-relaxed">
+                  Repetir o mesmo treino no mesmo dia pode aumentar o risco de lesão e prejudicar
+                  sua recuperação. O ideal é respeitar o descanso planejado e seguir para o próximo
+                  treino do programa amanhã.
+                  <br />
+                  <br />
+                  Tem certeza que deseja continuar mesmo assim?
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={() => navigate({ to: "/treino", search: { force: "1" } as never })}
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                >
+                  Repetir mesmo assim
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+
         </div>
       </div>
     </div>
