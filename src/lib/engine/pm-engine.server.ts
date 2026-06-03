@@ -825,7 +825,7 @@ export function generatePlan(profile: UserProfileInput, exercisePool: ExerciseRo
           let category = cat;
           // manguito: pular após semana 10 (não obrigatório) ou se já 3x/semana
           if (category === "rotator_cuff" && (w > 10 || rotatorCount >= 3)) {
-            category = type === "A" ? "lats" : "shoulder";
+            category = fbType === "A" ? "lats" : "shoulder";
           }
           // panturrilha: garantir 2-3x/sem — se já tivermos 3, swap por core extra
           if (category === "calf" && calfCount >= 3) {
