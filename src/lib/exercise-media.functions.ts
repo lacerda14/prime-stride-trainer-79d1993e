@@ -407,7 +407,7 @@ export const searchVideosForExercise = createServerFn({ method: "POST" })
         exercise_id: z.string().uuid(),
         max_results: z.number().int().min(1).max(10).default(5),
         auto_approve: z.boolean().default(false),
-        auto_approve_min_score: z.number().int().min(0).max(100).default(70),
+        auto_approve_min_score: z.number().int().min(0).max(100).default(0),
       })
       .parse(input),
   )
