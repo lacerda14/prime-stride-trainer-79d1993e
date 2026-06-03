@@ -352,10 +352,12 @@ export const searchVideosForExercise = createServerFn({ method: "POST" })
       .object({
         exercise_id: z.string().uuid(),
         max_results: z.number().int().min(1).max(10).default(5),
+        auto_approve: z.boolean().default(false),
+        auto_approve_min_score: z.number().int().min(0).max(100).default(70),
       })
       .parse(input),
   )
-  .handler(async ({ data, context }): Promise<SearchVideosResultDTO> => {
+  .handler(async ({ data, context }): Promise<SearchVideosResultDTO & { auto_approved?: number }> => {
     const { supabase, userId } = context;
     await ensureAdmin(supabase, userId);
 
@@ -369,9 +371,9 @@ export const searchVideosForExercise = createServerFn({ method: "POST" })
       .single();
     if (exErr) throw new Error(exErr.message);
 
-    // Search
-    const q = `${ex.name} exercise proper form technique`;
-    const searchUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&videoEmbeddable=true&safeSearch=strict&maxResults=${data.max_results}&q=${encodeURIComponent(q)}&key=${apiKey}`;
+    // Search — PT-BR
+    const q = `${ex.name} como fazer execução técnica correta`;
+    const searchUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&videoEmbeddable=true&safeSearch=strict&relevanceLanguage=pt&regionCode=BR&maxResults=${data.max_results}&q=${encodeURIComponent(q)}&key=${apiKey}`;
     const searchRes = await fetch(searchUrl);
     if (!searchRes.ok) {
       const txt = await searchRes.text();
