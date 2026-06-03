@@ -204,6 +204,52 @@ export const updateWorkoutSessionState = createServerFn({ method: "POST" })
   });
 
 // ============================================================
+// Autosave de UM set durante o treino (volume ao vivo)
+// ============================================================
+
+export const appendSetLog = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) =>
+    z
+      .object({
+        session_id: z.string().uuid(),
+        exercise_id: z.string().uuid().nullable().optional(),
+        exercise_index: z.number().int().min(0),
+        exercise_name: z.string().min(1).max(255),
+        set_number: z.number().int().min(1),
+        planned_reps: z.string().max(80).nullable().optional(),
+        actual_reps: z.number().int().min(0).max(1000).nullable().optional(),
+        actual_load_kg: z.number().min(0).max(1000).nullable().optional(),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const { error } = await (supabase as unknown as {
+      from: (t: string) => {
+        upsert: (r: unknown, o: { onConflict: string }) => Promise<{ error: { message: string } | null }>;
+      };
+    })
+      .from("workout_set_logs")
+      .upsert(
+        {
+          user_id: userId,
+          workout_session_id: data.session_id,
+          exercise_id: data.exercise_id ?? null,
+          exercise_index: data.exercise_index,
+          exercise_name: data.exercise_name,
+          set_number: data.set_number,
+          planned_reps: data.planned_reps ?? null,
+          actual_reps: data.actual_reps ?? null,
+          actual_load_kg: data.actual_load_kg ?? null,
+        },
+        { onConflict: "workout_session_id,exercise_index,set_number" },
+      );
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+// ============================================================
 // Abandonar
 // ============================================================
 
