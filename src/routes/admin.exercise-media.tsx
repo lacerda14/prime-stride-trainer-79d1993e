@@ -84,7 +84,7 @@ function CuratorBoard() {
   const selected = (data ?? []).find((e) => e.id === selectedId) ?? null;
 
   const search1 = useMutation({
-    mutationFn: (exercise_id: string) => searchFn({ data: { exercise_id, max_results: 5, auto_approve: false } }),
+    mutationFn: (exercise_id: string) => searchFn({ data: { exercise_id, max_results: 5, auto_approve: true, auto_approve_min_score: 0 } }),
     onSuccess: (r) => {
       if (r.error) {
         toast.error(r.error.message);
@@ -100,7 +100,7 @@ function CuratorBoard() {
   const bulkFn = useServerFn(bulkSearchMissingVideos);
   const bulkSearch = useMutation({
     mutationFn: (limit: number) =>
-      bulkFn({ data: { limit, max_results: 3, auto_approve: true, auto_approve_min_score: 70 } }),
+      bulkFn({ data: { limit, max_results: 3, auto_approve: true, auto_approve_min_score: 0 } }),
     onSuccess: (r) => {
       const msg = `Processados ${r.processed} · ${r.total_saved} candidatos salvos · ${r.total_auto_approved} auto-aprovados${r.stopped_reason === "quota_exceeded" ? " (cota esgotada)" : ""}`;
       if (r.total_auto_approved > 0) toast.success(msg);

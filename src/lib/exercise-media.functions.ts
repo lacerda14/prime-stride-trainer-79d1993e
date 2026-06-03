@@ -407,7 +407,7 @@ export const searchVideosForExercise = createServerFn({ method: "POST" })
         exercise_id: z.string().uuid(),
         max_results: z.number().int().min(1).max(10).default(5),
         auto_approve: z.boolean().default(false),
-        auto_approve_min_score: z.number().int().min(0).max(100).default(70),
+        auto_approve_min_score: z.number().int().min(0).max(100).default(0),
       })
       .parse(input),
   )
@@ -494,33 +494,35 @@ export const searchVideosForExercise = createServerFn({ method: "POST" })
     // Auto-aprovação opcional: melhor candidato acima do threshold vira primário
     let auto_approved = 0;
     if (data.auto_approve && saved_rows.length > 0) {
-      const { data: existingPrimary } = await supabase
-        .from("exercise_media")
-        .select("id")
-        .eq("exercise_id", data.exercise_id)
-        .eq("is_approved", true)
-        .eq("is_primary", true)
-        .maybeSingle();
+      const eligible = saved_rows
+        .filter((r) => r.embed_allowed && (r.source_quality_score ?? 0) >= data.auto_approve_min_score)
+        .sort((a, b) => (b.source_quality_score ?? 0) - (a.source_quality_score ?? 0));
 
-      if (!existingPrimary) {
-        const best = [...saved_rows]
-          .filter((r) => (r.source_quality_score ?? 0) >= data.auto_approve_min_score && r.embed_allowed)
-          .sort((a, b) => (b.source_quality_score ?? 0) - (a.source_quality_score ?? 0))[0];
-        if (best) {
+      if (eligible.length > 0) {
+        // aprova todos
+        await supabase
+          .from("exercise_media")
+          .update({ is_approved: true, reviewed_by: userId, reviewed_at: new Date().toISOString() })
+          .in("id", eligible.map((r) => r.id));
+        auto_approved = eligible.length;
+
+        // garante um primário (o melhor) se ainda não houver
+        const { data: existingPrimary } = await supabase
+          .from("exercise_media")
+          .select("id")
+          .eq("exercise_id", data.exercise_id)
+          .eq("is_approved", true)
+          .eq("is_primary", true)
+          .maybeSingle();
+        if (!existingPrimary) {
           await supabase
             .from("exercise_media")
             .update({ is_primary: false })
             .eq("exercise_id", data.exercise_id);
           await supabase
             .from("exercise_media")
-            .update({
-              is_approved: true,
-              is_primary: true,
-              reviewed_by: userId,
-              reviewed_at: new Date().toISOString(),
-            })
-            .eq("id", best.id);
-          auto_approved = 1;
+            .update({ is_primary: true })
+            .eq("id", eligible[0].id);
         }
       }
     }
@@ -547,7 +549,7 @@ export const bulkSearchMissingVideos = createServerFn({ method: "POST" })
         limit: z.number().int().min(1).max(50).default(20),
         max_results: z.number().int().min(1).max(5).default(3),
         auto_approve: z.boolean().default(true),
-        auto_approve_min_score: z.number().int().min(0).max(100).default(70),
+        auto_approve_min_score: z.number().int().min(0).max(100).default(0),
       })
       .parse(input),
   )
@@ -659,24 +661,25 @@ export const bulkSearchMissingVideos = createServerFn({ method: "POST" })
       }
 
       if (data.auto_approve && savedRows.length > 0) {
-        const best = [...savedRows]
-          .filter((r) => (r.source_quality_score ?? 0) >= data.auto_approve_min_score && r.embed_allowed)
-          .sort((a, b) => (b.source_quality_score ?? 0) - (a.source_quality_score ?? 0))[0];
-        if (best) {
+        const eligible = savedRows
+          .filter((r) => r.embed_allowed && (r.source_quality_score ?? 0) >= data.auto_approve_min_score)
+          .sort((a, b) => (b.source_quality_score ?? 0) - (a.source_quality_score ?? 0));
+
+        if (eligible.length > 0) {
+          await supabase
+            .from("exercise_media")
+            .update({ is_approved: true, reviewed_by: userId, reviewed_at: new Date().toISOString() })
+            .in("id", eligible.map((r) => r.id));
+          result.total_auto_approved += eligible.length;
+
           await supabase
             .from("exercise_media")
             .update({ is_primary: false })
             .eq("exercise_id", ex.id);
           await supabase
             .from("exercise_media")
-            .update({
-              is_approved: true,
-              is_primary: true,
-              reviewed_by: userId,
-              reviewed_at: new Date().toISOString(),
-            })
-            .eq("id", best.id);
-          result.total_auto_approved += 1;
+            .update({ is_primary: true })
+            .eq("id", eligible[0].id);
         }
       }
 
