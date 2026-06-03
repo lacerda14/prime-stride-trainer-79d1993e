@@ -245,7 +245,7 @@ function ConcluidoPage() {
           }
         : null;
 
-      await saveLogs({
+      const res = await saveLogs({
         data: {
           session_id: sessionId,
           estimated_calories: estimatedCal,
@@ -257,7 +257,13 @@ function ConcluidoPage() {
         },
       });
       setSavedOnce(true);
-      toast.success("Treino salvo com sucesso");
+      const prs = (res as { newPRs?: Array<{ label: string; value: number; estimated_1rm: number | null; improvement_pct: number | null }> })?.newPRs ?? [];
+      setNewPRs(prs);
+      if (prs.length > 0) {
+        toast.success(`🏆 ${prs.length} novo${prs.length > 1 ? "s" : ""} PR!`);
+      } else {
+        toast.success("Treino salvo com sucesso");
+      }
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Erro ao salvar";
       toast.error(msg);
