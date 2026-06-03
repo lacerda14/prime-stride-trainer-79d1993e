@@ -148,6 +148,20 @@ function PerformancePage() {
           </Link>
         </div>
       )}
+      <PREditSheet
+        open={editingCode !== null}
+        onOpenChange={(o) => !o && setEditingCode(null)}
+        code={editingCode}
+        current={
+          editingPR
+            ? {
+                value: editingPR.value,
+                secondary_value: editingPR.secondary_value,
+                achieved_at: editingPR.achieved_at,
+              }
+            : null
+        }
+      />
     </AppShell>
   );
 }
