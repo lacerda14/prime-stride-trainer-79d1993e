@@ -186,7 +186,7 @@ async function ensureValidActiveProgram(supabase: any, userId: string): Promise<
     .single();
   if (pErr) throw new Error(pErr.message);
   if (!profile.age || !profile.sex || !profile.weight_kg || !profile.height_cm || !profile.experience_level || !profile.goal) {
-    throw new Error("Programa ativo inválido e onboarding incompleto para regenerar.");
+    return programId;
   }
 
   const input = {
