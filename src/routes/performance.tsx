@@ -119,7 +119,7 @@ function PerformancePage() {
             <SectionHeader icon={<Dumbbell className="h-4 w-4" />} title="Força" />
             <div className="space-y-2">
               {STRENGTH_ORDER.map((code) => (
-                <PRCard key={code} code={code} pr={prMap.get(code)} />
+                <PRCard key={code} code={code} pr={prMap.get(code)} onEdit={() => setEditingCode(code)} />
               ))}
             </div>
           </section>
@@ -129,7 +129,7 @@ function PerformancePage() {
             <SectionHeader icon={<Footprints className="h-4 w-4" />} title="Corrida" />
             <div className="space-y-2">
               {RUNNING_ORDER.map((code) => (
-                <PRCard key={code} code={code} pr={prMap.get(code)} />
+                <PRCard key={code} code={code} pr={prMap.get(code)} onEdit={() => setEditingCode(code)} />
               ))}
             </div>
           </section>
