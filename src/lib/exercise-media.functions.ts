@@ -661,24 +661,25 @@ export const bulkSearchMissingVideos = createServerFn({ method: "POST" })
       }
 
       if (data.auto_approve && savedRows.length > 0) {
-        const best = [...savedRows]
-          .filter((r) => (r.source_quality_score ?? 0) >= data.auto_approve_min_score && r.embed_allowed)
-          .sort((a, b) => (b.source_quality_score ?? 0) - (a.source_quality_score ?? 0))[0];
-        if (best) {
+        const eligible = savedRows
+          .filter((r) => r.embed_allowed && (r.source_quality_score ?? 0) >= data.auto_approve_min_score)
+          .sort((a, b) => (b.source_quality_score ?? 0) - (a.source_quality_score ?? 0));
+
+        if (eligible.length > 0) {
+          await supabase
+            .from("exercise_media")
+            .update({ is_approved: true, reviewed_by: userId, reviewed_at: new Date().toISOString() })
+            .in("id", eligible.map((r) => r.id));
+          result.total_auto_approved += eligible.length;
+
           await supabase
             .from("exercise_media")
             .update({ is_primary: false })
             .eq("exercise_id", ex.id);
           await supabase
             .from("exercise_media")
-            .update({
-              is_approved: true,
-              is_primary: true,
-              reviewed_by: userId,
-              reviewed_at: new Date().toISOString(),
-            })
-            .eq("id", best.id);
-          result.total_auto_approved += 1;
+            .update({ is_primary: true })
+            .eq("id", eligible[0].id);
         }
       }
 
