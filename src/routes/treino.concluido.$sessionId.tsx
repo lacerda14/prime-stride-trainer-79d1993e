@@ -370,6 +370,31 @@ function ConcluidoPage() {
           </p>
         </div>
 
+        {/* ── PR banner ── */}
+        {newPRs.length > 0 && (
+          <div className="mt-6 animate-slide-up rounded-2xl border border-primary/40 bg-gradient-to-br from-primary/15 to-primary/5 p-4 shadow-glow">
+            <div className="flex items-center gap-2">
+              <Trophy className="h-5 w-5 text-primary" />
+              <div className="text-[13px] font-semibold tracking-tight">
+                {newPRs.length === 1 ? "Novo Personal Record!" : `${newPRs.length} novos Personal Records!`}
+              </div>
+            </div>
+            <div className="mt-3 space-y-1.5">
+              {newPRs.map((pr, i) => (
+                <div key={`${pr.label}-${i}`} className="flex items-center justify-between text-[13px]">
+                  <span className="text-foreground">{pr.label}</span>
+                  <span className="num font-semibold text-primary">
+                    {pr.estimated_1rm ? `${pr.value}kg · 1RM ~${pr.estimated_1rm}` : pr.value}
+                    {pr.improvement_pct != null && pr.improvement_pct > 0 && (
+                      <span className="ml-1.5 text-[11px]">+{pr.improvement_pct}%</span>
+                    )}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* ── 2. Stats em grid 2×2 ── */}
         <div className="mt-8 grid grid-cols-2 gap-3 animate-slide-up">
           {/* Duração — destaque maior */}
