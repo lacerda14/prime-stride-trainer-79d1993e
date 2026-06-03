@@ -13,9 +13,12 @@ import { Loader2 } from "lucide-react";
 import pmLogo from "@/assets/pm-logo.png.asset.json";
 
 export const Route = createFileRoute("/auth")({
-  validateSearch: (s: Record<string, unknown>) => ({
-    redirect: typeof s.redirect === "string" ? s.redirect : "/",
-  }),
+  validateSearch: (s: Record<string, unknown>) => {
+    const raw = typeof s.redirect === "string" ? s.redirect : "/";
+    // Prevent redirect loops: never redirect back to /auth itself
+    const safe = raw.startsWith("/auth") ? "/" : raw;
+    return { redirect: safe };
+  },
   component: AuthPage,
   head: () => ({ meta: [{ title: "Entrar · PM Hybrid Performance" }] }),
 });
@@ -31,7 +34,8 @@ function AuthPage() {
 
   useEffect(() => {
     if (!authLoading && user) {
-      navigate({ to: redirect || "/", replace: true });
+      const target = redirect && !redirect.startsWith("/auth") ? redirect : "/";
+      navigate({ to: target, replace: true });
     }
   }, [authLoading, user, navigate, redirect]);
 
