@@ -1,7 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { generatePlan, loadExercisePool, persistProgram, type UserProfileInput } from "@/lib/engine/pm-engine.server";
 
 const localTodaySchema = z.object({
   local_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
@@ -190,16 +189,17 @@ async function ensureValidActiveProgram(supabase: any, userId: string): Promise<
     throw new Error("Programa ativo inválido e onboarding incompleto para regenerar.");
   }
 
-  const input: UserProfileInput = {
+  const input = {
     age: profile.age,
-    sex: profile.sex as UserProfileInput["sex"],
+    sex: profile.sex,
     weight_kg: Number(profile.weight_kg),
     height_cm: Number(profile.height_cm),
-    experience_level: profile.experience_level as UserProfileInput["experience_level"],
-    goal: profile.goal as UserProfileInput["goal"],
+    experience_level: profile.experience_level,
+    goal: profile.goal,
     available_days: 5,
     available_equipment: (profile.equipment ?? []) as string[],
   };
+  const { generatePlan, loadExercisePool, persistProgram } = await import("@/lib/engine/pm-engine.server");
   const pool = await loadExercisePool(supabase);
   if (pool.length === 0) throw new Error("Catálogo de exercícios vazio.");
   const result = await persistProgram(supabase, userId, input, generatePlan(input, pool));
