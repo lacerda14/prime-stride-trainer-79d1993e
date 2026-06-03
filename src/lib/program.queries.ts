@@ -186,6 +186,7 @@ async function ensureValidActiveProgram(supabase: any, userId: string): Promise<
     .single();
   if (pErr) throw new Error(pErr.message);
   if (!profile.age || !profile.sex || !profile.weight_kg || !profile.height_cm || !profile.experience_level || !profile.goal) {
+    console.warn("Programa ativo com distribuição antiga; mantendo plano existente porque o perfil ainda não tem dados suficientes para regenerar.");
     return programId;
   }
 
