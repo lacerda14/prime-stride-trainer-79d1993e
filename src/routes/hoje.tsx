@@ -309,7 +309,23 @@ function BisetCard({ exercises, slot, index, onOpenVideo, lastWeights, onRequest
               </div>
             ))}
 
+            {/* Botões de swap por exercício do biset */}
+            <div className="mb-3 grid grid-cols-2 gap-2">
+              {exercises.map((ex) => (
+                <button
+                  key={`swap-${ex.id}`}
+                  type="button"
+                  onClick={() => onRequestSwap(ex.id, ex.exercise.id, ex.exercise.name)}
+                  className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-border bg-surface/40 px-2 py-1.5 text-[10.5px] font-semibold text-muted-foreground transition-colors hover:text-primary"
+                >
+                  <ArrowRightLeft className="h-3 w-3" />
+                  {swappedIds.has(ex.id) ? "Trocar novamente" : "Trocar"}
+                </button>
+              ))}
+            </div>
+
             {/* Descanso após biset completo */}
+
             {restSeconds && (
               <div className="flex items-center justify-center gap-2 rounded-xl border border-primary/20 bg-primary/5 py-2.5 text-xs font-medium text-primary">
                 <Timer className="h-3.5 w-3.5" /> Descanse {restSeconds}s antes da próxima rodada
