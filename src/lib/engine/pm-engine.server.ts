@@ -25,7 +25,8 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 export type Sex = "male" | "female" | "other";
 export type Experience = "beginner" | "intermediate" | "advanced";
 export type Goal = "fat_loss" | "hypertrophy" | "endurance" | "hybrid";
-export type AvailableDays = 3 | 4 | 5;
+export type AvailableDays = number; // 1..7 dias por semana
+export type RunningMode = "desabilitado" | "opcional" | "integrado" | "principal";
 
 export interface UserProfileInput {
   age: number;
@@ -35,6 +36,11 @@ export interface UserProfileInput {
   experience_level: Experience;
   goal: Goal;
   available_days: AvailableDays;
+  /** Dias da semana selecionados pelo usuário (1=Seg ... 7=Dom). Quando ausente, usa Seg..Sex. */
+  selected_days?: number[];
+  /** True quando o usuário quer corrida integrada/principal no plano. False = só musculação. */
+  wants_running?: boolean;
+  running_mode?: RunningMode | null;
   /** Lista (pt-BR) de equipamentos disponíveis vinda do onboarding (deriveEquipment).
    *  Quando vazia/undefined, assume-se academia completa (compat retroativa). */
   available_equipment?: string[];
