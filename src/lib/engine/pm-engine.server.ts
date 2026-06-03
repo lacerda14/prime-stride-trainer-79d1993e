@@ -934,12 +934,14 @@ export function generatePlan(profile: UserProfileInput, exercisePool: ExerciseRo
       }
     }
 
-    weeks.push({
+    const generatedWeek: GeneratedWeek = {
       week_number: w,
       week_type: type,
       mesocycle_code: meso.code,
       days: dayPlans,
-    });
+    };
+    validateWeekDistribution(generatedWeek);
+    weeks.push(generatedWeek);
   }
 
   return {
@@ -961,6 +963,8 @@ export async function persistProgram(
   profile: UserProfileInput,
   plan: GenerationResult,
 ): Promise<{ program_id: string }> {
+  validatePlanDistribution(plan);
+
   // arquivar programas anteriores
   await supabase
     .from("training_programs")
