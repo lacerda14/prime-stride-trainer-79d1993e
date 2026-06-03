@@ -818,7 +818,7 @@ export interface GenerationResult {
  */
 export function generatePlan(profile: UserProfileInput, exercisePool: ExerciseRow[]): GenerationResult {
   const vref = calcReferenceVelocity(profile);
-  const days = activeDays(profile.available_days);
+  const days = activeDays(profile);
   // Filtra o pool de exercícios pelos equipamentos disponíveis do usuário.
   // Garante que nunca selecionamos exercícios que dependem de equipamento ausente.
   const filteredPool = filterPoolByEquipment(exercisePool, profile.available_equipment);
