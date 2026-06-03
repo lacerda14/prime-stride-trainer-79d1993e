@@ -27,7 +27,7 @@ function persistSwaps(date: string, m: SwapMap) {
 }
 
 function applySwap(e: SessionExerciseDTO, swaps: SwapMap): SessionExerciseDTO {
-  const s = swaps[e.exercise.id];
+  const s = swaps[e.id];
   if (!s) return e;
   return { ...e, exercise: { id: s.id, name: s.name, category: s.category } };
 }
