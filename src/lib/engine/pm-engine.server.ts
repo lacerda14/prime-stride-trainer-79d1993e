@@ -872,7 +872,7 @@ export function generatePlan(profile: UserProfileInput, exercisePool: ExerciseRo
         });
       } else {
         // run_upper: 4 bisets + 2 core (par_slot agrupa biset)
-        const seq = runUpperSequence(type);
+        const seq = runUpperSequence(runType);
         let slot = 1;
         for (let i = 0; i < seq.length; i += 2) {
           const catA = seq[i];
