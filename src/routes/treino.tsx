@@ -807,6 +807,12 @@ function TreinoPage() {
             mins={mins}
             secs={secs}
             countdown={phase === "rest"}
+            liveLoad={liveLoad}
+            liveReps={liveReps}
+            onLoadChange={setLiveLoad}
+            onRepsChange={setLiveReps}
+            onSwap={() => current.exerciseId && setSwapOpenFor({ index: current.exerciseIndex, id: current.exerciseId, name: current.name })}
+            onReorder={() => setReorderOpen(true)}
           />
         )}
 
