@@ -1,12 +1,14 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
+import { useState } from "react";
 import { AppShell } from "@/components/app-shell";
 import { RequireAuth } from "@/components/require-auth";
 import { useAuth } from "@/hooks/use-auth";
-import { getPersonalRecords, getRecentPRs } from "@/lib/personal-records.functions";
+import { getPersonalRecords, getRecentPRs, type PersonalRecordDTO } from "@/lib/personal-records.functions";
 import { PR_EXERCISE_CODES, type PRExerciseCode } from "@/lib/pr-detection.server";
-import { Trophy, TrendingUp, Loader2, ArrowRight, Dumbbell, Footprints } from "lucide-react";
+import { PREditSheet } from "@/components/pr-edit-sheet";
+import { Trophy, TrendingUp, Loader2, ArrowRight, Dumbbell, Footprints, Plus, Pencil } from "lucide-react";
 
 export const Route = createFileRoute("/performance")({
   head: () => ({
