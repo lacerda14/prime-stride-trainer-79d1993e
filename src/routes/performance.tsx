@@ -70,6 +70,8 @@ function PerformancePage() {
 
   const isLoading = prs.isLoading || recent.isLoading;
   const prMap = new Map((prs.data ?? []).map((r) => [r.exercise_code, r]));
+  const [editingCode, setEditingCode] = useState<PRExerciseCode | null>(null);
+  const editingPR = editingCode ? prMap.get(editingCode) ?? null : null;
 
   return (
     <AppShell eyebrow="Minha performance" title="PRs & Performance">
