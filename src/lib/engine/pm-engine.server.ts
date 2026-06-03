@@ -7,7 +7,8 @@
  * Estrutura geral:
  *  - 6 mesociclos (1.1, 1.2, 2.1, 2.2, 3, 4) em 4 macros
  *  - Volume FB: sem1–12 = 12 / sem13–24 = 10 / sem25–48 = 8
- *  - Semanas ímpares = A (Pull+Posterior) | Pares = B (Push+Anterior)
+ *  - Seg/Qua/Sex sempre Full Body; Ter/Qui sempre Corrida + Superior
+ *  - Semanas ímpares: FB Pull+Posterior e Run+Upper Push; pares: FB Push+Anterior e Run+Upper Pull
  *  - Regra de Ouro: ≤ 2× por exercício por mesociclo
  *  - SEG ≠ QUA ≠ SEX em uma mesma semana (não-core)
  *  - Manguito: 1/sessão, máx 3/sem (sem 1–10)
@@ -726,6 +727,7 @@ export interface GeneratedDay {
   day_number: number; // 1..7 (Mon=1)
   day_name: string;
   session_type: "full_body" | "run_upper" | "run" | "rest";
+  emphasis: "fb_pull_posterior" | "fb_push_anterior" | "run_push" | "run_pull";
   objective: string | null;
   duration_minutes: number | null;
   exercises: SessionExerciseRow[];
@@ -739,30 +741,41 @@ export interface GeneratedWeek {
   days: GeneratedDay[];
 }
 
-/** Dias da semana ativos por disponibilidade */
-function activeDays(available: AvailableDays): { num: number; name: string; kind: "fb" | "run" }[] {
-  if (available === 5) {
-    return [
-      { num: 1, name: "Segunda", kind: "fb" },
-      { num: 2, name: "Terça", kind: "run" },
-      { num: 3, name: "Quarta", kind: "fb" },
-      { num: 4, name: "Quinta", kind: "run" },
-      { num: 5, name: "Sexta", kind: "fb" },
-    ];
-  }
-  if (available === 4) {
-    return [
-      { num: 1, name: "Segunda", kind: "fb" },
-      { num: 2, name: "Terça", kind: "run" },
-      { num: 3, name: "Quarta", kind: "fb" },
-      { num: 5, name: "Sexta", kind: "fb" },
-    ];
-  }
+/** Distribuição fixa PM Hybrid: Seg/Qua/Sex FB, Ter/Qui Corrida + Superior. */
+function activeDays(_available: AvailableDays): { num: number; name: string; kind: "fb" | "run" }[] {
   return [
     { num: 1, name: "Segunda", kind: "fb" },
-    { num: 3, name: "Quarta", kind: "run" },
+    { num: 2, name: "Terça", kind: "run" },
+    { num: 3, name: "Quarta", kind: "fb" },
+    { num: 4, name: "Quinta", kind: "run" },
     { num: 5, name: "Sexta", kind: "fb" },
   ];
+}
+
+function validateWeekDistribution(week: GeneratedWeek): void {
+  const dayByNumber = new Map(week.days.map((day) => [day.day_number, day]));
+  const fbEmphasis = week.week_number % 2 === 1 ? "fb_pull_posterior" : "fb_push_anterior";
+  const runEmphasis = week.week_number % 2 === 1 ? "run_push" : "run_pull";
+
+  for (const dayNumber of [1, 3, 5]) {
+    const day = dayByNumber.get(dayNumber);
+    if (!day || day.session_type !== "full_body" || day.running || day.emphasis !== fbEmphasis) {
+      throw new Error(`Distribuição inválida na semana ${week.week_number}: dia ${dayNumber} deve ser Full Body ${fbEmphasis}.`);
+    }
+  }
+  for (const dayNumber of [2, 4]) {
+    const day = dayByNumber.get(dayNumber);
+    if (!day || day.session_type !== "run_upper" || !day.running || day.emphasis !== runEmphasis) {
+      throw new Error(`Distribuição inválida na semana ${week.week_number}: dia ${dayNumber} deve ser Corrida + Superior ${runEmphasis}.`);
+    }
+  }
+  if (week.days.some((day) => day.day_number < 1 || day.day_number > 5)) {
+    throw new Error(`Distribuição inválida na semana ${week.week_number}: sábado e domingo devem ficar OFF.`);
+  }
+}
+
+function validatePlanDistribution(plan: GenerationResult): void {
+  for (const week of plan.weeks) validateWeekDistribution(week);
 }
 
 export interface GenerationResult {
