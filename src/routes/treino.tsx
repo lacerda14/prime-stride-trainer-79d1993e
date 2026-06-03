@@ -450,16 +450,122 @@ function TreinoPage() {
     [paused, phaseStartedAt, phaseAccumMs, persistNow],
   );
 
+  // Captura set ao concluir (work → rest em strength)
+  const captureCurrentSet = useCallback(() => {
+    if (!current || current.kind !== "strength" || !sessionId) return;
+    const key = setKey(current.exerciseIndex, current.set);
+    const loadNum = liveLoad ? Number(liveLoad) : null;
+    const repsNum = liveReps ? Number(liveReps) : null;
+    setSetLogs((prev) => ({
+      ...prev,
+      [key]: {
+        load: liveLoad,
+        reps: liveReps,
+        completed: true,
+      },
+    }));
+    void appendSetLogFn({
+      data: {
+        session_id: sessionId,
+        exercise_id: current.exerciseId,
+        exercise_index: current.exerciseIndex,
+        exercise_name: current.name,
+        set_number: current.set,
+        planned_reps: current.reps,
+        actual_load_kg: loadNum,
+        actual_reps: repsNum,
+      },
+    }).catch(() => { /* offline-tolerant */ });
+  }, [current, sessionId, liveLoad, liveReps, appendSetLogFn]);
+
   const handleAdvance = useCallback(() => {
     if (!current) return;
     if (current.kind === "run") {
       advanceTo(step + 1, "work");
     } else if (phase === "work") {
+      captureCurrentSet();
       advanceTo(step, "rest");
     } else {
       advanceTo(step + 1, "work");
     }
-  }, [current, phase, step, advanceTo]);
+  }, [current, phase, step, advanceTo, captureCurrentSet]);
+
+  // Reset/precarrega inputs ao trocar de set
+  useEffect(() => {
+    if (!current || current.kind !== "strength") return;
+    const key = setKey(current.exerciseIndex, current.set);
+    const existing = setLogs[key];
+    if (existing) {
+      setLiveLoad(existing.load);
+      setLiveReps(existing.reps);
+    } else {
+      const last = current.exerciseId ? lastWeights[current.exerciseId] : null;
+      setLiveLoad(last != null ? String(last) : "");
+      setLiveReps("");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step, current?.kind, current && current.kind === "strength" ? current.exerciseIndex : null, current && current.kind === "strength" ? current.set : null]);
+
+  // Volume ao vivo
+  const liveVolume = useMemo(() => {
+    return computeVolume(
+      Object.values(setLogs).map((s) => ({
+        actual_load_kg: s.load,
+        actual_reps: s.reps,
+        completed: s.completed,
+      })),
+    );
+  }, [setLogs]);
+
+  // Handlers de swap/reorder
+  const handleSelectSwap = useCallback(
+    (sug: SwapSuggestion) => {
+      if (!swapOpenFor) return;
+      setSwaps((prev) => ({
+        ...prev,
+        [swapOpenFor.index]: { id: sug.id, name: sug.name, category: sug.category },
+      }));
+      setSwapOpenFor(null);
+      setTimeout(() => persistNow(), 0);
+    },
+    [swapOpenFor, persistNow],
+  );
+
+  const handleApplyReorder = useCallback(
+    (newOrder: string[]) => {
+      setExerciseOrder(newOrder.map((s) => Number(s)));
+      setTimeout(() => persistNow(), 0);
+    },
+    [persistNow],
+  );
+
+  // Itens para a sheet de reordenar (apenas exercícios — não mostra corrida)
+  const reorderItems = useMemo<ReorderItem[]>(() => {
+    if (!today) return [];
+    const exercises = today.exercises;
+    const order = exerciseOrder && exerciseOrder.length === exercises.length
+      ? exerciseOrder
+      : exercises.map((_, i) => i);
+    const currentExerciseIndex = current && current.kind === "strength" ? current.exerciseIndex : -1;
+    return order.map((exIdx) => {
+      const e = exercises[exIdx];
+      const swap = swaps[exIdx];
+      const name = swap?.name ?? e?.exercise.name ?? "—";
+      const sets = Math.max(1, e?.sets ?? 1);
+      // marca como done se todas as séries foram concluídas OU se já passou na fila
+      let allDone = true;
+      for (let s = 1; s <= sets; s++) {
+        if (!setLogs[setKey(exIdx, s)]?.completed) { allDone = false; break; }
+      }
+      const done = allDone || (currentExerciseIndex >= 0 && order.indexOf(exIdx) < order.indexOf(currentExerciseIndex));
+      return {
+        id: String(exIdx),
+        name,
+        setsInfo: `${sets} séries · ${e?.reps ?? ""}`,
+        done,
+      };
+    });
+  }, [today, exerciseOrder, swaps, setLogs, current]);
 
   // auto-advance quando countdown chega a zero
   useEffect(() => {
