@@ -508,22 +508,30 @@ function HojePage() {
             <div className="text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">Core</div>
             <div className="mt-3 space-y-2">
               {core.map((c) => (
-                <div key={c.id} className="num flex items-center justify-between rounded-lg border border-border/60 bg-surface/40 px-3 py-2.5 text-sm">
+                <div key={c.id} className="num flex items-center justify-between gap-3 rounded-lg border border-border/60 bg-surface/40 px-3 py-2.5 text-sm">
                   <button
                     type="button"
                     onClick={() => detail.open(c.exercise.id)}
-                    className="inline-flex items-center gap-1.5 font-medium text-left transition-colors hover:text-primary"
+                    className="inline-flex items-center gap-1.5 font-medium text-left transition-colors hover:text-primary min-w-0"
                   >
-                    {c.exercise.name}
-                    <PlayCircle className="h-3 w-3 text-muted-foreground" />
+                    <span className="truncate">{c.exercise.name}</span>
+                    <PlayCircle className="h-3 w-3 shrink-0 text-muted-foreground" />
                   </button>
-                  <div className="flex items-center gap-3 text-muted-foreground">
+                  <div className="flex shrink-0 items-center gap-2 text-muted-foreground">
                     <span>{c.sets}x{c.reps}</span>
                     {c.rest_seconds && (
                       <span className="inline-flex items-center gap-1 rounded-md bg-primary/10 px-1.5 py-0.5 text-[10px] text-primary">
                         <Timer className="h-3 w-3" /> {c.rest_seconds}s
                       </span>
                     )}
+                    <button
+                      type="button"
+                      onClick={() => setSwapTarget({ slotId: c.id, poolId: c.exercise.id, name: c.exercise.name })}
+                      className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-border bg-surface/60 transition-colors hover:text-primary"
+                      aria-label="Trocar exercício"
+                    >
+                      <ArrowRightLeft className="h-3 w-3" />
+                    </button>
                   </div>
                 </div>
               ))}
