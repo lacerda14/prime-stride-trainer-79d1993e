@@ -164,6 +164,7 @@ const setLogInputSchema = z.object({
   planned_rpe: z.number().min(0).max(10).nullable().optional(),
   actual_rpe: z.number().min(0).max(10).nullable().optional(),
   notes: z.string().max(500).nullable().optional(),
+  set_status: z.enum(["completed", "failed", "skipped"]).nullable().optional(),
 });
 
 const runningInputSchema = z.object({
