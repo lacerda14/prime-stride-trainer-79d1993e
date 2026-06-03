@@ -678,6 +678,10 @@ function filterPool(
 ): ExerciseRow[] {
   return pool.filter((e) => {
     if (e.category !== category) return false;
+    // Proteção semântica: alguns exercícios podem estar catalogados em uma
+    // musculatura vizinha, mas o padrão motor ainda é pull. Nunca entram em Push.
+    if (category === "chest" && e.code === "db_pullover") return false;
+    if (category === "shoulder" && e.code === "upright_row") return false;
     if (!isAllowedForLevel(e, ctx.experience)) return false;
     if (ctx.week <= 12 && e.banned_weeks_1_to_12) return false;
     return true;
