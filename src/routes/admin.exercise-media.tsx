@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Loader2, Search, Check, X, Star, PlayCircle, Plus, Pencil, ShieldAlert } from "lucide-react";
+import { Loader2, Search, Check, X, Star, PlayCircle, Plus, Pencil, ShieldAlert, Zap } from "lucide-react";
 import {
   getMyRole,
   listExercisesWithStatus,
