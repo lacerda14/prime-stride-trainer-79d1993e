@@ -345,6 +345,60 @@ function youtubeApiError(status: number, body: string): SearchVideosResultDTO["e
   };
 }
 
+// Helper: insere candidato (ou atualiza se já existe pelo external_id).
+// Não usa upsert do PostgREST pois o índice único é parcial (WHERE external_id IS NOT NULL),
+// o que faz o ON CONFLICT falhar silenciosamente.
+async function upsertCandidate(
+  supabase: any,
+  candidate: { exercise_id: string; source: string; external_id: string; [k: string]: any },
+): Promise<ExerciseMediaDTO | null> {
+  const { data: existing, error: selErr } = await supabase
+    .from("exercise_media")
+    .select("id,is_approved,is_primary")
+    .eq("exercise_id", candidate.exercise_id)
+    .eq("source", candidate.source)
+    .eq("external_id", candidate.external_id)
+    .maybeSingle();
+  if (selErr) {
+    console.warn("upsertCandidate select error", selErr.message);
+    return null;
+  }
+  if (existing) {
+    // já existe — preserva flags de aprovação, atualiza metadata
+    const { data: updated, error: updErr } = await supabase
+      .from("exercise_media")
+      .update({
+        title: candidate.title,
+        thumbnail_url: candidate.thumbnail_url,
+        duration_seconds: candidate.duration_seconds,
+        channel_name: candidate.channel_name,
+        instructor_name: candidate.instructor_name,
+        source_quality_score: candidate.source_quality_score,
+        embed_allowed: candidate.embed_allowed,
+        reason_for_recommendation: candidate.reason_for_recommendation,
+        safety_notes: candidate.safety_notes,
+      })
+      .eq("id", existing.id)
+      .select("*")
+      .single();
+    if (updErr) {
+      console.warn("upsertCandidate update error", updErr.message);
+      return null;
+    }
+    return updated as ExerciseMediaDTO;
+  }
+  const { data: inserted, error: insErr } = await supabase
+    .from("exercise_media")
+    .insert(candidate)
+    .select("*")
+    .single();
+  if (insErr) {
+    console.warn("upsertCandidate insert error", insErr.message, "for video", candidate.external_id);
+    return null;
+  }
+  return inserted as ExerciseMediaDTO;
+}
+
 export const searchVideosForExercise = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) =>
@@ -430,14 +484,10 @@ export const searchVideosForExercise = createServerFn({ method: "POST" })
     let saved = 0;
     const saved_rows: ExerciseMediaDTO[] = [];
     for (const c of candidates) {
-      const { data: row, error } = await supabase
-        .from("exercise_media")
-        .upsert(c, { onConflict: "exercise_id,source,external_id", ignoreDuplicates: false })
-        .select("*")
-        .single();
-      if (!error && row) {
+      const row = await upsertCandidate(supabase, c);
+      if (row) {
         saved += 1;
-        saved_rows.push(row as ExerciseMediaDTO);
+        saved_rows.push(row);
       }
     }
 
@@ -601,13 +651,9 @@ export const bulkSearchMissingVideos = createServerFn({ method: "POST" })
 
       const savedRows: ExerciseMediaDTO[] = [];
       for (const c of candidates) {
-        const { data: row, error: upErr } = await supabase
-          .from("exercise_media")
-          .upsert(c, { onConflict: "exercise_id,source,external_id", ignoreDuplicates: false })
-          .select("*")
-          .single();
-        if (!upErr && row) {
-          savedRows.push(row as ExerciseMediaDTO);
+        const row = await upsertCandidate(supabase, c);
+        if (row) {
+          savedRows.push(row);
           result.total_saved += 1;
         }
       }
