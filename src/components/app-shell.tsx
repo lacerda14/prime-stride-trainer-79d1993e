@@ -46,7 +46,7 @@ export function AppShell({ children, title, eyebrow, action }: AppShellProps) {
     <RequireAuth>
       <div className="relative mx-auto flex min-h-screen w-full max-w-[480px] flex-col bg-background">
         {/* ── Top header ── */}
-        <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b border-border/60 bg-background/80 px-4 backdrop-blur-xl">
+        <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b border-border/60 bg-background/80 px-4 backdrop-blur-xl pt-[env(safe-area-inset-top,0px)] [box-sizing:content-box]">
           <Link
             to="/"
             aria-label="Ir para o início"
