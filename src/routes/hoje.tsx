@@ -549,6 +549,13 @@ function HojePage() {
         </div>
       </div>
       <ExerciseDetailModal {...detail.modalProps} />
+      <ExerciseSwapSheet
+        open={!!swapTarget}
+        exerciseId={swapTarget?.poolId ?? null}
+        exerciseName={swapTarget?.name ?? ""}
+        onClose={() => setSwapTarget(null)}
+        onSelect={handleApplySwap}
+      />
     </AppShell>
   );
 }
