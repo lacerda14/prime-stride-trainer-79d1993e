@@ -911,7 +911,7 @@ export function generatePlan(profile: UserProfileInput, exercisePool: ExerciseRo
           day_number: d.num,
           day_name: d.name,
           session_type: "run_upper",
-          objective: `${running.protocol_type.toUpperCase()} + ${type === "A" ? "PULL" : "PUSH"} bisets`,
+          objective: `${running.protocol_type.toUpperCase()} + ${runType === "A" ? "PULL" : "PUSH"} bisets`,
           duration_minutes: running.total_duration_minutes + 30,
           exercises,
           running,
