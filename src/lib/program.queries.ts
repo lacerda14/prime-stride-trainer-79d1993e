@@ -142,6 +142,72 @@ async function getActiveProgramId(
   return data?.id ?? null;
 }
 
+async function hasValidFixedDistribution(supabase: any, programId: string): Promise<boolean> {
+  const { data, error } = await supabase
+    .from("training_days")
+    .select("day_number,session_type,objective,running_protocols(id),week:weeks!inner(week_number,program_id)")
+    .eq("week.program_id", programId)
+    .in("week.week_number", [1, 2])
+    .order("day_number");
+  if (error) throw new Error(error.message);
+
+  const rows = data ?? [];
+  for (const weekNumber of [1, 2]) {
+    const days = rows.filter((row: any) => row.week.week_number === weekNumber);
+    if (days.length !== 5) return false;
+    const fbText = weekNumber % 2 === 1 ? "Pull + Posterior" : "Push + Anterior";
+    const runText = weekNumber % 2 === 1 ? "PUSH" : "PULL";
+
+    for (const dayNumber of [1, 3, 5]) {
+      const day = days.find((row: any) => row.day_number === dayNumber);
+      if (!day || day.session_type !== "full_body" || !String(day.objective ?? "").includes(fbText) || (day.running_protocols ?? []).length > 0) {
+        return false;
+      }
+    }
+    for (const dayNumber of [2, 4]) {
+      const day = days.find((row: any) => row.day_number === dayNumber);
+      if (!day || day.session_type !== "run_upper" || !String(day.objective ?? "").includes(runText) || (day.running_protocols ?? []).length === 0) {
+        return false;
+      }
+    }
+  }
+  return true;
+}
+
+async function ensureValidActiveProgram(supabase: any, userId: string): Promise<string | null> {
+  const programId = await getActiveProgramId(supabase, userId);
+  if (!programId) return null;
+  if (await hasValidFixedDistribution(supabase, programId)) return programId;
+
+  const { data: profile, error: pErr } = await supabase
+    .from("profiles")
+    .select("age, sex, weight_kg, height_cm, experience_level, goal, available_days, equipment")
+    .eq("id", userId)
+    .single();
+  if (pErr) throw new Error(pErr.message);
+  if (!profile.age || !profile.sex || !profile.weight_kg || !profile.height_cm || !profile.experience_level || !profile.goal) {
+    return programId;
+  }
+
+  const input = {
+    age: profile.age,
+    sex: profile.sex,
+    weight_kg: Number(profile.weight_kg),
+    height_cm: Number(profile.height_cm),
+    experience_level: profile.experience_level,
+    goal: profile.goal,
+    available_days: 5,
+    available_equipment: (profile.equipment ?? []) as string[],
+  };
+  const { generatePlan, loadExercisePool, persistProgram } = await import("@/lib/engine/pm-engine.server");
+  type UserProfileInput = Parameters<typeof generatePlan>[0];
+  const pool = await loadExercisePool(supabase);
+  if (pool.length === 0) throw new Error("Catálogo de exercícios vazio.");
+  const typedInput = input as UserProfileInput;
+  const result = await persistProgram(supabase, userId, typedInput, generatePlan(typedInput, pool));
+  return result.program_id;
+}
+
 function daysBetweenLocalDates(start: string, end: string): number {
   const [sy, sm, sd] = start.split("-").map(Number);
   const [ey, em, ed] = end.split("-").map(Number);
@@ -164,15 +230,15 @@ async function loadProgramSummary(
   userId: string,
   calendar?: z.infer<typeof localTodaySchema>,
 ): Promise<ProgramSummary | null> {
+  const programId = await ensureValidActiveProgram(supabase, userId);
+  if (!programId) return null;
+
   const { data: prog, error: pErr } = await supabase
     .from("training_programs")
     .select(
       "id,total_weeks,active_week,active_day,goal,experience_level,available_days,reference_velocity",
     )
-    .eq("user_id", userId)
-    .is("archived_at", null)
-    .order("created_at", { ascending: false })
-    .limit(1)
+    .eq("id", programId)
     .maybeSingle();
   if (pErr) throw new Error(pErr.message);
   if (!prog) return null;
@@ -361,7 +427,7 @@ export const getWeekDetail = createServerFn({ method: "GET" })
     z.object({ week_number: z.number().int().min(1).max(60) }).parse(input),
   )
   .handler(async ({ data, context }): Promise<WeekDetailDTO | null> => {
-    const programId = await getActiveProgramId(context.supabase, context.userId);
+    const programId = await ensureValidActiveProgram(context.supabase, context.userId);
     if (!programId) return null;
     return loadWeekDetail(context.supabase, programId, data.week_number);
   });
@@ -425,7 +491,7 @@ export const getRunningSessions = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<RunningSessionListItem[]> => {
     const { supabase, userId } = context;
-    const programId = await getActiveProgramId(supabase, userId);
+    const programId = await ensureValidActiveProgram(supabase, userId);
     if (!programId) return [];
 
     const { data, error } = await supabase
@@ -481,7 +547,7 @@ export const getTopExercises = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<{ id: string; name: string; usage: number }[]> => {
     const { supabase, userId } = context;
-    const programId = await getActiveProgramId(supabase, userId);
+    const programId = await ensureValidActiveProgram(supabase, userId);
     if (!programId) return [];
 
     const { data, error } = await supabase
