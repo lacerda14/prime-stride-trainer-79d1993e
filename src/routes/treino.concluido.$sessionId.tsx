@@ -122,6 +122,7 @@ function ConcluidoPage() {
   const [runEffort, setRunEffort] = useState("");
   const [runNotes, setRunNotes] = useState("");
   const [generalEffort, setGeneralEffort] = useState("");
+  const [durationFeedback, setDurationFeedback] = useState<"" | "too_short" | "ok" | "too_long">("");
   const [generalNotes, setGeneralNotes] = useState("");
   const [saving, setSaving] = useState(false);
   const [savedOnce, setSavedOnce] = useState(false);
