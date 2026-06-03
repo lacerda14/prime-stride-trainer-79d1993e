@@ -11,6 +11,7 @@ import { runningHeadline, runningInstructions } from "@/lib/format-running";
 import { useLocalToday } from "@/hooks/use-local-today";
 import { ExerciseDetailModal, useExerciseDetail } from "@/components/exercise-detail-modal";
 import { ExerciseSwapSheet } from "@/components/exercise-swap-sheet";
+import { ReadinessCard } from "@/components/readiness-card";
 import type { SwapSuggestion } from "@/lib/exercise-swap.functions";
 
 // Swap aplicado a um exercício do dia (overlay puramente visual / local)
@@ -444,6 +445,9 @@ function HojePage() {
             </div>
           </div>
         </section>
+
+        {/* IA — Readiness */}
+        <ReadinessCard />
 
         {/* Corrida */}
         {today.running && (

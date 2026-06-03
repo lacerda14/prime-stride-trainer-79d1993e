@@ -1,120 +1,136 @@
-# PRs & Performance — Centro Oficial de Recordes
+# Motor de Autorregulação Inteligente
 
-Antes de começar: o build atual está quebrado pelas mudanças anteriores (volume ao vivo, troca de exercícios, reordenação). Preciso primeiro **fechar essa frente** (terminar `StrengthView`, montar os sheets em `treino.tsx`) e só depois iniciar essa nova feature, senão nada renderiza para testar.
+Hoje o app só coleta um RPE geral e um `duration_feedback`. Vamos transformar isso num **motor de decisão multifatorial** que combina feedback subjetivo, cargas executadas vs planejadas, taxa de conclusão e histórico — sem nunca quebrar a periodização das 48 semanas.
 
 ---
 
-## Visão
+## 1. Coleta de dados (o que já temos vs o que falta)
 
-Uma **única fonte de verdade** (`personal_records`) consumida por Home, Perfil, Evolução, Histórico, Conquistas e rankings futuros. Nada de PRs duplicados em cada tela.
+Já gravamos em `workout_set_logs`: `planned_reps`, `actual_reps`, `planned_load_kg`, `actual_load_kg`, `planned_rpe`, `actual_rpe`. Já gravamos `completed_summary.perceived_effort` (0–10) e `duration_feedback` na sessão.
 
-## 1. Schema (migração)
+**Falta um campo claro de feedback global em 5 níveis** (Muito leve / Leve / Ideal / Pesado / Muito pesado). Vamos adicionar `completed_summary.session_feedback` (texto enum) — sem migração, é JSONB.
 
-**Nova tabela `personal_records`** (substitui o cálculo on-the-fly atual em `evolution.functions`):
+**Falta marcar séries falhadas explicitamente.** Hoje uma série não-completada some. Vamos adicionar à série um status no log: `set_status` ∈ `completed | failed | skipped` (nova coluna `text` em `workout_set_logs`, default `completed`).
 
-```
-personal_records
-- id, user_id
-- exercise_code text         -- 'back_squat', 'front_squat', 'deadlift', 'bench_press',
-                                'strict_military_press', 'strict_pull_up',
-                                'run_5k', 'run_1k', 'best_pace', 'distance_30min'
-- category text              -- 'strength' | 'running'
-- metric_type text           -- 'weight_load' | 'reps' | 'time_seconds' | 'distance_km' | 'pace_seconds_km'
-- value numeric              -- valor principal
-- secondary_value numeric    -- ex: reps usadas para estimar 1RM, ou pace médio
-- estimated_1rm numeric      -- só para strength weight_load (Epley)
-- achieved_at timestamptz
-- previous_value numeric     -- para cálculo de evolução %
-- source_session_id uuid     -- workout_session ou run_session
-- created_at
-```
+---
 
-Índice único `(user_id, exercise_code)` — guardamos só o **PR atual**; histórico vive em `pr_history`:
+## 2. Tela de conclusão (UI)
+
+Substituir o slider 0–10 atual por **5 botões grandes** (mobile-first, thumb-friendly):
 
 ```
-pr_history
-- id, user_id, exercise_code
-- value, secondary_value, estimated_1rm
-- achieved_at, source_session_id
+😴 Muito leve   |  😌 Leve  |  🙂 Ideal  |  😤 Pesado  |  💀 Muito pesado
 ```
 
-Cada novo PR: update em `personal_records` + insert em `pr_history`.
+Mantemos o RPE por série como opcional (avançado). O `duration_feedback` continua igual. Por baixo, exibir o **Training Readiness Score** calculado da última sessão para o usuário entender o ajuste.
 
-**Tipos de exercício no `exercise_pool`:** adicionar coluna `metric_type` com os 4 tipos (`weight_reps`, `bodyweight_reps`, `distance_time`, `duration_hold`) — backfill: tudo é `weight_reps` exceto isométricos detectados por nome (Plank, Hollow Hold, Wall Sit, Side Plank) → `duration_hold`.
+Na execução do treino (`/treino`), adicionar um toggle por série: ✅ Concluída / ❌ Falhei → grava `set_status`.
 
-GRANTs e RLS escopados por `auth.uid()`.
+---
 
-## 2. Detecção e gravação de PRs
+## 3. Motor de decisão (`src/lib/engine/autoregulation.server.ts`)
 
-Server function `detectAndUpsertPRs(sessionId)`:
-- Roda ao concluir treino (`finishWorkoutSession`) e ao concluir corrida (`finishRunSession`).
-- Para cada `workout_set_log` do tipo `weight_reps`: calcula 1RM Epley (`load × (1 + reps/30)`), compara com `personal_records.estimated_1rm` do `exercise_code` mapeado. Se maior, grava novo PR + history + evento XP (`pr_strength`, 100–250 XP conforme % de melhora).
-- Para `bodyweight_reps` (Strict Pull-Up): compara reps absolutas.
-- Para `duration_hold` (isométricos): **não gera PR** (regra explícita do usuário).
-- Para corrida: extrai 5k/1k/best pace/30min distance dos `running_session_logs` e compara.
+Função pura, server-side, que roda **ao concluir uma sessão**. Recebe sessão + últimas 4–8 semanas de logs do usuário. Calcula sinais e devolve ajustes.
 
-Mapeamento `exercise_code` → `exercise_pool.code` ou nome canônico. Lista fechada: apenas os 6 exercícios de força listados + 4 métricas de corrida aparecem na área de PRs.
+### Sinais computados por sessão
 
-## 3. Telas
+| Sinal | Fórmula |
+|---|---|
+| `feedback_score` | mapa: muito_leve=-2, leve=-1, ideal=0, pesado=+1, muito_pesado=+2 |
+| `load_delta_pct` | média ponderada `(actual_load - planned_load) / planned_load` por exercício força |
+| `rep_delta_pct` | média `(actual_reps - planned_reps_min) / planned_reps_min` |
+| `completion_rate` | séries completed ÷ total |
+| `failure_rate` | séries failed ÷ total |
+| `pr_count` | PRs batidos nesta sessão |
 
-**Nova rota `/_authenticated/performance`** — Dashboard "Minha Performance":
-- Header com nível/XP (reaproveita `levelProgress`).
-- Tabs: **Força** | **Corrida**.
-- Cards por exercício/métrica com: valor atual, data, evolução % vs anterior, mini-gráfico de `pr_history` (sparkline), filtro 30d / 90d / 1a.
-- Visual inspirado em Apple Fitness/Whoop: cards escuros com gradiente sutil, números grandes monoespaçados, ícone categórico.
+### Sinais de tendência (4 e 8 semanas)
 
-**Aba no perfil**: `/_authenticated/perfil` ganha link "PRs & Performance" → leva para `/performance`.
+- `trend_load_4w` / `trend_load_8w` — slope linear de `actual_load_kg` por exercício principal
+- `trend_failure_4w` — variação de `failure_rate`
+- `consistency_4w` — sessões concluídas ÷ planejadas
 
-**Home (`hoje.tsx`)**: card "PRs Recentes" passa a chamar `getRecentPRs({ limit: 3 })` (lê `pr_history` ordenado por `achieved_at desc`).
+### Training Readiness Score (0–100)
 
-**Evolução (`evolucao.tsx`)**: seção "Recordes pessoais" lê de `personal_records` em vez de calcular. Adicionar card "Performance de Corrida" com os 4 PRs.
+```
+readiness = 50
+  + 15 * sign(trend_load_4w)         // progredindo +15, regredindo -15
+  - 25 * failure_rate                 // muitas falhas penaliza
+  + 10 * (completion_rate - 0.8)*5    // alta conclusão bonifica
+  - 8  * max(0, feedback_score)       // pesado/muito pesado puxa
+  + 5  * pr_count
+  + 10 * (consistency_4w - 0.7)*3
+```
 
-## 4. Isométricos — execução por tempo
+Clamp em [0, 100]. Persistido em `readiness_scores` (nova tabela: `user_id, session_id, score int, signals jsonb, created_at`).
 
-- Em `treino.tsx`: detectar `metric_type === 'duration_hold'` e renderizar `IsometricView` em vez de `StrengthView`: cronômetro regressivo do `planned_seconds`, vibração (`navigator.vibrate`) ao zerar, botões "Concluir antes" e "+15s".
-- `workout_set_logs`: usar `actual_reps` como `actual_seconds` para isométricos (ou adicionar `actual_duration_seconds`; prefiro coluna nova para não confundir downstream).
-- Sumário do treino: para isométricos exibir "60s" em vez de "12 reps".
-- Garantir que isométricos **nunca** entram em `detectAndUpsertPRs`.
+### Regras de ajuste (decisão)
 
-## 5. Gamificação de PR
+A função devolve `{ load_adjust_pct, accessory_volume_adjust, deload_recommended, monitor_only, message }`:
 
-Quando `detectAndUpsertPRs` cria um PR:
-- `xp_events` com `event_type='pr_strength'` ou `'pr_running'`, XP = 100 base + bônus por % melhora (cap 300).
-- Achievement check: "Primeiro PR", "5 PRs", "10 PRs", "PR em todos os 6 lifts", "Sub-30 5k", etc. — adicionar entries em `achievements`.
-- Tela de conclusão (`treino.concluido`) exibe banner animado "🏆 NOVO PR — Back Squat 190kg (+5.5%)" quando há PR nesta sessão.
+| Cenário | Regra |
+|---|---|
+| feedback=muito_pesado **mas** PR + completion=100% + load_delta>0 | `monitor_only=true` (Exemplo 1) — não reduz |
+| feedback=ideal **mas** failure_rate>0.3 + load_delta<0 | `load_adjust=-5%`, `accessory_volume=-1 série` (Exemplo 2) |
+| feedback=muito_leve + load_delta>0 + failure=0 | `load_adjust=+5%`, `accessory_volume=+1 série` (Exemplo 3) |
+| trend_failure_4w↑ + readiness<35 por 2 semanas | `deload_recommended=true` |
+| trend_load_4w plano por 3 semanas + feedback≠pesado | `load_adjust=+2.5%` (microprogressão) |
 
-## 6. Arquivos
+**Regra de segurança:** os ajustes só alteram `suggested_load_kg`, séries de acessórios, descansos e exercícios opcionais — **nunca** estrutura semanal, push/pull, anterior/posterior, periodização macro.
+
+---
+
+## 4. Aplicação dos ajustes
+
+Quando o usuário abre `/hoje` ou `/treino`, o motor lê o último `readiness_score` + ajuste e:
+
+1. Sugere carga = `planned_load * (1 + load_adjust_pct)` (mostrada como "Sugestão IA" ao lado da prescrita)
+2. Em exercícios marcados `accessory=true` no `exercise_pool`, soma/subtrai séries
+3. Se `deload_recommended`, mostra banner: "Sua IA sugere semana mais leve — reduzir volume em 30%?" (usuário aceita)
+
+Nada é aplicado automaticamente sem o usuário ver. Transparência total.
+
+---
+
+## 5. UI extra
+
+- **Card "Readiness" no /hoje** — mostra score + 1 linha de explicação ("Você está progredindo bem, mantendo o ritmo")
+- **Aba "IA" no /evolucao** — gráfico do readiness ao longo das semanas + log das decisões tomadas
+
+---
+
+## Arquivos
 
 **Novos**
-- `supabase/migrations/...` — tabelas, grants, RLS, seed de achievements PR
-- `src/lib/personal-records.functions.ts` — `getPersonalRecords`, `getRecentPRs`, `getPRHistory(exercise_code, range)`, `detectAndUpsertPRs`
-- `src/lib/pr-detection.server.ts` — lógica Epley + mapeamento + comparações
-- `src/routes/_authenticated/performance.tsx` (ou `src/routes/performance.tsx` com gate inline já que o projeto não usa `_authenticated/` ainda — verificar)
-- `src/components/performance/pr-card.tsx`, `pr-sparkline.tsx`, `pr-recent-list.tsx`
-- `src/components/workout/isometric-view.tsx`
+- `src/lib/engine/autoregulation.server.ts` — sinais, score, decisão (puro)
+- `src/lib/engine/autoregulation.functions.ts` — `computeReadinessForSession`, `getLatestReadiness`
+- `src/components/readiness-card.tsx` — card mobile
+
+**Migrações**
+- add `set_status text default 'completed'` em `workout_set_logs`
+- create table `readiness_scores`
 
 **Editados**
-- `src/routes/treino.tsx` — finalizar StrengthView pendente + adicionar IsometricView dispatch
-- `src/routes/treino.concluido.$sessionId.tsx` — banner de PR
-- `src/routes/hoje.tsx` — substituir fonte de PRs recentes
-- `src/routes/evolucao.tsx` — ler de `personal_records`, adicionar bloco corrida
-- `src/routes/perfil.tsx` — link "PRs & Performance"
-- `src/lib/workout-session.functions.ts` — chamar `detectAndUpsertPRs` em finish
-- `src/lib/evolution.functions.ts` — remover cálculo de PR on-the-fly, redirecionar para nova tabela
+- `src/routes/treino.concluido.$sessionId.tsx` — 5 botões + exibir readiness após salvar
+- `src/lib/workout-logs.functions.ts` — gravar `set_status` e `session_feedback`; ao final, chamar `computeReadinessForSession`
+- `src/routes/treino.tsx` — toggle falha por série + leitura de sugestão IA
+- `src/routes/hoje.tsx` — `ReadinessCard`
+- `src/routes/evolucao.tsx` — aba IA
 
-## 7. Ordem de execução
+---
 
-1. **Fechar build atual** (StrengthView + montar sheets). Sem isso nada testa.
-2. Migração `personal_records` + `pr_history` + `metric_type` em exercise_pool + backfill isométricos.
-3. `pr-detection.server.ts` + `personal-records.functions.ts` + hook em finish.
-4. Dashboard `/performance` + componentes.
-5. Refatorar Home, Evolução, Perfil para consumir nova fonte.
-6. IsometricView + sumário por tempo.
-7. Achievements e XP de PR + banner na tela de conclusão.
+## Fora de escopo (fica para fase 2)
 
-## Perguntas antes de executar
+- Ajuste automático de descansos por HRV/wearables
+- Predição de 1RM por velocity tracking
+- Recomendação de exercícios alternativos baseada em fadiga muscular
 
-1. **Confirmar lista fechada de força**: só os 6 exercícios listados geram PR? Outros lifts (Romanian Deadlift, Hip Thrust, OHP com halteres, etc.) que o usuário fizer ficam **sem PR oficial**, apenas registrados em `workout_set_logs` para volume?
-2. **`metric_type` em `exercise_pool`**: posso fazer backfill automático por nome (Plank/Hold/Wall Sit → `duration_hold`, resto → `weight_reps`) ou você quer revisar manualmente depois via admin?
-3. **`/performance` ou aba dentro de `/perfil`?** Você disse "Perfil → PRs & Performance" mas também "tela premium Minha Performance". Faço rota dedicada `/performance` com link a partir do perfil — ok?
-4. **Fechamento do build atual**: tudo bem eu terminar primeiro a feature de volume/swap/reorder pendente nessa mesma execução? Sem isso o app não roda e não dá pra validar PR.
+---
+
+## Como vou implementar
+
+Se você aprovar, faço em **3 PRs internos** dentro deste turno:
+1. **Schema + engine puro** (migrações + autoregulation.server.ts + testes mentais com os 3 exemplos do brief)
+2. **Server fns + integração no save** (workout-logs grava feedback novo + dispara score)
+3. **UI mobile** (5 botões, ReadinessCard, sugestão de carga na tela de treino)
+
+Confirma que quer assim? Posso seguir.

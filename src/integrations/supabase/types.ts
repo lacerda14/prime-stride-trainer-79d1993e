@@ -781,6 +781,44 @@ export type Database = {
         }
         Relationships: []
       }
+      readiness_scores: {
+        Row: {
+          created_at: string
+          decision: Json
+          id: string
+          score: number
+          session_id: string | null
+          signals: Json
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          decision?: Json
+          id?: string
+          score: number
+          session_id?: string | null
+          signals?: Json
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          decision?: Json
+          id?: string
+          score?: number
+          session_id?: string | null
+          signals?: Json
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "readiness_scores_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "workout_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       run_sessions: {
         Row: {
           cadence: number | null
@@ -1338,6 +1376,7 @@ export type Database = {
           planned_rpe: number | null
           rest_seconds: number | null
           set_number: number
+          set_status: string
           updated_at: string
           user_id: string
           workout_session_id: string
@@ -1359,6 +1398,7 @@ export type Database = {
           planned_rpe?: number | null
           rest_seconds?: number | null
           set_number: number
+          set_status?: string
           updated_at?: string
           user_id: string
           workout_session_id: string
@@ -1380,6 +1420,7 @@ export type Database = {
           planned_rpe?: number | null
           rest_seconds?: number | null
           set_number?: number
+          set_status?: string
           updated_at?: string
           user_id?: string
           workout_session_id?: string
