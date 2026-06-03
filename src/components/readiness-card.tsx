@@ -39,7 +39,7 @@ export function ReadinessCard() {
 
   if (!q.data) return null;
   const score = q.data.score as number;
-  const decision = q.data.decision as Decision;
+  const decision = q.data.decision as unknown as Decision;
 
   return (
     <div className="rounded-2xl border border-border/50 bg-surface/40 p-4">
