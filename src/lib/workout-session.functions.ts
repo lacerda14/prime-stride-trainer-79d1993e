@@ -55,6 +55,7 @@ export const getActiveWorkoutSession = createServerFn({ method: "GET" })
       .select("*")
       .eq("user_id", userId)
       .in("status", ["active", "paused"])
+      .is("completed_at", null)
       .order("started_at", { ascending: false })
       .limit(1)
       .maybeSingle();
@@ -88,10 +89,10 @@ export const getCompletedSessionForDay = createServerFn({ method: "GET" })
       .eq("user_id", userId)
       .eq("week_number", data.week_number)
       .eq("day_key", data.day_key)
-      .eq("status", "completed")
-      .gte("finished_at", dayStart)
-      .lte("finished_at", dayEnd)
-      .order("finished_at", { ascending: false })
+      .not("completed_at", "is", null)
+      .gte("completed_at", dayStart)
+      .lte("completed_at", dayEnd)
+      .order("completed_at", { ascending: false })
       .limit(1)
       .maybeSingle();
     if (error) throw new Error(error.message);
@@ -122,6 +123,7 @@ export const startWorkoutSession = createServerFn({ method: "POST" })
       .select("*")
       .eq("user_id", userId)
       .in("status", ["active", "paused"])
+      .is("completed_at", null)
       .eq("week_number", data.week_number)
       .eq("day_key", data.day_key)
       .maybeSingle();
@@ -132,7 +134,8 @@ export const startWorkoutSession = createServerFn({ method: "POST" })
       .from("workout_sessions")
       .update({ status: "abandoned", updated_at: new Date().toISOString() })
       .eq("user_id", userId)
-      .in("status", ["active", "paused"]);
+      .in("status", ["active", "paused"])
+      .is("completed_at", null);
 
     const nowIso = new Date().toISOString();
     const { data: created, error } = await supabase
