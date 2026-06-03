@@ -141,6 +141,7 @@ function ConcluidoPage() {
   const [generalNotes, setGeneralNotes] = useState("");
   const [saving, setSaving] = useState(false);
   const [savedOnce, setSavedOnce] = useState(false);
+  const [newPRs, setNewPRs] = useState<Array<{ label: string; value: number; estimated_1rm: number | null; improvement_pct: number | null }>>([]);
   const [notesOpen, setNotesOpen] = useState(false);
   const [setsOpen, setSetsOpen] = useState(false);
 
@@ -244,7 +245,7 @@ function ConcluidoPage() {
           }
         : null;
 
-      await saveLogs({
+      const res = await saveLogs({
         data: {
           session_id: sessionId,
           estimated_calories: estimatedCal,
@@ -256,7 +257,13 @@ function ConcluidoPage() {
         },
       });
       setSavedOnce(true);
-      toast.success("Treino salvo com sucesso");
+      const prs = (res as { newPRs?: Array<{ label: string; value: number; estimated_1rm: number | null; improvement_pct: number | null }> })?.newPRs ?? [];
+      setNewPRs(prs);
+      if (prs.length > 0) {
+        toast.success(`🏆 ${prs.length} novo${prs.length > 1 ? "s" : ""} PR!`);
+      } else {
+        toast.success("Treino salvo com sucesso");
+      }
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Erro ao salvar";
       toast.error(msg);
@@ -362,6 +369,31 @@ function ConcluidoPage() {
             )}
           </p>
         </div>
+
+        {/* ── PR banner ── */}
+        {newPRs.length > 0 && (
+          <div className="mt-6 animate-slide-up rounded-2xl border border-primary/40 bg-gradient-to-br from-primary/15 to-primary/5 p-4 shadow-glow">
+            <div className="flex items-center gap-2">
+              <Trophy className="h-5 w-5 text-primary" />
+              <div className="text-[13px] font-semibold tracking-tight">
+                {newPRs.length === 1 ? "Novo Personal Record!" : `${newPRs.length} novos Personal Records!`}
+              </div>
+            </div>
+            <div className="mt-3 space-y-1.5">
+              {newPRs.map((pr, i) => (
+                <div key={`${pr.label}-${i}`} className="flex items-center justify-between text-[13px]">
+                  <span className="text-foreground">{pr.label}</span>
+                  <span className="num font-semibold text-primary">
+                    {pr.estimated_1rm ? `${pr.value}kg · 1RM ~${pr.estimated_1rm}` : pr.value}
+                    {pr.improvement_pct != null && pr.improvement_pct > 0 && (
+                      <span className="ml-1.5 text-[11px]">+{pr.improvement_pct}%</span>
+                    )}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* ── 2. Stats em grid 2×2 ── */}
         <div className="mt-8 grid grid-cols-2 gap-3 animate-slide-up">

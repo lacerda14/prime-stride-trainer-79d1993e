@@ -5,7 +5,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { getProfile, updateProfile } from "@/lib/profile.functions";
 import { toast } from "sonner";
-import { Loader2, Save, User, Target, Calendar, Heart, Shield, ChevronRight } from "lucide-react";
+import { Loader2, Save, User, Target, Calendar, Heart, Shield, ChevronRight, Trophy } from "lucide-react";
 import { useIsAdmin } from "@/hooks/use-is-admin";
 
 export const Route = createFileRoute("/perfil")({
@@ -112,6 +112,22 @@ function PerfilPage() {
   return (
     <AppShell eyebrow="Conta" title="Perfil">
       <div className="space-y-5 px-5 pb-32 pt-4">
+        <Link
+          to="/performance"
+          className="glass flex items-center justify-between rounded-3xl p-5 transition-colors hover:bg-surface/60"
+        >
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary/10">
+              <Trophy className="h-5 w-5 text-primary" />
+            </div>
+            <div>
+              <div className="text-[15px] font-semibold tracking-tight">PRs & Performance</div>
+              <div className="text-[12px] text-muted-foreground">Seus recordes de força e corrida</div>
+            </div>
+          </div>
+          <ChevronRight className="h-4 w-4 text-muted-foreground" />
+        </Link>
+
         <Card icon={User} title="Dados pessoais">
           <Field label="Nome">
             <input className={inputCls} value={form.name} maxLength={80}
