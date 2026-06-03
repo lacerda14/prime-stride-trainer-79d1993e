@@ -25,7 +25,8 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 export type Sex = "male" | "female" | "other";
 export type Experience = "beginner" | "intermediate" | "advanced";
 export type Goal = "fat_loss" | "hypertrophy" | "endurance" | "hybrid";
-export type AvailableDays = 3 | 4 | 5;
+export type AvailableDays = number; // 1..7 dias por semana
+export type RunningMode = "desabilitado" | "opcional" | "integrado" | "principal";
 
 export interface UserProfileInput {
   age: number;
@@ -35,6 +36,11 @@ export interface UserProfileInput {
   experience_level: Experience;
   goal: Goal;
   available_days: AvailableDays;
+  /** Dias da semana selecionados pelo usuário (1=Seg ... 7=Dom). Quando ausente, usa Seg..Sex. */
+  selected_days?: number[];
+  /** True quando o usuário quer corrida integrada/principal no plano. False = só musculação. */
+  wants_running?: boolean;
+  running_mode?: RunningMode | null;
   /** Lista (pt-BR) de equipamentos disponíveis vinda do onboarding (deriveEquipment).
    *  Quando vazia/undefined, assume-se academia completa (compat retroativa). */
   available_equipment?: string[];
@@ -745,41 +751,57 @@ export interface GeneratedWeek {
   days: GeneratedDay[];
 }
 
-/** Distribuição fixa PM Hybrid: Seg/Qua/Sex FB, Ter/Qui Corrida + Superior. */
-function activeDays(_available: AvailableDays): { num: number; name: string; kind: "fb" | "run" }[] {
-  return [
-    { num: 1, name: "Segunda", kind: "fb" },
-    { num: 2, name: "Terça", kind: "run" },
-    { num: 3, name: "Quarta", kind: "fb" },
-    { num: 4, name: "Quinta", kind: "run" },
-    { num: 5, name: "Sexta", kind: "fb" },
-  ];
+/** Mapeia dia 1..7 para nome pt-BR. */
+const PT_DAY_NAMES = ["", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado", "Domingo"];
+
+/** Distribuição flexível baseada no onboarding.
+ *  - Respeita exatamente os dias selecionados pelo usuário (1=Seg ... 7=Dom).
+ *  - Se o usuário NÃO quer corrida → todos os dias são Full Body.
+ *  - Se quer corrida → alterna FB / Run a partir do 1º dia (FB, Run, FB, Run, ...).
+ *    Com 3 dias, fica FB, Run, FB (1 corrida); com 5 dias, FB,Run,FB,Run,FB. */
+function activeDays(profile: UserProfileInput): { num: number; name: string; kind: "fb" | "run" }[] {
+  let nums = (profile.selected_days ?? []).filter((n) => Number.isInteger(n) && n >= 1 && n <= 7);
+  nums = [...new Set(nums)].sort((a, b) => a - b);
+  if (nums.length === 0) {
+    const n = Math.min(7, Math.max(1, profile.available_days || 5));
+    nums = Array.from({ length: n }, (_, i) => i + 1);
+  }
+  const wantsRunning = profile.wants_running ??
+    (profile.running_mode ? profile.running_mode !== "desabilitado" : true);
+  return nums.map((num, idx) => ({
+    num,
+    name: PT_DAY_NAMES[num] ?? `Dia ${num}`,
+    kind: (wantsRunning && idx % 2 === 1 ? "run" : "fb") as "fb" | "run",
+  }));
 }
 
-function validateWeekDistribution(week: GeneratedWeek): void {
+function validateWeekDistribution(week: GeneratedWeek, expected: { num: number; kind: "fb" | "run" }[]): void {
   const dayByNumber = new Map(week.days.map((day) => [day.day_number, day]));
   const fbEmphasis = week.week_number % 2 === 1 ? "fb_pull_posterior" : "fb_push_anterior";
   const runEmphasis = week.week_number % 2 === 1 ? "run_push" : "run_pull";
-
-  for (const dayNumber of [1, 3, 5]) {
-    const day = dayByNumber.get(dayNumber);
-    if (!day || day.session_type !== "full_body" || day.running || day.emphasis !== fbEmphasis) {
-      throw new Error(`Distribuição inválida na semana ${week.week_number}: dia ${dayNumber} deve ser Full Body ${fbEmphasis}.`);
+  for (const exp of expected) {
+    const day = dayByNumber.get(exp.num);
+    if (!day) throw new Error(`Distribuição inválida na semana ${week.week_number}: dia ${exp.num} ausente.`);
+    if (exp.kind === "fb") {
+      if (day.session_type !== "full_body" || day.running || day.emphasis !== fbEmphasis) {
+        throw new Error(`Distribuição inválida na semana ${week.week_number}: dia ${exp.num} deve ser Full Body ${fbEmphasis}.`);
+      }
+    } else {
+      if (day.session_type !== "run_upper" || !day.running || day.emphasis !== runEmphasis) {
+        throw new Error(`Distribuição inválida na semana ${week.week_number}: dia ${exp.num} deve ser Corrida + Superior ${runEmphasis}.`);
+      }
     }
   }
-  for (const dayNumber of [2, 4]) {
-    const day = dayByNumber.get(dayNumber);
-    if (!day || day.session_type !== "run_upper" || !day.running || day.emphasis !== runEmphasis) {
-      throw new Error(`Distribuição inválida na semana ${week.week_number}: dia ${dayNumber} deve ser Corrida + Superior ${runEmphasis}.`);
+  const expectedNums = new Set(expected.map((e) => e.num));
+  for (const day of week.days) {
+    if (!expectedNums.has(day.day_number)) {
+      throw new Error(`Distribuição inválida na semana ${week.week_number}: dia ${day.day_number} não foi selecionado.`);
     }
-  }
-  if (week.days.some((day) => day.day_number < 1 || day.day_number > 5)) {
-    throw new Error(`Distribuição inválida na semana ${week.week_number}: sábado e domingo devem ficar OFF.`);
   }
 }
 
-function validatePlanDistribution(plan: GenerationResult): void {
-  for (const week of plan.weeks) validateWeekDistribution(week);
+function validatePlanDistribution(plan: GenerationResult, expected: { num: number; kind: "fb" | "run" }[]): void {
+  for (const week of plan.weeks) validateWeekDistribution(week, expected);
 }
 
 export interface GenerationResult {
@@ -796,7 +818,7 @@ export interface GenerationResult {
  */
 export function generatePlan(profile: UserProfileInput, exercisePool: ExerciseRow[]): GenerationResult {
   const vref = calcReferenceVelocity(profile);
-  const days = activeDays(profile.available_days);
+  const days = activeDays(profile);
   // Filtra o pool de exercícios pelos equipamentos disponíveis do usuário.
   // Garante que nunca selecionamos exercícios que dependem de equipamento ausente.
   const filteredPool = filterPoolByEquipment(exercisePool, profile.available_equipment);
@@ -924,7 +946,9 @@ export function generatePlan(profile: UserProfileInput, exercisePool: ExerciseRo
             slot += 1;
           }
         }
-        const running = d.num === 2 ? tuesdayProtocol(w, profile.goal) : thursdayProtocol(w, profile.goal);
+        // Alterna entre os dois variantes de protocolo conforme a ordem da corrida na semana.
+        const runIndex = days.filter((x) => x.kind === "run" && x.num <= d.num).length - 1;
+        const running = runIndex % 2 === 0 ? tuesdayProtocol(w, profile.goal) : thursdayProtocol(w, profile.goal);
         dayPlans.push({
           day_number: d.num,
           day_name: d.name,
@@ -944,7 +968,7 @@ export function generatePlan(profile: UserProfileInput, exercisePool: ExerciseRo
       mesocycle_code: meso.code,
       days: dayPlans,
     };
-    validateWeekDistribution(generatedWeek);
+    validateWeekDistribution(generatedWeek, days.map((d) => ({ num: d.num, kind: d.kind })));
     weeks.push(generatedWeek);
   }
 
@@ -967,7 +991,7 @@ export async function persistProgram(
   profile: UserProfileInput,
   plan: GenerationResult,
 ): Promise<{ program_id: string }> {
-  validatePlanDistribution(plan);
+  validatePlanDistribution(plan, activeDays(profile).map((d) => ({ num: d.num, kind: d.kind })));
 
   // arquivar programas anteriores
   await supabase

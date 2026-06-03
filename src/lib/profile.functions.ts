@@ -198,11 +198,10 @@ function mapDbToEngineGoal(g: DbGoal): EngineGoal {
   }
 }
 
-// Engine accepts 3|4|5 days, 30|45|60|90 minutes — clamp 6→5 and 75→60.
-function clampDays(n: number): 3 | 4 | 5 {
-  if (n <= 3) return 3;
-  if (n === 4) return 4;
-  return 5;
+// Aceita 1..7 dias por semana — respeita o onboarding (não força mais 3..5).
+function clampDays(n: number): number {
+  if (!Number.isFinite(n)) return 5;
+  return Math.min(7, Math.max(1, Math.round(n)));
 }
 function clampMinutes(n: number): 30 | 45 | 60 | 90 {
   if (n <= 30) return 30;

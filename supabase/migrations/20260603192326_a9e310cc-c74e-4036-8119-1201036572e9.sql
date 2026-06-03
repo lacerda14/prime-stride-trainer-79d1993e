@@ -1,0 +1,2 @@
+ALTER TABLE public.profiles DROP CONSTRAINT IF EXISTS profiles_available_days_check;
+ALTER TABLE public.profiles ADD CONSTRAINT profiles_available_days_check CHECK (available_days IS NULL OR (available_days BETWEEN 1 AND 7));

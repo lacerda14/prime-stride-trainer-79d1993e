@@ -142,7 +142,43 @@ async function getActiveProgramId(
   return data?.id ?? null;
 }
 
-async function hasValidFixedDistribution(supabase: any, programId: string): Promise<boolean> {
+/** Carrega expectativa de dias do perfil do usuário (selected_days + wants_running). */
+async function loadExpectedSchedule(supabase: any, userId: string): Promise<{
+  days: { num: number; kind: "fb" | "run" }[];
+  wantsRunning: boolean;
+  hasProfile: boolean;
+  profile: any | null;
+} | null> {
+  const { data: profile, error } = await supabase
+    .from("profiles")
+    .select("age, sex, weight_kg, height_cm, experience_level, goal, available_days, equipment, available_days_list, running_mode")
+    .eq("id", userId)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!profile) return { days: [], wantsRunning: true, hasProfile: false, profile: null };
+  const { dayNamesToNumbers } = await import("@/lib/engine/program.functions");
+  const selected = dayNamesToNumbers(profile.available_days_list ?? []);
+  const wantsRunning = profile.running_mode
+    ? profile.running_mode !== "desabilitado"
+    : true;
+  let nums = selected;
+  if (nums.length === 0) {
+    const n = Math.min(7, Math.max(1, profile.available_days || 5));
+    nums = Array.from({ length: n }, (_, i) => i + 1);
+  }
+  const days = nums.map((num, idx) => ({
+    num,
+    kind: (wantsRunning && idx % 2 === 1 ? "run" : "fb") as "fb" | "run",
+  }));
+  return { days, wantsRunning, hasProfile: true, profile };
+}
+
+async function hasValidDistribution(
+  supabase: any,
+  programId: string,
+  expected: { num: number; kind: "fb" | "run" }[],
+): Promise<boolean> {
+  if (expected.length === 0) return true; // sem expectativa, não força regen
   const { data, error } = await supabase
     .from("training_days")
     .select("day_number,session_type,objective,running_protocols(id),session_exercises(exercise:exercise_pool(category)),week:weeks!inner(week_number,program_id)")
@@ -154,7 +190,7 @@ async function hasValidFixedDistribution(supabase: any, programId: string): Prom
   const rows = data ?? [];
   for (const weekNumber of [1, 2]) {
     const days = rows.filter((row: any) => row.week.week_number === weekNumber);
-    if (days.length !== 5) return false;
+    if (days.length !== expected.length) return false;
     const fbText = weekNumber % 2 === 1 ? "Pull + Posterior" : "Push + Anterior";
     const runText = weekNumber % 2 === 1 ? "PUSH" : "PULL";
     const fbCategories = weekNumber % 2 === 1
@@ -164,19 +200,16 @@ async function hasValidFixedDistribution(supabase: any, programId: string): Prom
       ? new Set(["chest", "shoulder", "triceps", "core"])
       : new Set(["lats", "back", "biceps", "trap", "core"]);
 
-    for (const dayNumber of [1, 3, 5]) {
-      const day = days.find((row: any) => row.day_number === dayNumber);
-      if (!day || day.session_type !== "full_body" || !String(day.objective ?? "").includes(fbText) || (day.running_protocols ?? []).length > 0) {
-        return false;
+    for (const exp of expected) {
+      const day = days.find((row: any) => row.day_number === exp.num);
+      if (!day) return false;
+      if (exp.kind === "fb") {
+        if (day.session_type !== "full_body" || !String(day.objective ?? "").includes(fbText) || (day.running_protocols ?? []).length > 0) return false;
+        if ((day.session_exercises ?? []).some((e: any) => !fbCategories.has(e.exercise?.category))) return false;
+      } else {
+        if (day.session_type !== "run_upper" || !String(day.objective ?? "").includes(runText) || (day.running_protocols ?? []).length === 0) return false;
+        if ((day.session_exercises ?? []).some((e: any) => !runCategories.has(e.exercise?.category))) return false;
       }
-      if ((day.session_exercises ?? []).some((e: any) => !fbCategories.has(e.exercise?.category))) return false;
-    }
-    for (const dayNumber of [2, 4]) {
-      const day = days.find((row: any) => row.day_number === dayNumber);
-      if (!day || day.session_type !== "run_upper" || !String(day.objective ?? "").includes(runText) || (day.running_protocols ?? []).length === 0) {
-        return false;
-      }
-      if ((day.session_exercises ?? []).some((e: any) => !runCategories.has(e.exercise?.category))) return false;
     }
   }
   return true;
@@ -185,35 +218,21 @@ async function hasValidFixedDistribution(supabase: any, programId: string): Prom
 async function ensureValidActiveProgram(supabase: any, userId: string): Promise<string | null> {
   const programId = await getActiveProgramId(supabase, userId);
   if (!programId) return null;
-  if (await hasValidFixedDistribution(supabase, programId)) return programId;
 
-  const { data: profile, error: pErr } = await supabase
-    .from("profiles")
-    .select("age, sex, weight_kg, height_cm, experience_level, goal, available_days, equipment")
-    .eq("id", userId)
-    .maybeSingle();
-  if (pErr) throw new Error(pErr.message);
-  if (!profile?.age || !profile.sex || !profile.weight_kg || !profile.height_cm || !profile.experience_level || !profile.goal) {
-    console.warn("Programa ativo com distribuição antiga; mantendo plano existente porque o perfil ainda não tem dados suficientes para regenerar.");
+  const schedule = await loadExpectedSchedule(supabase, userId);
+  if (!schedule || !schedule.hasProfile || !schedule.profile?.age || !schedule.profile?.sex ||
+      !schedule.profile?.weight_kg || !schedule.profile?.height_cm ||
+      !schedule.profile?.experience_level || !schedule.profile?.goal) {
     return programId;
   }
+  if (await hasValidDistribution(supabase, programId, schedule.days)) return programId;
 
-  const input = {
-    age: profile.age,
-    sex: profile.sex,
-    weight_kg: Number(profile.weight_kg),
-    height_cm: Number(profile.height_cm),
-    experience_level: profile.experience_level,
-    goal: profile.goal,
-    available_days: 5,
-    available_equipment: (profile.equipment ?? []) as string[],
-  };
+  const { buildEngineInput } = await import("@/lib/engine/program.functions");
   const { generatePlan, loadExercisePool, persistProgram } = await import("@/lib/engine/pm-engine.server");
-  type UserProfileInput = Parameters<typeof generatePlan>[0];
+  const input = buildEngineInput(schedule.profile);
   const pool = await loadExercisePool(supabase);
   if (pool.length === 0) throw new Error("Catálogo de exercícios vazio.");
-  const typedInput = input as UserProfileInput;
-  const result = await persistProgram(supabase, userId, typedInput, generatePlan(typedInput, pool));
+  const result = await persistProgram(supabase, userId, input, generatePlan(input, pool));
   return result.program_id;
 }
 
