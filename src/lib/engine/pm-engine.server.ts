@@ -991,7 +991,7 @@ export async function persistProgram(
   profile: UserProfileInput,
   plan: GenerationResult,
 ): Promise<{ program_id: string }> {
-  validatePlanDistribution(plan);
+  validatePlanDistribution(plan, activeDays(profile).map((d) => ({ num: d.num, kind: d.kind })));
 
   // arquivar programas anteriores
   await supabase
