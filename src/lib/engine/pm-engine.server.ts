@@ -799,7 +799,14 @@ export function generatePlan(profile: UserProfileInput, exercisePool: ExerciseRo
       currentMeso = meso.code;
       mesoUsage = new Map();
     }
-    const type: "A" | "B" = w % 2 === 1 ? "A" : "B";
+    // Periodização correta:
+    // Semana ÍMPAR → FullBody = A (Pull+Posterior) | Run+Upper = B (Push bisets)
+    // Semana PAR   → FullBody = B (Push+Anterior)  | Run+Upper = A (Pull bisets)
+    // FB e Run+Upper SEMPRE têm ênfases opostas dentro da mesma semana.
+    const fbType: "A" | "B" = w % 2 === 1 ? "A" : "B";
+    const runType: "A" | "B" = fbType === "A" ? "B" : "A";
+    // mantemos `type` para o campo week_type (refere-se ao FB, que é o foco do macro)
+    const type: "A" | "B" = fbType;
     const usedInWeek = new Set<string>();
     const dayPlans: GeneratedDay[] = [];
 
@@ -812,13 +819,13 @@ export function generatePlan(profile: UserProfileInput, exercisePool: ExerciseRo
       const exercises: SessionExerciseRow[] = [];
 
       if (d.kind === "fb") {
-        const seq = categorySequence(w, type);
+        const seq = categorySequence(w, fbType);
         let slot = 1;
         for (const cat of seq) {
           let category = cat;
           // manguito: pular após semana 10 (não obrigatório) ou se já 3x/semana
           if (category === "rotator_cuff" && (w > 10 || rotatorCount >= 3)) {
-            category = type === "A" ? "lats" : "shoulder";
+            category = fbType === "A" ? "lats" : "shoulder";
           }
           // panturrilha: garantir 2-3x/sem — se já tivermos 3, swap por core extra
           if (category === "calf" && calfCount >= 3) {
@@ -859,13 +866,13 @@ export function generatePlan(profile: UserProfileInput, exercisePool: ExerciseRo
           day_number: d.num,
           day_name: d.name,
           session_type: "full_body",
-          objective: `${meso.objective} — ${type === "A" ? "Pull + Posterior" : "Push + Anterior"}`,
+          objective: `${meso.objective} — ${fbType === "A" ? "Pull + Posterior" : "Push + Anterior"}`,
           duration_minutes: 55,
           exercises,
         });
       } else {
         // run_upper: 4 bisets + 2 core (par_slot agrupa biset)
-        const seq = runUpperSequence(type);
+        const seq = runUpperSequence(runType);
         let slot = 1;
         for (let i = 0; i < seq.length; i += 2) {
           const catA = seq[i];
@@ -904,7 +911,7 @@ export function generatePlan(profile: UserProfileInput, exercisePool: ExerciseRo
           day_number: d.num,
           day_name: d.name,
           session_type: "run_upper",
-          objective: `${running.protocol_type.toUpperCase()} + ${type === "A" ? "PULL" : "PUSH"} bisets`,
+          objective: `${running.protocol_type.toUpperCase()} + ${runType === "A" ? "PULL" : "PUSH"} bisets`,
           duration_minutes: running.total_duration_minutes + 30,
           exercises,
           running,
