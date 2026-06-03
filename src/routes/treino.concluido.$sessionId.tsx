@@ -259,6 +259,7 @@ function ConcluidoPage() {
           general_notes: generalNotes || null,
           perceived_effort: generalEffort ? Number(generalEffort) : null,
           duration_feedback: durationFeedback || null,
+          session_feedback: sessionFeedback || null,
         },
       });
       setSavedOnce(true);
