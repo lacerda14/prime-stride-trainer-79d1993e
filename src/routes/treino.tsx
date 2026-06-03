@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { Outlet, createFileRoute, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -26,8 +26,17 @@ export const Route = createFileRoute("/treino")({
       { name: "description", content: "Lock screen mode — modo treino focado." },
     ],
   }),
-  component: () => <RequireAuth><TreinoPage /></RequireAuth>,
+  component: TreinoRouteComponent,
 });
+
+function TreinoRouteComponent() {
+  const isSummaryRoute = useRouterState({
+    select: (state) => state.location.pathname.startsWith("/treino/concluido/"),
+  });
+
+  if (isSummaryRoute) return <Outlet />;
+  return <RequireAuth><TreinoPage /></RequireAuth>;
+}
 
 // ============================================================
 // Tipos da fila
