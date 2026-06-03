@@ -799,7 +799,14 @@ export function generatePlan(profile: UserProfileInput, exercisePool: ExerciseRo
       currentMeso = meso.code;
       mesoUsage = new Map();
     }
-    const type: "A" | "B" = w % 2 === 1 ? "A" : "B";
+    // Periodização correta:
+    // Semana ÍMPAR → FullBody = A (Pull+Posterior) | Run+Upper = B (Push bisets)
+    // Semana PAR   → FullBody = B (Push+Anterior)  | Run+Upper = A (Pull bisets)
+    // FB e Run+Upper SEMPRE têm ênfases opostas dentro da mesma semana.
+    const fbType: "A" | "B" = w % 2 === 1 ? "A" : "B";
+    const runType: "A" | "B" = fbType === "A" ? "B" : "A";
+    // mantemos `type` para o campo week_type (refere-se ao FB, que é o foco do macro)
+    const type: "A" | "B" = fbType;
     const usedInWeek = new Set<string>();
     const dayPlans: GeneratedDay[] = [];
 
@@ -812,7 +819,7 @@ export function generatePlan(profile: UserProfileInput, exercisePool: ExerciseRo
       const exercises: SessionExerciseRow[] = [];
 
       if (d.kind === "fb") {
-        const seq = categorySequence(w, type);
+        const seq = categorySequence(w, fbType);
         let slot = 1;
         for (const cat of seq) {
           let category = cat;
