@@ -263,6 +263,7 @@ export const saveWorkoutLogs = createServerFn({ method: "POST" })
         completed_summary: {
           perceived_effort: data.perceived_effort ?? null,
           general_notes: data.general_notes ?? null,
+          duration_feedback: data.duration_feedback ?? null,
           saved_at: new Date().toISOString(),
         },
         updated_at: new Date().toISOString(),
