@@ -281,8 +281,14 @@ function ConcluidoPage() {
 
   if (completedQ.isLoading || !completedQ.data) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
-        <Loader2 className="h-6 w-6 animate-spin text-primary" />
+      <div className="flex min-h-screen items-center justify-center bg-background p-6 text-center safe-pad">
+        <div className="w-full max-w-sm">
+          <Loader2 className="mx-auto h-7 w-7 animate-spin text-primary" />
+          <h1 className="mt-5 text-2xl font-semibold tracking-tight">Preparando resumo</h1>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Estamos carregando os dados finais do seu treino.
+          </p>
+        </div>
       </div>
     );
   }
