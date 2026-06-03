@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, useRouter } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -82,6 +82,7 @@ const EFFORT_OPTIONS = [
 
 function ConcluidoPage() {
   const navigate = useNavigate();
+  const router = useRouter();
   const { user } = useAuth();
   const params = Route.useParams();
   const sessionId = params.sessionId;
@@ -94,6 +95,8 @@ function ConcluidoPage() {
     queryKey: ["completed-session", sessionId, user?.id],
     queryFn: () => fetchCompleted({ data: { session_id: sessionId } }),
     enabled: !!user,
+    retry: 8,
+    retryDelay: 1_000,
   });
 
   const weekQ = useQuery({
@@ -245,6 +248,37 @@ function ConcluidoPage() {
   // ----------------------------------------------------------
   // Loading
   // ----------------------------------------------------------
+  if (completedQ.isError) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background p-6 text-center safe-pad">
+        <div className="w-full max-w-sm">
+          <Loader2 className="mx-auto h-7 w-7 animate-spin text-primary" />
+          <h1 className="mt-5 text-2xl font-semibold tracking-tight">Preparando resumo</h1>
+          <p className="mt-2 text-sm text-muted-foreground">
+            A sessão ainda está sincronizando. Tente novamente em alguns segundos.
+          </p>
+          <div className="mt-6 flex flex-col gap-3">
+            <button
+              onClick={() => {
+                void completedQ.refetch();
+                void router.invalidate();
+              }}
+              className="rounded-full bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground shadow-glow"
+            >
+              Tentar novamente
+            </button>
+            <button
+              onClick={() => navigate({ to: "/" })}
+              className="rounded-full border border-border bg-surface/60 px-6 py-3 text-sm font-medium text-muted-foreground"
+            >
+              Voltar ao início
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (completedQ.isLoading || !completedQ.data) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
