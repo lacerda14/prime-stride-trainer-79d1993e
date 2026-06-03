@@ -256,30 +256,40 @@ function parseIsoDuration(iso: string): number {
 }
 
 const TRUSTED_CHANNELS = [
+  // PT-BR (prioridade)
+  "leandro twin",
+  "renato cariani",
+  "ironberg",
+  "felipe franco",
+  "muzy",
+  "paulo muzy",
+  "gabriel peixoto",
+  "growth supplements",
+  "ju tavares",
+  "caio bottura",
+  "instituto reab",
+  "fisio explica",
+  "rodrigo lamonier",
+  "treino mestre",
+  "hipertrofia.org",
+  "saúde na rotina",
+  // EN (fallback)
   "athlean-x",
   "jeff nippard",
   "squat university",
   "renaissance periodization",
   "calisthenicmovement",
-  "thenx",
   "fitnessfaqs",
-  "scottherman",
-  "buff dudes",
-  "stronger by science",
-  "mind pump",
   "barbell medicine",
   "alan thrall",
-  "juggernaut training",
-  "rebel performance",
   "knees over toes guy",
-  "global triathlon network",
-  "running channel",
 ];
 
 function scoreVideo(detail: YouTubeVideoDetail, durationSec: number): number {
   let score = 50;
   const channel = detail.snippet.channelTitle.toLowerCase();
   const title = detail.snippet.title.toLowerCase();
+  const description = (detail.snippet.description ?? "").toLowerCase();
 
   // duration: prefer 30s-4min demos
   if (durationSec >= 30 && durationSec <= 240) score += 20;
@@ -290,9 +300,16 @@ function scoreVideo(detail: YouTubeVideoDetail, durationSec: number): number {
   // trusted channel boost
   if (TRUSTED_CHANNELS.some((t) => channel.includes(t))) score += 25;
 
-  // title hints
-  if (/(how to|tutorial|technique|form|execution|proper|guide|demo)/i.test(title)) score += 8;
-  if (/(challenge|fail|prank|reaction|workout vlog)/i.test(title)) score -= 20;
+  // PT-BR boost — título/descrição em português
+  const ptHints = /(como fazer|execução|técnica|forma correta|passo a passo|aprenda|erros comuns|dicas)/i;
+  if (ptHints.test(title)) score += 15;
+  else if (ptHints.test(description)) score += 5;
+
+  // English title hints (fallback)
+  if (/(how to|tutorial|technique|form|execution|proper|guide|demo)/i.test(title)) score += 6;
+
+  // junk filter
+  if (/(challenge|desafio|prank|pegadinha|reaction|reação|vlog|treino completo|workout vlog)/i.test(title)) score -= 25;
 
   // views/likes
   const views = parseInt(detail.statistics.viewCount ?? "0", 10);
