@@ -968,7 +968,7 @@ export function generatePlan(profile: UserProfileInput, exercisePool: ExerciseRo
       mesocycle_code: meso.code,
       days: dayPlans,
     };
-    validateWeekDistribution(generatedWeek);
+    validateWeekDistribution(generatedWeek, days.map((d) => ({ num: d.num, kind: d.kind })));
     weeks.push(generatedWeek);
   }
 
