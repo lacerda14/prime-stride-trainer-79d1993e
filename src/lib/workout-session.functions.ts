@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { levelFromXp, XP_REWARDS } from "@/lib/gamification";
+import { runPRDetectionForSession, type PRDetectedItem } from "@/lib/pr-detection.server";
 import type { Json } from "@/integrations/supabase/types";
 
 type JsonObject = { [k: string]: Json };
@@ -287,6 +288,7 @@ interface CompleteResult {
   streakLongest: number;
   durationSeconds: number;
   newAchievements: { code: string; title: string; xp_reward: number }[];
+  newPRs: PRDetectedItem[];
 }
 
 function diffDaysUTC(a: Date, b: Date): number {
@@ -421,16 +423,21 @@ export const completeWorkoutSession = createServerFn({ method: "POST" })
       })
       .eq("id", userId);
 
+    // 5) Detecta PRs desta sessão
+    const prResult = await runPRDetectionForSession(supabase, userId, data.session_id);
+    const finalXp = newXp + prResult.xpGained;
+
     return {
-      xpGained: xpGain,
-      newXpTotal: newXp,
+      xpGained: xpGain + prResult.xpGained,
+      newXpTotal: finalXp,
       oldLevel,
-      newLevel,
-      leveledUp: newLevel > oldLevel,
+      newLevel: levelFromXp(finalXp),
+      leveledUp: levelFromXp(finalXp) > oldLevel,
       streakCurrent,
       streakLongest,
       durationSeconds: data.total_elapsed_seconds,
       newAchievements,
+      newPRs: prResult.newPRs,
     };
   });
 

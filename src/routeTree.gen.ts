@@ -14,6 +14,7 @@ import { Route as TreinoRouteImport } from './routes/treino'
 import { Route as SocialRouteImport } from './routes/social'
 import { Route as SemanasRouteImport } from './routes/semanas'
 import { Route as ProgressaoRouteImport } from './routes/progressao'
+import { Route as PerformanceRouteImport } from './routes/performance'
 import { Route as PerfilRouteImport } from './routes/perfil'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as HojeRouteImport } from './routes/hoje'
@@ -51,6 +52,11 @@ const SemanasRoute = SemanasRouteImport.update({
 const ProgressaoRoute = ProgressaoRouteImport.update({
   id: '/progressao',
   path: '/progressao',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PerformanceRoute = PerformanceRouteImport.update({
+  id: '/performance',
+  path: '/performance',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PerfilRoute = PerfilRouteImport.update({
@@ -131,6 +137,7 @@ export interface FileRoutesByFullPath {
   '/hoje': typeof HojeRoute
   '/onboarding': typeof OnboardingRoute
   '/perfil': typeof PerfilRoute
+  '/performance': typeof PerformanceRoute
   '/progressao': typeof ProgressaoRoute
   '/semanas': typeof SemanasRoute
   '/social': typeof SocialRoute
@@ -151,6 +158,7 @@ export interface FileRoutesByTo {
   '/hoje': typeof HojeRoute
   '/onboarding': typeof OnboardingRoute
   '/perfil': typeof PerfilRoute
+  '/performance': typeof PerformanceRoute
   '/progressao': typeof ProgressaoRoute
   '/semanas': typeof SemanasRoute
   '/social': typeof SocialRoute
@@ -172,6 +180,7 @@ export interface FileRoutesById {
   '/hoje': typeof HojeRoute
   '/onboarding': typeof OnboardingRoute
   '/perfil': typeof PerfilRoute
+  '/performance': typeof PerformanceRoute
   '/progressao': typeof ProgressaoRoute
   '/semanas': typeof SemanasRoute
   '/social': typeof SocialRoute
@@ -194,6 +203,7 @@ export interface FileRouteTypes {
     | '/hoje'
     | '/onboarding'
     | '/perfil'
+    | '/performance'
     | '/progressao'
     | '/semanas'
     | '/social'
@@ -214,6 +224,7 @@ export interface FileRouteTypes {
     | '/hoje'
     | '/onboarding'
     | '/perfil'
+    | '/performance'
     | '/progressao'
     | '/semanas'
     | '/social'
@@ -234,6 +245,7 @@ export interface FileRouteTypes {
     | '/hoje'
     | '/onboarding'
     | '/perfil'
+    | '/performance'
     | '/progressao'
     | '/semanas'
     | '/social'
@@ -255,6 +267,7 @@ export interface RootRouteChildren {
   HojeRoute: typeof HojeRoute
   OnboardingRoute: typeof OnboardingRoute
   PerfilRoute: typeof PerfilRoute
+  PerformanceRoute: typeof PerformanceRoute
   ProgressaoRoute: typeof ProgressaoRoute
   SemanasRoute: typeof SemanasRoute
   SocialRoute: typeof SocialRoute
@@ -299,6 +312,13 @@ declare module '@tanstack/react-router' {
       path: '/progressao'
       fullPath: '/progressao'
       preLoaderRoute: typeof ProgressaoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/performance': {
+      id: '/performance'
+      path: '/performance'
+      fullPath: '/performance'
+      preLoaderRoute: typeof PerformanceRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/perfil': {
@@ -417,6 +437,7 @@ const rootRouteChildren: RootRouteChildren = {
   HojeRoute: HojeRoute,
   OnboardingRoute: OnboardingRoute,
   PerfilRoute: PerfilRoute,
+  PerformanceRoute: PerformanceRoute,
   ProgressaoRoute: ProgressaoRoute,
   SemanasRoute: SemanasRoute,
   SocialRoute: SocialRoute,

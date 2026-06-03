@@ -184,6 +184,7 @@ export type Database = {
           id: string
           instructions: string | null
           lower_body_pattern: string | null
+          metric_type: string
           movement_pattern: string | null
           name: string
           notes: string | null
@@ -205,6 +206,7 @@ export type Database = {
           id?: string
           instructions?: string | null
           lower_body_pattern?: string | null
+          metric_type?: string
           movement_pattern?: string | null
           name: string
           notes?: string | null
@@ -226,6 +228,7 @@ export type Database = {
           id?: string
           instructions?: string | null
           lower_body_pattern?: string | null
+          metric_type?: string
           movement_pattern?: string | null
           name?: string
           notes?: string | null
@@ -399,6 +402,102 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      personal_records: {
+        Row: {
+          achieved_at: string
+          category: string
+          created_at: string
+          estimated_1rm: number | null
+          exercise_code: string
+          id: string
+          metric_type: string
+          previous_value: number | null
+          secondary_value: number | null
+          source_session_id: string | null
+          updated_at: string
+          user_id: string
+          value: number
+        }
+        Insert: {
+          achieved_at?: string
+          category: string
+          created_at?: string
+          estimated_1rm?: number | null
+          exercise_code: string
+          id?: string
+          metric_type: string
+          previous_value?: number | null
+          secondary_value?: number | null
+          source_session_id?: string | null
+          updated_at?: string
+          user_id: string
+          value: number
+        }
+        Update: {
+          achieved_at?: string
+          category?: string
+          created_at?: string
+          estimated_1rm?: number | null
+          exercise_code?: string
+          id?: string
+          metric_type?: string
+          previous_value?: number | null
+          secondary_value?: number | null
+          source_session_id?: string | null
+          updated_at?: string
+          user_id?: string
+          value?: number
+        }
+        Relationships: []
+      }
+      pr_history: {
+        Row: {
+          achieved_at: string
+          category: string
+          created_at: string
+          estimated_1rm: number | null
+          exercise_code: string
+          id: string
+          improvement_pct: number | null
+          metric_type: string
+          previous_value: number | null
+          secondary_value: number | null
+          source_session_id: string | null
+          user_id: string
+          value: number
+        }
+        Insert: {
+          achieved_at?: string
+          category: string
+          created_at?: string
+          estimated_1rm?: number | null
+          exercise_code: string
+          id?: string
+          improvement_pct?: number | null
+          metric_type: string
+          previous_value?: number | null
+          secondary_value?: number | null
+          source_session_id?: string | null
+          user_id: string
+          value: number
+        }
+        Update: {
+          achieved_at?: string
+          category?: string
+          created_at?: string
+          estimated_1rm?: number | null
+          exercise_code?: string
+          id?: string
+          improvement_pct?: number | null
+          metric_type?: string
+          previous_value?: number | null
+          secondary_value?: number | null
+          source_session_id?: string | null
+          user_id?: string
+          value?: number
+        }
+        Relationships: []
       }
       profiles: {
         Row: {
@@ -1223,6 +1322,7 @@ export type Database = {
       }
       workout_set_logs: {
         Row: {
+          actual_duration_seconds: number | null
           actual_load_kg: number | null
           actual_reps: number | null
           actual_rpe: number | null
@@ -1232,6 +1332,7 @@ export type Database = {
           exercise_name: string
           id: string
           notes: string | null
+          planned_duration_seconds: number | null
           planned_load_kg: number | null
           planned_reps: string | null
           planned_rpe: number | null
@@ -1242,6 +1343,7 @@ export type Database = {
           workout_session_id: string
         }
         Insert: {
+          actual_duration_seconds?: number | null
           actual_load_kg?: number | null
           actual_reps?: number | null
           actual_rpe?: number | null
@@ -1251,6 +1353,7 @@ export type Database = {
           exercise_name: string
           id?: string
           notes?: string | null
+          planned_duration_seconds?: number | null
           planned_load_kg?: number | null
           planned_reps?: string | null
           planned_rpe?: number | null
@@ -1261,6 +1364,7 @@ export type Database = {
           workout_session_id: string
         }
         Update: {
+          actual_duration_seconds?: number | null
           actual_load_kg?: number | null
           actual_reps?: number | null
           actual_rpe?: number | null
@@ -1270,6 +1374,7 @@ export type Database = {
           exercise_name?: string
           id?: string
           notes?: string | null
+          planned_duration_seconds?: number | null
           planned_load_kg?: number | null
           planned_reps?: string | null
           planned_rpe?: number | null
