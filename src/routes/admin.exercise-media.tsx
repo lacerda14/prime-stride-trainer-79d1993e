@@ -168,9 +168,32 @@ function CuratorBoard() {
             </div>
             <Input placeholder="Buscar exercício..." value={search} onChange={(e) => setSearch(e.target.value)} className="h-10" />
 
-            <div className="rounded-2xl border border-border/60 bg-surface/40 p-3">
+            <div className="space-y-2 rounded-2xl border border-border/60 bg-surface/40 p-3">
               <p className="text-[11px] leading-relaxed text-muted-foreground">
-                <span className="font-semibold text-foreground">{missingCount}</span> exercício(s) sem vídeo. Busque um por vez (ícone <Search className="inline h-3 w-3" /> na linha) ou abra o exercício e cole uma URL do YouTube em "Adicionar manualmente". A busca automática consome cota diária do YouTube (~100 buscas/dia no total).
+                <span className="font-semibold text-foreground">{missingCount}</span> exercício(s) sem vídeo primário. O agente busca em <span className="font-semibold text-foreground">PT-BR</span> (canais brasileiros priorizados) e auto-aprova candidatos com score ≥ 70.
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  size="sm"
+                  onClick={() => bulkSearch.mutate(10)}
+                  disabled={bulkSearch.isPending || missingCount === 0}
+                  className="h-8"
+                >
+                  {bulkSearch.isPending ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Zap className="mr-1.5 h-3.5 w-3.5" />}
+                  Buscar 10 (auto-aprovar)
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => bulkSearch.mutate(25)}
+                  disabled={bulkSearch.isPending || missingCount === 0}
+                  className="h-8"
+                >
+                  Buscar 25
+                </Button>
+              </div>
+              <p className="text-[10px] leading-relaxed text-muted-foreground/70">
+                ⚠️ Cota do YouTube: ~100 buscas/dia no total. Cada exercício consome 2 chamadas.
               </p>
             </div>
 
