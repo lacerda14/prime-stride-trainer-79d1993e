@@ -11,11 +11,13 @@ const config: CapacitorConfig = {
     scheme: 'PM Hybrid',
   },
   server: {
-    // Durante o desenvolvimento, descomente para apontar pro preview do Lovable
-    // e iterar sem rebuild nativo:
-    // url: 'https://prime-stride-trainer.lovable.app',
-    // cleartext: false,
+    // App nativo carrega o web app publicado no Lovable (sem precisar de build estático).
+    // Pra apontar pra outro env, troque a URL. Pra modo offline/standalone, comente e
+    // configure um adapter SPA estático.
+    url: 'https://prime-stride-trainer.lovable.app',
+    cleartext: false,
     androidScheme: 'https',
+    iosScheme: 'https',
   },
   plugins: {
     SplashScreen: {
