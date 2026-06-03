@@ -398,13 +398,13 @@ function TreinoPage() {
         current_interval: item?.kind === "run" ? (item.phase.interval ?? null) : null,
         elapsed_seconds: Math.floor(phaseAccumNowMs / 1000),
         total_elapsed_seconds: Math.floor(totalNowMs / 1000),
-        session_data: { phase: p },
+        session_data: { phase: p, swaps, exercise_order: exerciseOrder, set_logs: setLogs },
         status: paused ? ("paused" as const) : ("active" as const),
       };
       // sync resiliente: tenta online, senão enfileira para mais tarde
       void syncSaveState(payload);
     },
-    [sessionId, step, phase, queue, paused, phaseAccumMs, phaseStartedAt, totalAccumMs],
+    [sessionId, step, phase, queue, paused, phaseAccumMs, phaseStartedAt, totalAccumMs, swaps, exerciseOrder, setLogs],
   );
 
   const schedulePersist = useCallback(() => {
