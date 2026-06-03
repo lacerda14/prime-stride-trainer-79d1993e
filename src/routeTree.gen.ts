@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as TreinosRouteImport } from './routes/treinos'
 import { Route as TreinoRouteImport } from './routes/treino'
+import { Route as SuporteRouteImport } from './routes/suporte'
 import { Route as SocialRouteImport } from './routes/social'
 import { Route as SemanasRouteImport } from './routes/semanas'
 import { Route as ProgressaoRouteImport } from './routes/progressao'
@@ -37,6 +38,11 @@ const TreinosRoute = TreinosRouteImport.update({
 const TreinoRoute = TreinoRouteImport.update({
   id: '/treino',
   path: '/treino',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SuporteRoute = SuporteRouteImport.update({
+  id: '/suporte',
+  path: '/suporte',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SocialRoute = SocialRouteImport.update({
@@ -141,6 +147,7 @@ export interface FileRoutesByFullPath {
   '/progressao': typeof ProgressaoRoute
   '/semanas': typeof SemanasRoute
   '/social': typeof SocialRoute
+  '/suporte': typeof SuporteRoute
   '/treino': typeof TreinoRouteWithChildren
   '/treinos': typeof TreinosRoute
   '/admin/exercise-media': typeof AdminExerciseMediaRoute
@@ -162,6 +169,7 @@ export interface FileRoutesByTo {
   '/progressao': typeof ProgressaoRoute
   '/semanas': typeof SemanasRoute
   '/social': typeof SocialRoute
+  '/suporte': typeof SuporteRoute
   '/treino': typeof TreinoRouteWithChildren
   '/treinos': typeof TreinosRoute
   '/admin/exercise-media': typeof AdminExerciseMediaRoute
@@ -184,6 +192,7 @@ export interface FileRoutesById {
   '/progressao': typeof ProgressaoRoute
   '/semanas': typeof SemanasRoute
   '/social': typeof SocialRoute
+  '/suporte': typeof SuporteRoute
   '/treino': typeof TreinoRouteWithChildren
   '/treinos': typeof TreinosRoute
   '/admin/exercise-media': typeof AdminExerciseMediaRoute
@@ -207,6 +216,7 @@ export interface FileRouteTypes {
     | '/progressao'
     | '/semanas'
     | '/social'
+    | '/suporte'
     | '/treino'
     | '/treinos'
     | '/admin/exercise-media'
@@ -228,6 +238,7 @@ export interface FileRouteTypes {
     | '/progressao'
     | '/semanas'
     | '/social'
+    | '/suporte'
     | '/treino'
     | '/treinos'
     | '/admin/exercise-media'
@@ -249,6 +260,7 @@ export interface FileRouteTypes {
     | '/progressao'
     | '/semanas'
     | '/social'
+    | '/suporte'
     | '/treino'
     | '/treinos'
     | '/admin/exercise-media'
@@ -271,6 +283,7 @@ export interface RootRouteChildren {
   ProgressaoRoute: typeof ProgressaoRoute
   SemanasRoute: typeof SemanasRoute
   SocialRoute: typeof SocialRoute
+  SuporteRoute: typeof SuporteRoute
   TreinoRoute: typeof TreinoRouteWithChildren
   TreinosRoute: typeof TreinosRoute
   AdminExerciseMediaRoute: typeof AdminExerciseMediaRoute
@@ -291,6 +304,13 @@ declare module '@tanstack/react-router' {
       path: '/treino'
       fullPath: '/treino'
       preLoaderRoute: typeof TreinoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/suporte': {
+      id: '/suporte'
+      path: '/suporte'
+      fullPath: '/suporte'
+      preLoaderRoute: typeof SuporteRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/social': {
@@ -441,6 +461,7 @@ const rootRouteChildren: RootRouteChildren = {
   ProgressaoRoute: ProgressaoRoute,
   SemanasRoute: SemanasRoute,
   SocialRoute: SocialRoute,
+  SuporteRoute: SuporteRoute,
   TreinoRoute: TreinoRouteWithChildren,
   TreinosRoute: TreinosRoute,
   AdminExerciseMediaRoute: AdminExerciseMediaRoute,
