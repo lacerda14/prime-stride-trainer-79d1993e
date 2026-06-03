@@ -353,7 +353,28 @@ function HojePage() {
     enabled: !!user,
   });
 
-  const exerciseIds = data?.today?.exercises.map((e) => e.exercise.id) ?? [];
+  // Swaps locais para o dia (persistidos por data)
+  const [swaps, setSwaps] = useState<SwapMap>({});
+  useEffect(() => {
+    setSwaps(loadSwaps(localToday.local_date));
+  }, [localToday.local_date]);
+
+  const [swapTarget, setSwapTarget] = useState<
+    { slotId: string; poolId: string; name: string } | null
+  >(null);
+
+  const handleApplySwap = (sug: SwapSuggestion) => {
+    if (!swapTarget) return;
+    const next: SwapMap = {
+      ...swaps,
+      [swapTarget.slotId]: { id: sug.id, name: sug.name, category: sug.category },
+    };
+    setSwaps(next);
+    persistSwaps(localToday.local_date, next);
+    setSwapTarget(null);
+  };
+
+  const exerciseIds = data?.today?.exercises.map((e) => applySwap(e, swaps).exercise.id) ?? [];
   const { data: lastWeights = {} } = useQuery({
     queryKey: ["last-weights", user?.id, exerciseIds.join(",")],
     queryFn: () => fetchWeights({ data: { exercise_ids: exerciseIds } }),
