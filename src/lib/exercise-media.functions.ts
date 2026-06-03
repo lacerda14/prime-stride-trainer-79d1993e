@@ -597,13 +597,9 @@ export const bulkSearchMissingVideos = createServerFn({ method: "POST" })
 
       const savedRows: ExerciseMediaDTO[] = [];
       for (const c of candidates) {
-        const { data: row, error: upErr } = await supabase
-          .from("exercise_media")
-          .upsert(c, { onConflict: "exercise_id,source,external_id", ignoreDuplicates: false })
-          .select("*")
-          .single();
-        if (!upErr && row) {
-          savedRows.push(row as ExerciseMediaDTO);
+        const row = await upsertCandidate(supabase, c);
+        if (row) {
+          savedRows.push(row);
           result.total_saved += 1;
         }
       }
