@@ -21,6 +21,18 @@ import { getCompletedSession, saveWorkoutLogs, type SetLogDTO } from "@/lib/work
 import { getWeekDetail } from "@/lib/program.queries";
 import { estimateCalories } from "@/lib/calories";
 import { toast } from "sonner";
+import { Slider } from "@/components/ui/slider";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 export const Route = createFileRoute("/treino/concluido/$sessionId")({
   head: () => ({
@@ -67,14 +79,17 @@ interface SetRow {
   notes: string;
 }
 
-// Mapeamento emoji → RPE
-const EFFORT_OPTIONS = [
-  { emoji: "😰", label: "Pesado demais", rpe: "9" },
-  { emoji: "😤", label: "Difícil",        rpe: "8" },
-  { emoji: "💪", label: "Perfeito",       rpe: "7" },
-  { emoji: "😊", label: "Tranquilo",      rpe: "5" },
-  { emoji: "😌", label: "Leve demais",    rpe: "3" },
-] as const;
+// Mapeia intensidade 0-10 → emoji + rótulo
+function effortMeta(value: number): { emoji: string; label: string; tone: string } {
+  if (value <= 1) return { emoji: "😴", label: "Muito leve", tone: "text-muted-foreground" };
+  if (value <= 3) return { emoji: "😌", label: "Leve", tone: "text-muted-foreground" };
+  if (value <= 5) return { emoji: "🙂", label: "Moderado", tone: "text-foreground" };
+  if (value <= 6) return { emoji: "💪", label: "Firme", tone: "text-primary" };
+  if (value <= 7) return { emoji: "😤", label: "Difícil", tone: "text-primary" };
+  if (value <= 8) return { emoji: "🥵", label: "Muito difícil", tone: "text-primary" };
+  if (value <= 9) return { emoji: "🔥", label: "Quase máximo", tone: "text-primary" };
+  return { emoji: "💀", label: "Máximo absoluto", tone: "text-primary" };
+}
 
 // ============================================================
 // Página
@@ -392,37 +407,52 @@ function ConcluidoPage() {
           />
         </div>
 
-        {/* ── 3. Avaliação da sessão — estilo Apple ── */}
+        {/* ── 3. Avaliação da intensidade — slider 0-10 com emoji dinâmico ── */}
         <div className="mt-6 animate-slide-up" style={{ animationDelay: "80ms" }}>
-          <h2 className="mb-3 text-sm font-semibold text-foreground">Como foi esse treino?</h2>
-          <div className="grid grid-cols-5 gap-2">
-            {EFFORT_OPTIONS.map((opt) => {
-              const selected = generalEffort === opt.rpe;
-              return (
-                <button
-                  key={opt.rpe}
-                  onClick={() => setGeneralEffort(selected ? "" : opt.rpe)}
-                  className={[
-                    "flex flex-col items-center gap-1.5 rounded-2xl border py-3 transition-all duration-150",
-                    selected
-                      ? "border-primary bg-primary/12 shadow-glow"
-                      : "border-border/50 bg-surface/40 hover:border-primary/30 hover:bg-surface/70",
-                  ].join(" ")}
-                >
-                  <span className="text-xl leading-none">{opt.emoji}</span>
-                  <span
-                    className={[
-                      "text-center text-[9px] font-medium leading-tight",
-                      selected ? "text-primary" : "text-muted-foreground",
-                    ].join(" ")}
-                  >
-                    {opt.label}
-                  </span>
-                </button>
-              );
-            })}
+          <div className="mb-3 flex items-end justify-between">
+            <h2 className="text-sm font-semibold text-foreground">Intensidade do treino</h2>
+            <span className="text-[10px] uppercase tracking-widest text-muted-foreground">
+              0 a 10
+            </span>
           </div>
+          {(() => {
+            const num = generalEffort === "" ? 5 : Number(generalEffort);
+            const meta = effortMeta(num);
+            const active = generalEffort !== "";
+            return (
+              <div className="rounded-2xl border border-border/50 bg-surface/40 px-5 py-5">
+                <div className="flex items-center gap-4">
+                  <span className="text-4xl leading-none transition-transform duration-150">
+                    {active ? meta.emoji : "🎚️"}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <div className={`text-sm font-semibold ${active ? meta.tone : "text-muted-foreground"}`}>
+                      {active ? meta.label : "Arraste para avaliar"}
+                    </div>
+                    <div className="num mt-0.5 text-2xl font-semibold tabular-nums text-foreground">
+                      {active ? num : "—"}
+                      <span className="ml-1 text-xs font-normal text-muted-foreground">/ 10</span>
+                    </div>
+                  </div>
+                </div>
+                <Slider
+                  className="mt-5"
+                  min={0}
+                  max={10}
+                  step={1}
+                  value={[num]}
+                  onValueChange={(v) => setGeneralEffort(String(v[0] ?? 0))}
+                />
+                <div className="mt-2 flex justify-between text-[10px] text-muted-foreground">
+                  <span>😴 Leve</span>
+                  <span>💪 Firme</span>
+                  <span>💀 Máximo</span>
+                </div>
+              </div>
+            );
+          })()}
         </div>
+
 
         {/* ── 3b. Avaliação da duração ── */}
         <div className="mt-5 animate-slide-up" style={{ animationDelay: "100ms" }}>
@@ -645,12 +675,40 @@ function ConcluidoPage() {
             </button>
           </div>
 
-          <button
-            onClick={() => navigate({ to: "/treino", search: { force: "1" } as never })}
-            className="w-full rounded-full border border-border/30 bg-transparent py-2.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground active:opacity-70"
-          >
-            Repetir treino hoje
-          </button>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <button
+                className="w-full rounded-full border border-border/30 bg-transparent py-2.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground active:opacity-70"
+              >
+                Repetir treino hoje
+              </button>
+            </AlertDialogTrigger>
+            <AlertDialogContent className="max-w-sm rounded-2xl">
+              <AlertDialogHeader>
+                <AlertDialogTitle className="flex items-center gap-2">
+                  <span className="text-xl">⚠️</span> Não recomendado
+                </AlertDialogTitle>
+                <AlertDialogDescription className="text-sm leading-relaxed">
+                  Repetir o mesmo treino no mesmo dia pode aumentar o risco de lesão e prejudicar
+                  sua recuperação. O ideal é respeitar o descanso planejado e seguir para o próximo
+                  treino do programa amanhã.
+                  <br />
+                  <br />
+                  Tem certeza que deseja continuar mesmo assim?
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={() => navigate({ to: "/treino", search: { force: "1" } as never })}
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                >
+                  Repetir mesmo assim
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+
         </div>
       </div>
     </div>
