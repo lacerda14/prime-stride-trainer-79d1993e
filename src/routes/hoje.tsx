@@ -1,15 +1,36 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AppShell } from "@/components/app-shell";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { getTodayTraining, type SessionExerciseDTO } from "@/lib/program.queries";
 import { getLastWeightsForExercises } from "@/lib/workout-logs.functions";
 import { useAuth } from "@/hooks/use-auth";
-import { ChevronDown, Play, Timer, Target, Loader2, PlayCircle } from "lucide-react";
+import { ChevronDown, Play, Timer, Target, Loader2, PlayCircle, ArrowRightLeft } from "lucide-react";
 import { runningHeadline, runningInstructions } from "@/lib/format-running";
 import { useLocalToday } from "@/hooks/use-local-today";
 import { ExerciseDetailModal, useExerciseDetail } from "@/components/exercise-detail-modal";
+import { ExerciseSwapSheet } from "@/components/exercise-swap-sheet";
+import type { SwapSuggestion } from "@/lib/exercise-swap.functions";
+
+// Swap aplicado a um exercício do dia (overlay puramente visual / local)
+type AppliedSwap = { id: string; name: string; category: string };
+type SwapMap = Record<string, AppliedSwap>;
+
+function swapKey(date: string) { return `hoje_swaps_${date}`; }
+function loadSwaps(date: string): SwapMap {
+  try { return JSON.parse(localStorage.getItem(swapKey(date)) ?? "{}") as SwapMap; }
+  catch { return {}; }
+}
+function persistSwaps(date: string, m: SwapMap) {
+  try { localStorage.setItem(swapKey(date), JSON.stringify(m)); } catch { /* noop */ }
+}
+
+function applySwap(e: SessionExerciseDTO, swaps: SwapMap): SessionExerciseDTO {
+  const s = swaps[e.exercise.id];
+  if (!s) return e;
+  return { ...e, exercise: { id: s.id, name: s.name, category: s.category } };
+}
 
 export const Route = createFileRoute("/hoje")({
   head: () => ({
