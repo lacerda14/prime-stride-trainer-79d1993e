@@ -866,7 +866,7 @@ export function generatePlan(profile: UserProfileInput, exercisePool: ExerciseRo
           day_number: d.num,
           day_name: d.name,
           session_type: "full_body",
-          objective: `${meso.objective} — ${type === "A" ? "Pull + Posterior" : "Push + Anterior"}`,
+          objective: `${meso.objective} — ${fbType === "A" ? "Pull + Posterior" : "Push + Anterior"}`,
           duration_minutes: 55,
           exercises,
         });
