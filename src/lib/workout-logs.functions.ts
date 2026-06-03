@@ -271,6 +271,7 @@ export const saveWorkoutLogs = createServerFn({ method: "POST" })
           perceived_effort: data.perceived_effort ?? null,
           general_notes: data.general_notes ?? null,
           duration_feedback: data.duration_feedback ?? null,
+          session_feedback: data.session_feedback ?? null,
           saved_at: new Date().toISOString(),
         },
         updated_at: new Date().toISOString(),
@@ -288,7 +289,81 @@ export const saveWorkoutLogs = createServerFn({ method: "POST" })
       // PR detection nunca deve quebrar o save
     }
 
-    return { ok: true, newPRs };
+    // Calcula Readiness Score (não quebra o save em caso de erro)
+    let readiness: Awaited<ReturnType<typeof import("./engine/autoregulation.server").computeReadiness>> | null = null;
+    try {
+      const { computeReadiness } = await import("./engine/autoregulation.server");
+      const { data: setRowsRaw } = await supabase
+        .from("workout_set_logs")
+        .select("planned_reps, actual_reps, planned_load_kg, actual_load_kg, set_status, created_at")
+        .eq("workout_session_id", data.session_id);
+
+      const sinceIso = new Date(Date.now() - 28 * 24 * 60 * 60 * 1000).toISOString();
+      const { data: histSess } = await supabase
+        .from("workout_sessions")
+        .select("id, created_at, completed_summary")
+        .eq("user_id", userId)
+        .not("completed_at", "is", null)
+        .gte("created_at", sinceIso)
+        .neq("id", data.session_id);
+
+      const historyArr: import("./engine/autoregulation.server").SessionForEngine[] = [];
+      for (const h of histSess ?? []) {
+        const { data: hs } = await supabase
+          .from("workout_set_logs")
+          .select("planned_reps, actual_reps, planned_load_kg, actual_load_kg, set_status")
+          .eq("workout_session_id", h.id);
+        const sm = (h.completed_summary ?? {}) as { session_feedback?: import("./engine/autoregulation.server").SessionFeedback | null };
+        historyArr.push({
+          id: h.id,
+          created_at: h.created_at,
+          feedback: sm.session_feedback ?? null,
+          sets: (hs ?? []) as import("./engine/autoregulation.server").SetLogForEngine[],
+        });
+      }
+
+      readiness = computeReadiness(
+        {
+          id: data.session_id,
+          created_at: new Date().toISOString(),
+          feedback: data.session_feedback ?? null,
+          sets: (setRowsRaw ?? []) as import("./engine/autoregulation.server").SetLogForEngine[],
+          pr_count: newPRs.length,
+        },
+        historyArr,
+        12,
+      );
+
+      // upsert score
+      const { data: existing } = await supabase
+        .from("readiness_scores")
+        .select("id")
+        .eq("session_id", data.session_id)
+        .eq("user_id", userId)
+        .maybeSingle();
+      if (existing) {
+        await supabase
+          .from("readiness_scores")
+          .update({
+            score: readiness.score,
+            signals: readiness.signals as never,
+            decision: readiness.decision as never,
+          } as never)
+          .eq("id", existing.id);
+      } else {
+        await supabase.from("readiness_scores").insert({
+          user_id: userId,
+          session_id: data.session_id,
+          score: readiness.score,
+          signals: readiness.signals as never,
+          decision: readiness.decision as never,
+        } as never);
+      }
+    } catch (e) {
+      console.warn("Readiness compute failed", e);
+    }
+
+    return { ok: true, newPRs, readiness };
   });
 
 // ============================================================
