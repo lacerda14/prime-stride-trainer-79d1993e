@@ -217,12 +217,14 @@ function SingleCard({ exercise, index, onOpenVideo, lastWeights, onRequestSwap, 
 }
 
 // Card de biset — agrupa todos os exercícios do par
-function BisetCard({ exercises, slot, index, onOpenVideo, lastWeights }: {
+function BisetCard({ exercises, slot, index, onOpenVideo, lastWeights, onRequestSwap, swappedIds }: {
   exercises: SessionExerciseDTO[];
   slot: number;
   index: number;
   onOpenVideo: (id: string) => void;
   lastWeights: Record<string, number | null>;
+  onRequestSwap: (slotId: string, currentPoolId: string, currentName: string) => void;
+  swappedIds: Set<string>;
 }) {
   const [open, setOpen] = useState(index === 0);
   const restSeconds = exercises.find((e) => e.rest_seconds)?.rest_seconds;
