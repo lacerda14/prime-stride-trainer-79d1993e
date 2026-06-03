@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { getTodayTraining } from "@/lib/program.queries";
 import { useAuth } from "@/hooks/use-auth";
-import { Pause, Play, SkipForward, X, Check, Loader2, Footprints, Timer, Flame, Wind } from "lucide-react";
+import { Pause, Play, SkipForward, X, Check, Loader2, Footprints, Timer, Flame, Wind, ArrowRightLeft, ListOrdered, BarChart3 } from "lucide-react";
 import { RequireAuth } from "@/components/require-auth";
 import { buildRunPhases, paceRange, runningHeadline, type RunPhase } from "@/lib/format-running";
 import { useLocalToday } from "@/hooks/use-local-today";
@@ -13,8 +13,14 @@ import {
   getCompletedSessionForDay,
   startWorkoutSession,
   abandonWorkoutSession,
+  appendSetLog,
   type ActiveSessionDTO,
 } from "@/lib/workout-session.functions";
+import { getLastWeightsForExercises } from "@/lib/workout-logs.functions";
+import { computeVolume, formatVolume } from "@/lib/workout-volume";
+import { ExerciseSwapSheet } from "@/components/exercise-swap-sheet";
+import { ExerciseReorderSheet, type ReorderItem } from "@/components/exercise-reorder-sheet";
+import type { SwapSuggestion } from "@/lib/exercise-swap.functions";
 
 import { syncSaveState, syncComplete, flushQueue } from "@/lib/offline-sync";
 import { OfflineBadge } from "@/components/offline-badge";
