@@ -288,6 +288,7 @@ interface CompleteResult {
   streakLongest: number;
   durationSeconds: number;
   newAchievements: { code: string; title: string; xp_reward: number }[];
+  newPRs: PRDetectedItem[];
 }
 
 function diffDaysUTC(a: Date, b: Date): number {
