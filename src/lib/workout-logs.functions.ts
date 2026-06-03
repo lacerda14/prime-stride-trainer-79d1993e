@@ -190,6 +190,10 @@ export const saveWorkoutLogs = createServerFn({ method: "POST" })
         general_notes: z.string().max(1000).nullable().optional(),
         perceived_effort: z.number().int().min(1).max(10).nullable().optional(),
         duration_feedback: z.enum(["too_short", "ok", "too_long"]).nullable().optional(),
+        session_feedback: z
+          .enum(["muito_leve", "leve", "ideal", "pesado", "muito_pesado"])
+          .nullable()
+          .optional(),
       })
       .parse(input),
   )
