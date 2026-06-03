@@ -946,7 +946,9 @@ export function generatePlan(profile: UserProfileInput, exercisePool: ExerciseRo
             slot += 1;
           }
         }
-        const running = d.num === 2 ? tuesdayProtocol(w, profile.goal) : thursdayProtocol(w, profile.goal);
+        // Alterna entre os dois variantes de protocolo conforme a ordem da corrida na semana.
+        const runIndex = days.filter((x) => x.kind === "run" && x.num <= d.num).length - 1;
+        const running = runIndex % 2 === 0 ? tuesdayProtocol(w, profile.goal) : thursdayProtocol(w, profile.goal);
         dayPlans.push({
           day_number: d.num,
           day_name: d.name,
