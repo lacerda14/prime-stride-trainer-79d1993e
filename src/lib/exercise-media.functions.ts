@@ -547,7 +547,7 @@ export const bulkSearchMissingVideos = createServerFn({ method: "POST" })
         limit: z.number().int().min(1).max(50).default(20),
         max_results: z.number().int().min(1).max(5).default(3),
         auto_approve: z.boolean().default(true),
-        auto_approve_min_score: z.number().int().min(0).max(100).default(70),
+        auto_approve_min_score: z.number().int().min(0).max(100).default(0),
       })
       .parse(input),
   )
