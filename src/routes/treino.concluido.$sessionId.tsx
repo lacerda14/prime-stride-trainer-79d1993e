@@ -424,6 +424,42 @@ function ConcluidoPage() {
           </div>
         </div>
 
+        {/* ── 3b. Avaliação da duração ── */}
+        <div className="mt-5 animate-slide-up" style={{ animationDelay: "100ms" }}>
+          <h2 className="mb-3 text-sm font-semibold text-foreground">E a duração?</h2>
+          <div className="grid grid-cols-3 gap-2">
+            {([
+              { value: "too_short", label: "Curto demais", emoji: "⏱️" },
+              { value: "ok",         label: "Na medida",   emoji: "✅" },
+              { value: "too_long",   label: "Longo demais", emoji: "🥵" },
+            ] as const).map((opt) => {
+              const selected = durationFeedback === opt.value;
+              return (
+                <button
+                  key={opt.value}
+                  onClick={() => setDurationFeedback(selected ? "" : opt.value)}
+                  className={[
+                    "flex flex-col items-center gap-1.5 rounded-2xl border py-3 transition-all duration-150",
+                    selected
+                      ? "border-primary bg-primary/12 shadow-glow"
+                      : "border-border/50 bg-surface/40 hover:border-primary/30 hover:bg-surface/70",
+                  ].join(" ")}
+                >
+                  <span className="text-xl leading-none">{opt.emoji}</span>
+                  <span
+                    className={[
+                      "text-center text-[10px] font-medium leading-tight",
+                      selected ? "text-primary" : "text-muted-foreground",
+                    ].join(" ")}
+                  >
+                    {opt.label}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
         {/* ── 4. Destaques do treino — "O que você fez" ── */}
         {exerciseBreakdown.length > 0 && (
           <div className="mt-6 animate-slide-up" style={{ animationDelay: "120ms" }}>
