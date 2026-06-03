@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { getTodayTraining } from "@/lib/program.queries";
 import { useAuth } from "@/hooks/use-auth";
-import { Pause, Play, SkipForward, X, Check, Loader2, Footprints, Timer, Flame, Wind } from "lucide-react";
+import { Pause, Play, SkipForward, X, Check, Loader2, Footprints, Timer, Flame, Wind, ArrowRightLeft, ListOrdered, BarChart3 } from "lucide-react";
 import { RequireAuth } from "@/components/require-auth";
 import { buildRunPhases, paceRange, runningHeadline, type RunPhase } from "@/lib/format-running";
 import { useLocalToday } from "@/hooks/use-local-today";
@@ -13,8 +13,14 @@ import {
   getCompletedSessionForDay,
   startWorkoutSession,
   abandonWorkoutSession,
+  appendSetLog,
   type ActiveSessionDTO,
 } from "@/lib/workout-session.functions";
+import { getLastWeightsForExercises } from "@/lib/workout-logs.functions";
+import { computeVolume, formatVolume } from "@/lib/workout-volume";
+import { ExerciseSwapSheet } from "@/components/exercise-swap-sheet";
+import { ExerciseReorderSheet, type ReorderItem } from "@/components/exercise-reorder-sheet";
+import type { SwapSuggestion } from "@/lib/exercise-swap.functions";
 
 import { syncSaveState, syncComplete, flushQueue } from "@/lib/offline-sync";
 import { OfflineBadge } from "@/components/offline-badge";
@@ -45,6 +51,7 @@ function TreinoRouteComponent() {
 type StrengthItem = {
   kind: "strength";
   name: string;
+  exerciseId: string | null;
   set: number;
   totalSets: number;
   reps: string;
@@ -61,6 +68,16 @@ type RunItem = {
 };
 
 type QueueItem = StrengthItem | RunItem;
+
+interface SetLogState {
+  load: string;
+  reps: string;
+  completed: boolean;
+}
+
+function setKey(exerciseIndex: number, setNumber: number): string {
+  return `${exerciseIndex}:${setNumber}`;
+}
 
 function lsKey(sessionId: string) {
   return `pm-workout-session:${sessionId}`;
@@ -137,7 +154,28 @@ function TreinoPage() {
   }, [completedTodayQ.data?.id, allowRepeat, navigate]);
 
 
-  // Constrói a fila de itens
+  // ----------------------------------------------------------
+  // Trocas e reordenação de exercícios (mantidas em memória + session_data)
+  // ----------------------------------------------------------
+  const [swaps, setSwaps] = useState<Record<number, { id: string; name: string; category: string }>>({});
+  const [exerciseOrder, setExerciseOrder] = useState<number[] | null>(null);
+  const [swapOpenFor, setSwapOpenFor] = useState<{ index: number; id: string; name: string } | null>(null);
+  const [reorderOpen, setReorderOpen] = useState(false);
+
+  // Últimos pesos por exercício (sugestão de carga)
+  const fetchLastWeights = useServerFn(getLastWeightsForExercises);
+  const lastWeightsQ = useQuery({
+    queryKey: ["last-weights", user?.id, today?.id],
+    queryFn: () => {
+      const ids = (today?.exercises ?? []).map((e) => e.exercise.id).filter(Boolean);
+      return fetchLastWeights({ data: { exercise_ids: ids } });
+    },
+    enabled: !!user && !!today && (today?.exercises?.length ?? 0) > 0,
+    staleTime: 60_000,
+  });
+  const lastWeights = lastWeightsQ.data ?? {};
+
+  // Constrói a fila de itens (respeitando ordem customizada e swaps)
   const queue = useMemo<QueueItem[]>(() => {
     if (!today) return [];
     const items: QueueItem[] = [];
@@ -147,15 +185,25 @@ function TreinoPage() {
       const paceText = paceRange(today.running);
       for (const phase of phases) items.push({ kind: "run", phase, protocolName, paceText });
     }
-    let exIdx = 0;
-    for (const e of today.exercises) {
-      const block: "Força" | "Core" = e.exercise.category === "core" ? "Core" : "Força";
+    const exercises = today.exercises;
+    const order = exerciseOrder && exerciseOrder.length === exercises.length
+      ? exerciseOrder
+      : exercises.map((_, i) => i);
+    for (const exIdx of order) {
+      const e = exercises[exIdx];
+      if (!e) continue;
+      const swap = swaps[exIdx];
+      const displayName = swap?.name ?? e.exercise.name;
+      const displayId = swap?.id ?? e.exercise.id ?? null;
+      const cat = swap?.category ?? e.exercise.category;
+      const block: "Força" | "Core" = cat === "core" ? "Core" : "Força";
       const sets = Math.max(1, e.sets);
       const rest = e.rest_seconds ?? (block === "Core" ? 30 : 60);
       for (let s = 1; s <= sets; s++) {
         items.push({
           kind: "strength",
-          name: e.exercise.name,
+          name: displayName,
+          exerciseId: displayId,
           set: s,
           totalSets: sets,
           reps: e.reps,
@@ -164,10 +212,9 @@ function TreinoPage() {
           exerciseIndex: exIdx,
         });
       }
-      exIdx++;
     }
     return items;
-  }, [today]);
+  }, [today, exerciseOrder, swaps]);
 
   // ----------------------------------------------------------
   // Estado da sessão
@@ -183,6 +230,13 @@ function TreinoPage() {
   const [phaseAccumMs, setPhaseAccumMs] = useState(0);
   // total acumulado da sessão inteira (somando fases já fechadas)
   const [totalAccumMs, setTotalAccumMs] = useState(0);
+
+  // Logs por set (volume ao vivo + autosave)
+  const [setLogs, setSetLogs] = useState<Record<string, SetLogState>>({});
+  // Inputs visíveis do set atual (kg + reps)
+  const [liveLoad, setLiveLoad] = useState("");
+  const [liveReps, setLiveReps] = useState("");
+  const appendSetLogFn = useServerFn(appendSetLog);
 
   // ticker visual
   const [, setTick] = useState(0);
@@ -235,6 +289,16 @@ function TreinoPage() {
     const data = (active.session_data ?? {}) as Record<string, unknown>;
     const ph = (data.phase as "work" | "rest" | undefined) ?? "work";
     setPhase(ph);
+    // restaura swaps / ordem / set logs
+    if (data.swaps && typeof data.swaps === "object") {
+      setSwaps(data.swaps as Record<number, { id: string; name: string; category: string }>);
+    }
+    if (Array.isArray(data.exercise_order)) {
+      setExerciseOrder(data.exercise_order as number[]);
+    }
+    if (data.set_logs && typeof data.set_logs === "object") {
+      setSetLogs(data.set_logs as Record<string, SetLogState>);
+    }
     // tenta recuperar timestamp do localStorage para precisão sub-segundo
     try {
       const raw = localStorage.getItem(lsKey(active.id));
@@ -334,13 +398,13 @@ function TreinoPage() {
         current_interval: item?.kind === "run" ? (item.phase.interval ?? null) : null,
         elapsed_seconds: Math.floor(phaseAccumNowMs / 1000),
         total_elapsed_seconds: Math.floor(totalNowMs / 1000),
-        session_data: { phase: p },
+        session_data: { phase: p, swaps, exercise_order: exerciseOrder, set_logs: setLogs },
         status: paused ? ("paused" as const) : ("active" as const),
       };
       // sync resiliente: tenta online, senão enfileira para mais tarde
       void syncSaveState(payload);
     },
-    [sessionId, step, phase, queue, paused, phaseAccumMs, phaseStartedAt, totalAccumMs],
+    [sessionId, step, phase, queue, paused, phaseAccumMs, phaseStartedAt, totalAccumMs, swaps, exerciseOrder, setLogs],
   );
 
   const schedulePersist = useCallback(() => {
@@ -386,16 +450,122 @@ function TreinoPage() {
     [paused, phaseStartedAt, phaseAccumMs, persistNow],
   );
 
+  // Captura set ao concluir (work → rest em strength)
+  const captureCurrentSet = useCallback(() => {
+    if (!current || current.kind !== "strength" || !sessionId) return;
+    const key = setKey(current.exerciseIndex, current.set);
+    const loadNum = liveLoad ? Number(liveLoad) : null;
+    const repsNum = liveReps ? Number(liveReps) : null;
+    setSetLogs((prev) => ({
+      ...prev,
+      [key]: {
+        load: liveLoad,
+        reps: liveReps,
+        completed: true,
+      },
+    }));
+    void appendSetLogFn({
+      data: {
+        session_id: sessionId,
+        exercise_id: current.exerciseId,
+        exercise_index: current.exerciseIndex,
+        exercise_name: current.name,
+        set_number: current.set,
+        planned_reps: current.reps,
+        actual_load_kg: loadNum,
+        actual_reps: repsNum,
+      },
+    }).catch(() => { /* offline-tolerant */ });
+  }, [current, sessionId, liveLoad, liveReps, appendSetLogFn]);
+
   const handleAdvance = useCallback(() => {
     if (!current) return;
     if (current.kind === "run") {
       advanceTo(step + 1, "work");
     } else if (phase === "work") {
+      captureCurrentSet();
       advanceTo(step, "rest");
     } else {
       advanceTo(step + 1, "work");
     }
-  }, [current, phase, step, advanceTo]);
+  }, [current, phase, step, advanceTo, captureCurrentSet]);
+
+  // Reset/precarrega inputs ao trocar de set
+  useEffect(() => {
+    if (!current || current.kind !== "strength") return;
+    const key = setKey(current.exerciseIndex, current.set);
+    const existing = setLogs[key];
+    if (existing) {
+      setLiveLoad(existing.load);
+      setLiveReps(existing.reps);
+    } else {
+      const last = current.exerciseId ? lastWeights[current.exerciseId] : null;
+      setLiveLoad(last != null ? String(last) : "");
+      setLiveReps("");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step, current?.kind, current && current.kind === "strength" ? current.exerciseIndex : null, current && current.kind === "strength" ? current.set : null]);
+
+  // Volume ao vivo
+  const liveVolume = useMemo(() => {
+    return computeVolume(
+      Object.values(setLogs).map((s) => ({
+        actual_load_kg: s.load,
+        actual_reps: s.reps,
+        completed: s.completed,
+      })),
+    );
+  }, [setLogs]);
+
+  // Handlers de swap/reorder
+  const handleSelectSwap = useCallback(
+    (sug: SwapSuggestion) => {
+      if (!swapOpenFor) return;
+      setSwaps((prev) => ({
+        ...prev,
+        [swapOpenFor.index]: { id: sug.id, name: sug.name, category: sug.category },
+      }));
+      setSwapOpenFor(null);
+      setTimeout(() => persistNow(), 0);
+    },
+    [swapOpenFor, persistNow],
+  );
+
+  const handleApplyReorder = useCallback(
+    (newOrder: string[]) => {
+      setExerciseOrder(newOrder.map((s) => Number(s)));
+      setTimeout(() => persistNow(), 0);
+    },
+    [persistNow],
+  );
+
+  // Itens para a sheet de reordenar (apenas exercícios — não mostra corrida)
+  const reorderItems = useMemo<ReorderItem[]>(() => {
+    if (!today) return [];
+    const exercises = today.exercises;
+    const order = exerciseOrder && exerciseOrder.length === exercises.length
+      ? exerciseOrder
+      : exercises.map((_, i) => i);
+    const currentExerciseIndex = current && current.kind === "strength" ? current.exerciseIndex : -1;
+    return order.map((exIdx) => {
+      const e = exercises[exIdx];
+      const swap = swaps[exIdx];
+      const name = swap?.name ?? e?.exercise.name ?? "—";
+      const sets = Math.max(1, e?.sets ?? 1);
+      // marca como done se todas as séries foram concluídas OU se já passou na fila
+      let allDone = true;
+      for (let s = 1; s <= sets; s++) {
+        if (!setLogs[setKey(exIdx, s)]?.completed) { allDone = false; break; }
+      }
+      const done = allDone || (currentExerciseIndex >= 0 && order.indexOf(exIdx) < order.indexOf(currentExerciseIndex));
+      return {
+        id: String(exIdx),
+        name,
+        setsInfo: `${sets} séries · ${e?.reps ?? ""}`,
+        done,
+      };
+    });
+  }, [today, exerciseOrder, swaps, setLogs, current]);
 
   // auto-advance quando countdown chega a zero
   useEffect(() => {
@@ -615,8 +785,13 @@ function TreinoPage() {
           <div className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground truncate">
             {current.kind === "run" ? current.protocolName : `Bloco ${step + 1} / ${queue.length}`}
           </div>
-          <div className="text-[11px] font-medium text-muted-foreground">
-            Total {formatHMS(totalElapsedSeconds)}
+          <div className="text-[11px] font-medium text-muted-foreground flex items-center justify-center gap-2">
+            <span>Total {formatHMS(totalElapsedSeconds)}</span>
+            {liveVolume > 0 && (
+              <span className="inline-flex items-center gap-1 text-primary">
+                <BarChart3 className="h-3 w-3" /> {formatVolume(liveVolume)}
+              </span>
+            )}
           </div>
         </div>
         <div className="w-10 flex justify-end"><OfflineBadge /></div>
@@ -632,6 +807,12 @@ function TreinoPage() {
             mins={mins}
             secs={secs}
             countdown={phase === "rest"}
+            liveLoad={liveLoad}
+            liveReps={liveReps}
+            onLoadChange={setLiveLoad}
+            onRepsChange={setLiveReps}
+            onSwap={() => current.exerciseId && setSwapOpenFor({ index: current.exerciseIndex, id: current.exerciseId, name: current.name })}
+            onReorder={() => setReorderOpen(true)}
           />
         )}
 
