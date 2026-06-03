@@ -79,17 +79,6 @@ interface SetRow {
   notes: string;
 }
 
-// Mapeia intensidade 0-10 → emoji + rótulo
-function effortMeta(value: number): { emoji: string; label: string; tone: string } {
-  if (value <= 1) return { emoji: "😴", label: "Muito leve", tone: "text-muted-foreground" };
-  if (value <= 3) return { emoji: "😌", label: "Leve", tone: "text-muted-foreground" };
-  if (value <= 5) return { emoji: "🙂", label: "Moderado", tone: "text-foreground" };
-  if (value <= 6) return { emoji: "💪", label: "Firme", tone: "text-primary" };
-  if (value <= 7) return { emoji: "😤", label: "Difícil", tone: "text-primary" };
-  if (value <= 8) return { emoji: "🥵", label: "Muito difícil", tone: "text-primary" };
-  if (value <= 9) return { emoji: "🔥", label: "Quase máximo", tone: "text-primary" };
-  return { emoji: "💀", label: "Máximo absoluto", tone: "text-primary" };
-}
 
 // ============================================================
 // Página
