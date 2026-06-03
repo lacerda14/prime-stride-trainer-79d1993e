@@ -191,6 +191,10 @@ function ConcluidoPage() {
     if (sum?.duration_feedback === "too_short" || sum?.duration_feedback === "ok" || sum?.duration_feedback === "too_long") {
       setDurationFeedback(sum.duration_feedback);
     }
+    const sf = (sum as { session_feedback?: string } | null)?.session_feedback;
+    if (sf === "muito_leve" || sf === "leve" || sf === "ideal" || sf === "pesado" || sf === "muito_pesado") {
+      setSessionFeedback(sf);
+    }
   }, [planned, completedQ.data]);
 
   // Estimativa de calorias em tempo real
