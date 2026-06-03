@@ -446,6 +446,9 @@ function HojePage() {
           </div>
         </section>
 
+        {/* IA — Readiness */}
+        <ReadinessCard />
+
         {/* Corrida */}
         {today.running && (
           <section className="glass rounded-2xl p-5">
