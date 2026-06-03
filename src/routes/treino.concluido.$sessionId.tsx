@@ -265,6 +265,8 @@ function ConcluidoPage() {
       setSavedOnce(true);
       const prs = (res as { newPRs?: Array<{ label: string; value: number; estimated_1rm: number | null; improvement_pct: number | null }> })?.newPRs ?? [];
       setNewPRs(prs);
+      const r = (res as { readiness?: { score: number; decision: { message: string } } | null })?.readiness;
+      if (r) setReadiness(r);
       if (prs.length > 0) {
         toast.success(`🏆 ${prs.length} novo${prs.length > 1 ? "s" : ""} PR!`);
       } else {
