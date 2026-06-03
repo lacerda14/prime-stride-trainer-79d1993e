@@ -42,7 +42,7 @@ export interface CompletedSessionDTO {
     finished_at: string | null;
     duration_seconds: number | null;
     estimated_calories: number | null;
-    completed_summary: { perceived_effort?: number | null; general_notes?: string | null; saved_at?: string | null } | null;
+    completed_summary: { perceived_effort?: number | null; general_notes?: string | null; duration_feedback?: string | null; saved_at?: string | null } | null;
   };
   set_logs: SetLogDTO[];
   running_log: RunningLogDTO | null;
@@ -187,6 +187,7 @@ export const saveWorkoutLogs = createServerFn({ method: "POST" })
         running_log: runningInputSchema.nullable().optional(),
         general_notes: z.string().max(1000).nullable().optional(),
         perceived_effort: z.number().int().min(1).max(10).nullable().optional(),
+        duration_feedback: z.enum(["too_short", "ok", "too_long"]).nullable().optional(),
       })
       .parse(input),
   )
@@ -262,6 +263,7 @@ export const saveWorkoutLogs = createServerFn({ method: "POST" })
         completed_summary: {
           perceived_effort: data.perceived_effort ?? null,
           general_notes: data.general_notes ?? null,
+          duration_feedback: data.duration_feedback ?? null,
           saved_at: new Date().toISOString(),
         },
         updated_at: new Date().toISOString(),
