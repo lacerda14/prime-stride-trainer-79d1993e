@@ -401,8 +401,10 @@ function HojePage() {
 
   const today = data.today;
   const week  = data.week;
-  const strength = today.exercises.filter((e) => e.exercise.category !== "core");
-  const core     = today.exercises.filter((e) => e.exercise.category === "core");
+  // Aplica swaps locais antes de filtrar/agrupar
+  const displayExercises = today.exercises.map((e) => applySwap(e, swaps));
+  const strength = displayExercises.filter((e) => e.exercise.category !== "core");
+  const core     = displayExercises.filter((e) => e.exercise.category === "core");
   const groups   = groupExercises(strength);
 
   return (
