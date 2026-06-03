@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { generatePlan, loadExercisePool, persistProgram, type UserProfileInput } from "@/lib/engine/pm-engine.server";
 
 const localTodaySchema = z.object({
   local_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
@@ -140,6 +141,69 @@ async function getActiveProgramId(
     .maybeSingle();
   if (error) throw new Error(error.message);
   return data?.id ?? null;
+}
+
+async function hasValidFixedDistribution(supabase: any, programId: string): Promise<boolean> {
+  const { data, error } = await supabase
+    .from("training_days")
+    .select("day_number,session_type,objective,running_protocols(id),week:weeks!inner(week_number,program_id)")
+    .eq("week.program_id", programId)
+    .in("week.week_number", [1, 2])
+    .order("day_number");
+  if (error) throw new Error(error.message);
+
+  const rows = data ?? [];
+  for (const weekNumber of [1, 2]) {
+    const days = rows.filter((row: any) => row.week.week_number === weekNumber);
+    if (days.length !== 5) return false;
+    const fbText = weekNumber % 2 === 1 ? "Pull + Posterior" : "Push + Anterior";
+    const runText = weekNumber % 2 === 1 ? "PUSH" : "PULL";
+
+    for (const dayNumber of [1, 3, 5]) {
+      const day = days.find((row: any) => row.day_number === dayNumber);
+      if (!day || day.session_type !== "full_body" || !String(day.objective ?? "").includes(fbText) || (day.running_protocols ?? []).length > 0) {
+        return false;
+      }
+    }
+    for (const dayNumber of [2, 4]) {
+      const day = days.find((row: any) => row.day_number === dayNumber);
+      if (!day || day.session_type !== "run_upper" || !String(day.objective ?? "").includes(runText) || (day.running_protocols ?? []).length === 0) {
+        return false;
+      }
+    }
+  }
+  return true;
+}
+
+async function ensureValidActiveProgram(supabase: any, userId: string): Promise<string | null> {
+  const programId = await getActiveProgramId(supabase, userId);
+  if (!programId) return null;
+  if (await hasValidFixedDistribution(supabase, programId)) return programId;
+
+  const { data: profile, error: pErr } = await supabase
+    .from("profiles")
+    .select("age, sex, weight_kg, height_cm, experience_level, goal, available_days, equipment")
+    .eq("id", userId)
+    .single();
+  if (pErr) throw new Error(pErr.message);
+  if (!profile.age || !profile.sex || !profile.weight_kg || !profile.height_cm || !profile.experience_level || !profile.goal) {
+    throw new Error("Programa ativo inválido e onboarding incompleto para regenerar.");
+  }
+
+  const input: UserProfileInput = {
+    age: profile.age,
+    sex: profile.sex as UserProfileInput["sex"],
+    weight_kg: Number(profile.weight_kg),
+    height_cm: Number(profile.height_cm),
+    experience_level: profile.experience_level as UserProfileInput["experience_level"],
+    goal: profile.goal as UserProfileInput["goal"],
+    available_days: 5,
+    available_equipment: (profile.equipment ?? []) as string[],
+  };
+  const pool = await loadExercisePool(supabase);
+  if (pool.length === 0) throw new Error("Catálogo de exercícios vazio.");
+  const result = await persistProgram(supabase, userId, input, generatePlan(input, pool));
+  return result.program_id;
 }
 
 function daysBetweenLocalDates(start: string, end: string): number {
