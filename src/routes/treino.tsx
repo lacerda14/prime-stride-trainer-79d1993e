@@ -844,6 +844,20 @@ function TreinoPage() {
           <span className="truncate">{skipLabel}</span>
         </button>
       </footer>
+
+      <ExerciseSwapSheet
+        open={!!swapOpenFor}
+        exerciseId={swapOpenFor?.id ?? null}
+        exerciseName={swapOpenFor?.name ?? ""}
+        onClose={() => setSwapOpenFor(null)}
+        onSelect={handleSelectSwap}
+      />
+      <ExerciseReorderSheet
+        open={reorderOpen}
+        items={reorderItems}
+        onClose={() => setReorderOpen(false)}
+        onApply={handleApplyReorder}
+      />
     </div>
   );
 }
