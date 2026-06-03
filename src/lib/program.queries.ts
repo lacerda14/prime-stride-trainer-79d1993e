@@ -200,9 +200,11 @@ async function ensureValidActiveProgram(supabase: any, userId: string): Promise<
     available_equipment: (profile.equipment ?? []) as string[],
   };
   const { generatePlan, loadExercisePool, persistProgram } = await import("@/lib/engine/pm-engine.server");
+  type UserProfileInput = Parameters<typeof generatePlan>[0];
   const pool = await loadExercisePool(supabase);
   if (pool.length === 0) throw new Error("Catálogo de exercícios vazio.");
-  const result = await persistProgram(supabase, userId, input, generatePlan(input, pool));
+  const typedInput = input as UserProfileInput;
+  const result = await persistProgram(supabase, userId, typedInput, generatePlan(typedInput, pool));
   return result.program_id;
 }
 
