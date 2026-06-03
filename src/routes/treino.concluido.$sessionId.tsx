@@ -448,50 +448,66 @@ function ConcluidoPage() {
           />
         </div>
 
-        {/* ── 3. Avaliação da intensidade — slider 0-10 com emoji dinâmico ── */}
+        {/* ── 3. Como foi o treino? — 5 botões ── */}
         <div className="mt-6 animate-slide-up" style={{ animationDelay: "80ms" }}>
           <div className="mb-3 flex items-end justify-between">
-            <h2 className="text-sm font-semibold text-foreground">Intensidade do treino</h2>
+            <h2 className="text-sm font-semibold text-foreground">Como foi o treino?</h2>
             <span className="text-[10px] uppercase tracking-widest text-muted-foreground">
-              0 a 10
+              IA usa para ajustar
             </span>
           </div>
-          {(() => {
-            const num = generalEffort === "" ? 5 : Number(generalEffort);
-            const meta = effortMeta(num);
-            const active = generalEffort !== "";
-            return (
-              <div className="rounded-2xl border border-border/50 bg-surface/40 px-5 py-5">
-                <div className="flex items-center gap-4">
-                  <span className="text-4xl leading-none transition-transform duration-150">
-                    {active ? meta.emoji : "🎚️"}
+          <div className="grid grid-cols-5 gap-1.5">
+            {([
+              { value: "muito_leve",   emoji: "😴", label: "Muito leve",   effort: 2 },
+              { value: "leve",         emoji: "😌", label: "Leve",         effort: 4 },
+              { value: "ideal",        emoji: "🙂", label: "Ideal",        effort: 6 },
+              { value: "pesado",       emoji: "😤", label: "Pesado",       effort: 8 },
+              { value: "muito_pesado", emoji: "💀", label: "Muito pesado", effort: 10 },
+            ] as const).map((opt) => {
+              const selected = sessionFeedback === opt.value;
+              return (
+                <button
+                  key={opt.value}
+                  onClick={() => {
+                    const next = selected ? "" : opt.value;
+                    setSessionFeedback(next);
+                    if (next) setGeneralEffort(String(opt.effort));
+                  }}
+                  className={[
+                    "flex min-h-[88px] flex-col items-center justify-center gap-1.5 rounded-2xl border px-1 py-3 transition-all duration-150 active:scale-95",
+                    selected
+                      ? "border-primary bg-primary/12 shadow-glow"
+                      : "border-border/50 bg-surface/40 hover:border-primary/30 hover:bg-surface/70",
+                  ].join(" ")}
+                >
+                  <span className="text-2xl leading-none">{opt.emoji}</span>
+                  <span
+                    className={[
+                      "text-center text-[9px] font-medium leading-tight",
+                      selected ? "text-primary" : "text-muted-foreground",
+                    ].join(" ")}
+                  >
+                    {opt.label}
                   </span>
-                  <div className="min-w-0 flex-1">
-                    <div className={`text-sm font-semibold ${active ? meta.tone : "text-muted-foreground"}`}>
-                      {active ? meta.label : "Arraste para avaliar"}
-                    </div>
-                    <div className="num mt-0.5 text-2xl font-semibold tabular-nums text-foreground">
-                      {active ? num : "—"}
-                      <span className="ml-1 text-xs font-normal text-muted-foreground">/ 10</span>
-                    </div>
-                  </div>
-                </div>
-                <Slider
-                  className="mt-5"
-                  min={0}
-                  max={10}
-                  step={1}
-                  value={[num]}
-                  onValueChange={(v) => setGeneralEffort(String(v[0] ?? 0))}
-                />
-                <div className="mt-2 flex justify-between text-[10px] text-muted-foreground">
-                  <span>😴 Leve</span>
-                  <span>💪 Firme</span>
-                  <span>💀 Máximo</span>
-                </div>
+                </button>
+              );
+            })}
+          </div>
+          {readiness && (
+            <div className="mt-4 rounded-2xl border border-primary/30 bg-primary/5 p-4">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] uppercase tracking-widest text-muted-foreground">
+                  Training Readiness
+                </span>
+                <span className="num text-2xl font-semibold tabular-nums text-primary">
+                  {readiness.score}
+                </span>
               </div>
-            );
-          })()}
+              <p className="mt-2 text-xs leading-relaxed text-foreground/80">
+                {readiness.decision.message}
+              </p>
+            </div>
+          )}
         </div>
 
 
