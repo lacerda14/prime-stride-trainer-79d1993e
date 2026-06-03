@@ -15,6 +15,7 @@ import {
   listCandidates,
   listPendingQueue,
   searchVideosForExercise,
+  bulkSearchMissingVideos,
   approveCandidate,
   rejectCandidate,
   setPrimaryMedia,
