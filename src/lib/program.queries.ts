@@ -145,7 +145,7 @@ async function getActiveProgramId(
 async function hasValidFixedDistribution(supabase: any, programId: string): Promise<boolean> {
   const { data, error } = await supabase
     .from("training_days")
-    .select("day_number,session_type,objective,running_protocols(id),week:weeks!inner(week_number,program_id)")
+    .select("day_number,session_type,objective,running_protocols(id),session_exercises(exercise:exercise_pool(category)),week:weeks!inner(week_number,program_id)")
     .eq("week.program_id", programId)
     .in("week.week_number", [1, 2])
     .order("day_number");
@@ -157,18 +157,26 @@ async function hasValidFixedDistribution(supabase: any, programId: string): Prom
     if (days.length !== 5) return false;
     const fbText = weekNumber % 2 === 1 ? "Pull + Posterior" : "Push + Anterior";
     const runText = weekNumber % 2 === 1 ? "PUSH" : "PULL";
+    const fbCategories = weekNumber % 2 === 1
+      ? new Set(["biceps", "lats", "back", "trap", "rotator_cuff", "posterior_chain", "calf", "core"])
+      : new Set(["chest", "shoulder", "triceps", "rotator_cuff", "anterior_chain", "calf", "core"]);
+    const runCategories = weekNumber % 2 === 1
+      ? new Set(["chest", "shoulder", "triceps", "core"])
+      : new Set(["lats", "back", "biceps", "trap", "core"]);
 
     for (const dayNumber of [1, 3, 5]) {
       const day = days.find((row: any) => row.day_number === dayNumber);
       if (!day || day.session_type !== "full_body" || !String(day.objective ?? "").includes(fbText) || (day.running_protocols ?? []).length > 0) {
         return false;
       }
+      if ((day.session_exercises ?? []).some((e: any) => !fbCategories.has(e.exercise?.category))) return false;
     }
     for (const dayNumber of [2, 4]) {
       const day = days.find((row: any) => row.day_number === dayNumber);
       if (!day || day.session_type !== "run_upper" || !String(day.objective ?? "").includes(runText) || (day.running_protocols ?? []).length === 0) {
         return false;
       }
+      if ((day.session_exercises ?? []).some((e: any) => !runCategories.has(e.exercise?.category))) return false;
     }
   }
   return true;
