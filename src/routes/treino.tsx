@@ -154,7 +154,28 @@ function TreinoPage() {
   }, [completedTodayQ.data?.id, allowRepeat, navigate]);
 
 
-  // Constrói a fila de itens
+  // ----------------------------------------------------------
+  // Trocas e reordenação de exercícios (mantidas em memória + session_data)
+  // ----------------------------------------------------------
+  const [swaps, setSwaps] = useState<Record<number, { id: string; name: string; category: string }>>({});
+  const [exerciseOrder, setExerciseOrder] = useState<number[] | null>(null);
+  const [swapOpenFor, setSwapOpenFor] = useState<{ index: number; id: string; name: string } | null>(null);
+  const [reorderOpen, setReorderOpen] = useState(false);
+
+  // Últimos pesos por exercício (sugestão de carga)
+  const fetchLastWeights = useServerFn(getLastWeightsForExercises);
+  const lastWeightsQ = useQuery({
+    queryKey: ["last-weights", user?.id, today?.id],
+    queryFn: () => {
+      const ids = (today?.exercises ?? []).map((e) => e.exercise.id).filter(Boolean);
+      return fetchLastWeights({ data: { exercise_ids: ids } });
+    },
+    enabled: !!user && !!today && (today?.exercises?.length ?? 0) > 0,
+    staleTime: 60_000,
+  });
+  const lastWeights = lastWeightsQ.data ?? {};
+
+  // Constrói a fila de itens (respeitando ordem customizada e swaps)
   const queue = useMemo<QueueItem[]>(() => {
     if (!today) return [];
     const items: QueueItem[] = [];
@@ -164,15 +185,25 @@ function TreinoPage() {
       const paceText = paceRange(today.running);
       for (const phase of phases) items.push({ kind: "run", phase, protocolName, paceText });
     }
-    let exIdx = 0;
-    for (const e of today.exercises) {
-      const block: "Força" | "Core" = e.exercise.category === "core" ? "Core" : "Força";
+    const exercises = today.exercises;
+    const order = exerciseOrder && exerciseOrder.length === exercises.length
+      ? exerciseOrder
+      : exercises.map((_, i) => i);
+    for (const exIdx of order) {
+      const e = exercises[exIdx];
+      if (!e) continue;
+      const swap = swaps[exIdx];
+      const displayName = swap?.name ?? e.exercise.name;
+      const displayId = swap?.id ?? e.exercise.id ?? null;
+      const cat = swap?.category ?? e.exercise.category;
+      const block: "Força" | "Core" = cat === "core" ? "Core" : "Força";
       const sets = Math.max(1, e.sets);
       const rest = e.rest_seconds ?? (block === "Core" ? 30 : 60);
       for (let s = 1; s <= sets; s++) {
         items.push({
           kind: "strength",
-          name: e.exercise.name,
+          name: displayName,
+          exerciseId: displayId,
           set: s,
           totalSets: sets,
           reps: e.reps,
@@ -181,10 +212,9 @@ function TreinoPage() {
           exerciseIndex: exIdx,
         });
       }
-      exIdx++;
     }
     return items;
-  }, [today]);
+  }, [today, exerciseOrder, swaps]);
 
   // ----------------------------------------------------------
   // Estado da sessão
