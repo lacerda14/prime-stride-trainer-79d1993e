@@ -289,6 +289,16 @@ function TreinoPage() {
     const data = (active.session_data ?? {}) as Record<string, unknown>;
     const ph = (data.phase as "work" | "rest" | undefined) ?? "work";
     setPhase(ph);
+    // restaura swaps / ordem / set logs
+    if (data.swaps && typeof data.swaps === "object") {
+      setSwaps(data.swaps as Record<number, { id: string; name: string; category: string }>);
+    }
+    if (Array.isArray(data.exercise_order)) {
+      setExerciseOrder(data.exercise_order as number[]);
+    }
+    if (data.set_logs && typeof data.set_logs === "object") {
+      setSetLogs(data.set_logs as Record<string, SetLogState>);
+    }
     // tenta recuperar timestamp do localStorage para precisão sub-segundo
     try {
       const raw = localStorage.getItem(lsKey(active.id));
