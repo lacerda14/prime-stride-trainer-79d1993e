@@ -13,21 +13,38 @@ public class GoogleAuthPlugin: CAPPlugin, CAPBridgedPlugin {
     ]
 
     @objc func signIn(_ call: CAPPluginCall) {
+        print("[GoogleAuthPlugin] signIn chamado")
         DispatchQueue.main.async {
             guard let vc = self.bridge?.viewController else {
+                print("[GoogleAuthPlugin] ERRO: sem viewController")
                 call.reject("No view controller")
                 return
             }
+            // Garante configuração mesmo se AppDelegate não rodou
+            if GIDSignIn.sharedInstance.configuration == nil {
+                if let clientID = Bundle.main.object(forInfoDictionaryKey: "GIDClientID") as? String {
+                    GIDSignIn.sharedInstance.configuration = GIDConfiguration(clientID: clientID)
+                    print("[GoogleAuthPlugin] Configuração criada: \(clientID.prefix(20))...")
+                } else {
+                    print("[GoogleAuthPlugin] ERRO: GIDClientID não encontrado no Info.plist")
+                    call.reject("GIDClientID ausente no Info.plist")
+                    return
+                }
+            }
+            print("[GoogleAuthPlugin] Abrindo GIDSignIn...")
             GIDSignIn.sharedInstance.signIn(withPresenting: vc) { result, error in
                 if let error = error {
+                    print("[GoogleAuthPlugin] ERRO GIDSignIn: \(error.localizedDescription)")
                     call.reject(error.localizedDescription)
                     return
                 }
                 guard let user = result?.user,
                       let idToken = user.idToken?.tokenString else {
+                    print("[GoogleAuthPlugin] ERRO: sem id_token no resultado")
                     call.reject("No id_token received")
                     return
                 }
+                print("[GoogleAuthPlugin] SUCESSO — idToken: \(idToken.prefix(30))...")
                 call.resolve([
                     "authentication": [
                         "idToken": idToken,
