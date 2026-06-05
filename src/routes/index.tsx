@@ -24,7 +24,7 @@ export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
       { title: "PM Hybrid Performance System" },
-      { name: "description", content: "Sistema Operacional de Evolução Física." },
+      { name: "description", content: "O seu treino personalizado te aguarda." },
     ],
   }),
   component: Dashboard,
