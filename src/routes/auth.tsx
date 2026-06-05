@@ -53,7 +53,7 @@ function AuthPage() {
           </span>
           <h1 className="mt-1 text-2xl font-semibold tracking-tight">Performance System</h1>
           <p className="mt-2 text-sm text-muted-foreground">
-            Acesse seu programa de 48 semanas
+            Acesse seu programa personalizado
           </p>
         </div>
 
