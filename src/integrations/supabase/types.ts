@@ -1075,6 +1075,48 @@ export type Database = {
           },
         ]
       }
+      subscriptions: {
+        Row: {
+          billing_status: string
+          created_at: string
+          current_period_end: string | null
+          id: string
+          mp_customer_id: string | null
+          mp_preapproval_id: string | null
+          plan: string
+          trial_ends_at: string | null
+          trial_used: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          billing_status?: string
+          created_at?: string
+          current_period_end?: string | null
+          id?: string
+          mp_customer_id?: string | null
+          mp_preapproval_id?: string | null
+          plan?: string
+          trial_ends_at?: string | null
+          trial_used?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          billing_status?: string
+          created_at?: string
+          current_period_end?: string | null
+          id?: string
+          mp_customer_id?: string | null
+          mp_preapproval_id?: string | null
+          plan?: string
+          trial_ends_at?: string | null
+          trial_used?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       training_days: {
         Row: {
           completed_at: string | null
