@@ -32,6 +32,7 @@ import {
   Search,
 } from "lucide-react";
 import { getMyRole } from "@/lib/exercise-media.functions";
+import { listKnowledgeDocs, deleteKnowledgeDoc, type KnowledgeDoc } from "@/lib/knowledge.functions";
 import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/admin/knowledge")({
@@ -55,40 +56,6 @@ const SOURCE_TYPES = [
 
 type SourceType = (typeof SOURCE_TYPES)[number]["value"];
 
-interface KnowledgeDoc {
-  id: string;
-  title: string;
-  source_type: string;
-  author: string | null;
-  language: string;
-  chunk_count: number;
-  is_active: boolean;
-  created_at: string;
-  tags: string[];
-}
-
-async function listDocs(search: string): Promise<KnowledgeDoc[]> {
-  "use server";
-  const { createServerSupabaseClient } = await import("@/lib/supabase-server");
-  const sb = createServerSupabaseClient();
-  let q = sb
-    .from("knowledge_documents")
-    .select("id,title,source_type,author,language,chunk_count,is_active,created_at,tags")
-    .order("created_at", { ascending: false })
-    .limit(100);
-  if (search) q = q.ilike("title", `%${search}%`);
-  const { data, error } = await q;
-  if (error) throw error;
-  return (data ?? []) as KnowledgeDoc[];
-}
-
-async function deleteDoc(id: string): Promise<void> {
-  "use server";
-  const { createServerSupabaseClient } = await import("@/lib/supabase-server");
-  const sb = createServerSupabaseClient();
-  const { error } = await sb.from("knowledge_documents").delete().eq("id", id);
-  if (error) throw error;
-}
 
 function KnowledgePage() {
   const fetchRole = useServerFn(getMyRole);
