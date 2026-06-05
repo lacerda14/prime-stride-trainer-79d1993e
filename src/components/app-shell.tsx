@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Home, Dumbbell, TrendingUp, Users, User, LogOut, History, Settings, BarChart3, LifeBuoy } from "lucide-react";
+import { Home, Dumbbell, TrendingUp, Users, User, LogOut, History, Settings, BarChart3, LifeBuoy, CreditCard } from "lucide-react";
 import pmLogo from "@/assets/pm-logo.png.asset.json";
 import { RequireAuth } from "@/components/require-auth";
 import { useAuth } from "@/hooks/use-auth";
@@ -24,10 +24,11 @@ const bottomTabs = [
 
 // Links extras visíveis na seção "mais" do perfil
 const moreLinks = [
-  { title: "Histórico",     url: "/historico",   icon: History },
-  { title: "Progressão",    url: "/progressao",  icon: BarChart3 },
+  { title: "Histórico",     url: "/historico",    icon: History },
+  { title: "Progressão",    url: "/progressao",   icon: BarChart3 },
+  { title: "Assinatura",    url: "/assinaturas",  icon: CreditCard },
   { title: "Configurações", url: "/configuracoes", icon: Settings },
-  { title: "Suporte",       url: "/suporte",      icon: LifeBuoy },
+  { title: "Suporte",       url: "/suporte",       icon: LifeBuoy },
 ];
 
 export function AppShell({ children, title, eyebrow, action }: AppShellProps) {

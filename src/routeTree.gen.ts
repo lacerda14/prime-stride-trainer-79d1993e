@@ -25,6 +25,7 @@ import { Route as CorridaRouteImport } from './routes/corrida'
 import { Route as ConfiguracoesRouteImport } from './routes/configuracoes'
 import { Route as CoachesRouteImport } from './routes/coaches'
 import { Route as AuthRouteImport } from './routes/auth'
+import { Route as AssinaturasRouteImport } from './routes/assinaturas'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminUsersRouteImport } from './routes/admin.users'
 import { Route as AdminExerciseMediaRouteImport } from './routes/admin.exercise-media'
@@ -110,6 +111,11 @@ const AuthRoute = AuthRouteImport.update({
   path: '/auth',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AssinaturasRoute = AssinaturasRouteImport.update({
+  id: '/assinaturas',
+  path: '/assinaturas',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -134,6 +140,7 @@ const TreinoConcluidoSessionIdRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/assinaturas': typeof AssinaturasRoute
   '/auth': typeof AuthRoute
   '/coaches': typeof CoachesRoute
   '/configuracoes': typeof ConfiguracoesRoute
@@ -156,6 +163,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/assinaturas': typeof AssinaturasRoute
   '/auth': typeof AuthRoute
   '/coaches': typeof CoachesRoute
   '/configuracoes': typeof ConfiguracoesRoute
@@ -179,6 +187,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/assinaturas': typeof AssinaturasRoute
   '/auth': typeof AuthRoute
   '/coaches': typeof CoachesRoute
   '/configuracoes': typeof ConfiguracoesRoute
@@ -203,6 +212,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/assinaturas'
     | '/auth'
     | '/coaches'
     | '/configuracoes'
@@ -225,6 +235,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/assinaturas'
     | '/auth'
     | '/coaches'
     | '/configuracoes'
@@ -247,6 +258,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/assinaturas'
     | '/auth'
     | '/coaches'
     | '/configuracoes'
@@ -270,6 +282,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AssinaturasRoute: typeof AssinaturasRoute
   AuthRoute: typeof AuthRoute
   CoachesRoute: typeof CoachesRoute
   ConfiguracoesRoute: typeof ConfiguracoesRoute
@@ -404,6 +417,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/assinaturas': {
+      id: '/assinaturas'
+      path: '/assinaturas'
+      fullPath: '/assinaturas'
+      preLoaderRoute: typeof AssinaturasRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -448,6 +468,7 @@ const TreinoRouteWithChildren =
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AssinaturasRoute: AssinaturasRoute,
   AuthRoute: AuthRoute,
   CoachesRoute: CoachesRoute,
   ConfiguracoesRoute: ConfiguracoesRoute,
