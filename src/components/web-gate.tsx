@@ -66,8 +66,7 @@ function DownloadAppScreen() {
         <div className="space-y-2">
           <h1 className="text-2xl font-semibold tracking-tight">PM Hybrid</h1>
           <p className="text-sm text-muted-foreground leading-relaxed">
-            O PM Hybrid é exclusivo no app. Abra no seu iPhone — se ainda não
-            instalou, baixe pelo TestFlight.
+            O seu treino personalizado te aguarda.
           </p>
         </div>
 
