@@ -47,6 +47,8 @@ export const recordWorkoutComplete = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }): Promise<AwardResult> => {
     const { supabase, userId } = context;
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
 
     // 1) cria sessão concluída
     const { data: session, error: sErr } = await supabase
@@ -64,7 +66,7 @@ export const recordWorkoutComplete = createServerFn({ method: "POST" })
 
     // 2) registra XP
     const xpGain = XP_REWARDS.workout;
-    await supabase.from("xp_events").insert({
+    await supabaseAdmin.from("xp_events").insert({
       user_id: userId,
       event_type: "workout_complete",
       xp_amount: xpGain,
@@ -138,7 +140,7 @@ export const recordWorkoutComplete = createServerFn({ method: "POST" })
         .maybeSingle();
       if (already) continue;
 
-      await supabase
+      await supabaseAdmin
         .from("user_achievements")
         .insert({ user_id: userId, achievement_code: c.code });
 
@@ -151,7 +153,7 @@ export const recordWorkoutComplete = createServerFn({ method: "POST" })
         newAchievements.push({ code: ach.code, title: ach.title, xp_reward: ach.xp_reward });
         // bonus XP
         if (ach.xp_reward > 0) {
-          await supabase.from("xp_events").insert({
+          await supabaseAdmin.from("xp_events").insert({
             user_id: userId,
             event_type: "achievement",
             xp_amount: ach.xp_reward,
