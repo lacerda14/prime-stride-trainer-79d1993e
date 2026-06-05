@@ -2,6 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { z } from "zod";
 import { Capacitor } from "@capacitor/core";
+import { GoogleAuth } from "@codetrix-studio/capacitor-google-auth";
 import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable/index";
 import { useAuth } from "@/hooks/use-auth";
@@ -212,17 +213,22 @@ function GoogleButton() {
     setBusy(true);
 
     if (Capacitor.isNativePlatform()) {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: "google",
-        options: {
-          redirectTo: window.location.origin,
-          queryParams: { prompt: "select_account" },
-          skipBrowserRedirect: false,
-        },
-      });
-      if (error) {
+      try {
+        const googleUser = await GoogleAuth.signIn();
+        const idToken = googleUser.authentication.idToken;
+        if (!idToken) throw new Error("No id_token");
+        const { error } = await supabase.auth.signInWithIdToken({
+          provider: "google",
+          token: idToken,
+        });
+        if (error) {
+          setBusy(false);
+          toast.error("Falha ao entrar com Google");
+        }
+      } catch (err: unknown) {
         setBusy(false);
-        toast.error("Falha ao entrar com Google");
+        const msg = err instanceof Error ? err.message : "";
+        if (!/cancel/i.test(msg)) toast.error("Falha ao entrar com Google");
       }
       return;
     }
