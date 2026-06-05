@@ -34,7 +34,8 @@ export const listKnowledgeDocs = createServerFn({ method: "GET" })
     const { supabase, userId } = context;
     await ensureAdmin(supabase, userId);
 
-    let q = supabase
+    const sb = supabase as any;
+    let q = sb
       .from("knowledge_documents")
       .select("id,title,source_type,author,language,chunk_count,is_active,created_at,tags")
       .order("created_at", { ascending: false })
