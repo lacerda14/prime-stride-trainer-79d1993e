@@ -54,7 +54,7 @@ export const deleteKnowledgeDoc = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
     await ensureAdmin(supabase, userId);
-    const { error } = await supabase.from("knowledge_documents").delete().eq("id", data.id);
+    const { error } = await (supabase as any).from("knowledge_documents").delete().eq("id", data.id);
     if (error) throw new Error(error.message);
     return { ok: true };
   });
