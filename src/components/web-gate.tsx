@@ -16,7 +16,13 @@ function isNativeApp(): boolean {
 }
 
 const APP_SCHEME = "pmhybrid://";
-const TESTFLIGHT_URL = "https://testflight.apple.com/";
+
+function allowWebAndReload() {
+  try {
+    sessionStorage.setItem("pm_allow_web", "1");
+  } catch {/* noop */}
+  window.location.reload();
+}
 
 export function WebGate({ children }: { children: ReactNode }) {
   const [ready, setReady] = useState(false);
@@ -75,12 +81,12 @@ function DownloadAppScreen() {
           >
             Abrir no app
           </button>
-          <a
-            href={TESTFLIGHT_URL}
+          <button
+            onClick={allowWebAndReload}
             className="w-full inline-flex items-center justify-center rounded-2xl border border-white/10 bg-white/[0.03] text-foreground font-medium py-3.5 text-sm hover:bg-white/[0.06] transition-colors"
           >
-            Baixar no TestFlight
-          </a>
+            Continuar na web
+          </button>
         </div>
 
         <p className="text-[11px] text-muted-foreground/70 leading-relaxed">
