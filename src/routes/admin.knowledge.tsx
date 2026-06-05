@@ -94,15 +94,15 @@ function KnowledgeAdmin() {
   const [showUpload, setShowUpload] = useState(false);
   const qc = useQueryClient();
 
-  const fetchDocs = useServerFn(listDocs);
-  const { data: docs = [], isLoading } = useQuery({
+  const fetchDocs = useServerFn(listKnowledgeDocs);
+  const { data: docs = [], isLoading } = useQuery<KnowledgeDoc[]>({
     queryKey: ["knowledge-docs", deferredSearch],
-    queryFn: () => fetchDocs(deferredSearch),
+    queryFn: () => fetchDocs({ data: { search: deferredSearch } }),
   });
 
-  const deleteDocFn = useServerFn(deleteDoc);
+  const deleteDocFn = useServerFn(deleteKnowledgeDoc);
   const deleteMut = useMutation({
-    mutationFn: (id: string) => deleteDocFn(id),
+    mutationFn: (id: string) => deleteDocFn({ data: { id } }),
     onSuccess: () => {
       toast.success("Documento removido");
       qc.invalidateQueries({ queryKey: ["knowledge-docs"] });
