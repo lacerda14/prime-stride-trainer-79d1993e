@@ -30,6 +30,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminUsersRouteImport } from './routes/admin.users'
 import { Route as AdminExerciseMediaRouteImport } from './routes/admin.exercise-media'
 import { Route as TreinoConcluidoSessionIdRouteImport } from './routes/treino.concluido.$sessionId'
+import { Route as ApiPublicMpWebhookRouteImport } from './routes/api/public/mp-webhook'
 
 const TreinosRoute = TreinosRouteImport.update({
   id: '/treinos',
@@ -137,6 +138,11 @@ const TreinoConcluidoSessionIdRoute =
     path: '/concluido/$sessionId',
     getParentRoute: () => TreinoRoute,
   } as any)
+const ApiPublicMpWebhookRoute = ApiPublicMpWebhookRouteImport.update({
+  id: '/api/public/mp-webhook',
+  path: '/api/public/mp-webhook',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -159,6 +165,7 @@ export interface FileRoutesByFullPath {
   '/treinos': typeof TreinosRoute
   '/admin/exercise-media': typeof AdminExerciseMediaRoute
   '/admin/users': typeof AdminUsersRoute
+  '/api/public/mp-webhook': typeof ApiPublicMpWebhookRoute
   '/treino/concluido/$sessionId': typeof TreinoConcluidoSessionIdRoute
 }
 export interface FileRoutesByTo {
@@ -182,6 +189,7 @@ export interface FileRoutesByTo {
   '/treinos': typeof TreinosRoute
   '/admin/exercise-media': typeof AdminExerciseMediaRoute
   '/admin/users': typeof AdminUsersRoute
+  '/api/public/mp-webhook': typeof ApiPublicMpWebhookRoute
   '/treino/concluido/$sessionId': typeof TreinoConcluidoSessionIdRoute
 }
 export interface FileRoutesById {
@@ -206,6 +214,7 @@ export interface FileRoutesById {
   '/treinos': typeof TreinosRoute
   '/admin/exercise-media': typeof AdminExerciseMediaRoute
   '/admin/users': typeof AdminUsersRoute
+  '/api/public/mp-webhook': typeof ApiPublicMpWebhookRoute
   '/treino/concluido/$sessionId': typeof TreinoConcluidoSessionIdRoute
 }
 export interface FileRouteTypes {
@@ -231,6 +240,7 @@ export interface FileRouteTypes {
     | '/treinos'
     | '/admin/exercise-media'
     | '/admin/users'
+    | '/api/public/mp-webhook'
     | '/treino/concluido/$sessionId'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -254,6 +264,7 @@ export interface FileRouteTypes {
     | '/treinos'
     | '/admin/exercise-media'
     | '/admin/users'
+    | '/api/public/mp-webhook'
     | '/treino/concluido/$sessionId'
   id:
     | '__root__'
@@ -277,6 +288,7 @@ export interface FileRouteTypes {
     | '/treinos'
     | '/admin/exercise-media'
     | '/admin/users'
+    | '/api/public/mp-webhook'
     | '/treino/concluido/$sessionId'
   fileRoutesById: FileRoutesById
 }
@@ -301,6 +313,7 @@ export interface RootRouteChildren {
   TreinosRoute: typeof TreinosRoute
   AdminExerciseMediaRoute: typeof AdminExerciseMediaRoute
   AdminUsersRoute: typeof AdminUsersRoute
+  ApiPublicMpWebhookRoute: typeof ApiPublicMpWebhookRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -452,6 +465,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TreinoConcluidoSessionIdRouteImport
       parentRoute: typeof TreinoRoute
     }
+    '/api/public/mp-webhook': {
+      id: '/api/public/mp-webhook'
+      path: '/api/public/mp-webhook'
+      fullPath: '/api/public/mp-webhook'
+      preLoaderRoute: typeof ApiPublicMpWebhookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -487,7 +507,18 @@ const rootRouteChildren: RootRouteChildren = {
   TreinosRoute: TreinosRoute,
   AdminExerciseMediaRoute: AdminExerciseMediaRoute,
   AdminUsersRoute: AdminUsersRoute,
+  ApiPublicMpWebhookRoute: ApiPublicMpWebhookRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
