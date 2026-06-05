@@ -20,6 +20,14 @@ dist-ssr
 .wrangler/
 .dev.vars
 
+# iOS — build artifacts (Info.plist fix is local-only, applied via Xcode)
+ios/App/App.xcodeproj/xcuserdata/
+ios/App/App.xcodeproj/project.xcworkspace/xcuserdata/
+ios/App/Pods/
+ios/App/build/
+ios/**/*.xcarchive
+ios/**/*.ipa
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
