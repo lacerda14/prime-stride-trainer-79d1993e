@@ -229,7 +229,8 @@ export async function runPRDetectionForSession(
     });
 
     const xp = Math.min(300, 100 + Math.max(0, Math.round(improvement ?? 0)) * 5);
-    await supabase.from("xp_events").insert({
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    await supabaseAdmin.from("xp_events").insert({
       user_id: userId,
       event_type: "pr_strength",
       xp_amount: xp,
