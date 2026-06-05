@@ -28,6 +28,7 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AssinaturasRouteImport } from './routes/assinaturas'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminUsersRouteImport } from './routes/admin.users'
+import { Route as AdminKnowledgeRouteImport } from './routes/admin.knowledge'
 import { Route as AdminExerciseMediaRouteImport } from './routes/admin.exercise-media'
 import { Route as TreinoConcluidoSessionIdRouteImport } from './routes/treino.concluido.$sessionId'
 import { Route as ApiPublicMpWebhookRouteImport } from './routes/api/public/mp-webhook'
@@ -127,6 +128,11 @@ const AdminUsersRoute = AdminUsersRouteImport.update({
   path: '/admin/users',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminKnowledgeRoute = AdminKnowledgeRouteImport.update({
+  id: '/admin/knowledge',
+  path: '/admin/knowledge',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminExerciseMediaRoute = AdminExerciseMediaRouteImport.update({
   id: '/admin/exercise-media',
   path: '/admin/exercise-media',
@@ -164,6 +170,7 @@ export interface FileRoutesByFullPath {
   '/treino': typeof TreinoRouteWithChildren
   '/treinos': typeof TreinosRoute
   '/admin/exercise-media': typeof AdminExerciseMediaRoute
+  '/admin/knowledge': typeof AdminKnowledgeRoute
   '/admin/users': typeof AdminUsersRoute
   '/api/public/mp-webhook': typeof ApiPublicMpWebhookRoute
   '/treino/concluido/$sessionId': typeof TreinoConcluidoSessionIdRoute
@@ -188,6 +195,7 @@ export interface FileRoutesByTo {
   '/treino': typeof TreinoRouteWithChildren
   '/treinos': typeof TreinosRoute
   '/admin/exercise-media': typeof AdminExerciseMediaRoute
+  '/admin/knowledge': typeof AdminKnowledgeRoute
   '/admin/users': typeof AdminUsersRoute
   '/api/public/mp-webhook': typeof ApiPublicMpWebhookRoute
   '/treino/concluido/$sessionId': typeof TreinoConcluidoSessionIdRoute
@@ -213,6 +221,7 @@ export interface FileRoutesById {
   '/treino': typeof TreinoRouteWithChildren
   '/treinos': typeof TreinosRoute
   '/admin/exercise-media': typeof AdminExerciseMediaRoute
+  '/admin/knowledge': typeof AdminKnowledgeRoute
   '/admin/users': typeof AdminUsersRoute
   '/api/public/mp-webhook': typeof ApiPublicMpWebhookRoute
   '/treino/concluido/$sessionId': typeof TreinoConcluidoSessionIdRoute
@@ -239,6 +248,7 @@ export interface FileRouteTypes {
     | '/treino'
     | '/treinos'
     | '/admin/exercise-media'
+    | '/admin/knowledge'
     | '/admin/users'
     | '/api/public/mp-webhook'
     | '/treino/concluido/$sessionId'
@@ -263,6 +273,7 @@ export interface FileRouteTypes {
     | '/treino'
     | '/treinos'
     | '/admin/exercise-media'
+    | '/admin/knowledge'
     | '/admin/users'
     | '/api/public/mp-webhook'
     | '/treino/concluido/$sessionId'
@@ -287,6 +298,7 @@ export interface FileRouteTypes {
     | '/treino'
     | '/treinos'
     | '/admin/exercise-media'
+    | '/admin/knowledge'
     | '/admin/users'
     | '/api/public/mp-webhook'
     | '/treino/concluido/$sessionId'
@@ -312,6 +324,7 @@ export interface RootRouteChildren {
   TreinoRoute: typeof TreinoRouteWithChildren
   TreinosRoute: typeof TreinosRoute
   AdminExerciseMediaRoute: typeof AdminExerciseMediaRoute
+  AdminKnowledgeRoute: typeof AdminKnowledgeRoute
   AdminUsersRoute: typeof AdminUsersRoute
   ApiPublicMpWebhookRoute: typeof ApiPublicMpWebhookRoute
 }
@@ -451,6 +464,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminUsersRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/knowledge': {
+      id: '/admin/knowledge'
+      path: '/admin/knowledge'
+      fullPath: '/admin/knowledge'
+      preLoaderRoute: typeof AdminKnowledgeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin/exercise-media': {
       id: '/admin/exercise-media'
       path: '/admin/exercise-media'
@@ -506,6 +526,7 @@ const rootRouteChildren: RootRouteChildren = {
   TreinoRoute: TreinoRouteWithChildren,
   TreinosRoute: TreinosRoute,
   AdminExerciseMediaRoute: AdminExerciseMediaRoute,
+  AdminKnowledgeRoute: AdminKnowledgeRoute,
   AdminUsersRoute: AdminUsersRoute,
   ApiPublicMpWebhookRoute: ApiPublicMpWebhookRoute,
 }
