@@ -464,10 +464,10 @@ export const listWorkoutHistory = createServerFn({ method: "GET" })
     const { supabase, userId } = context;
     const { data, error } = await supabase
       .from("workout_sessions")
-      .select("id, week_number, day_key, started_at, finished_at, duration_seconds, status")
+      .select("id, week_number, day_key, started_at, finished_at, duration_seconds, status, completed_at")
       .eq("user_id", userId)
-      .eq("status", "completed")
-      .order("finished_at", { ascending: false, nullsFirst: false })
+      .not("completed_at", "is", null)
+      .order("completed_at", { ascending: false, nullsFirst: false })
       .limit(50);
     if (error) throw new Error(error.message);
     return (data ?? []).map((r) => ({
