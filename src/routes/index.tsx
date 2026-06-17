@@ -153,6 +153,30 @@ function DashboardContent() {
         </div>
       </section>
 
+      {/* ── 1.5. CTA Premium (só free — conversão) ── */}
+      {subData && !isPremium && (
+        <section className="animate-fade-in">
+          <Link
+            to="/assinaturas"
+            className="relative flex items-center gap-3 overflow-hidden rounded-2xl border border-amber-400/30 bg-gradient-to-r from-amber-400/20 via-amber-500/8 to-surface px-4 py-3.5 transition active:scale-[0.99]"
+          >
+            <div className="pointer-events-none absolute -right-8 -top-8 h-24 w-24 rounded-full bg-amber-400/20 blur-2xl" />
+            <div className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-amber-400/30 bg-amber-400/15">
+              <Crown className="h-5 w-5 fill-amber-400/30 text-amber-400" />
+            </div>
+            <div className="relative min-w-0 flex-1">
+              <div className="text-[14px] font-semibold tracking-tight">Seja Premium</div>
+              <div className="text-[12px] leading-tight text-muted-foreground">
+                Coaches IA, treinos por IA e tudo liberado.
+              </div>
+            </div>
+            <span className="relative shrink-0 rounded-full bg-amber-400 px-3.5 py-1.5 text-[12px] font-bold text-black">
+              Assinar
+            </span>
+          </Link>
+        </section>
+      )}
+
       {/* ── 2. Card TREINO DO DIA (hero) ── */}
       <section className="animate-fade-in">
         {today ? (

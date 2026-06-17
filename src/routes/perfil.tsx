@@ -4,6 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { getProfile, updateProfile } from "@/lib/profile.functions";
+import { SPORTS_OPTIONS, PREFERENCES_OPTIONS, MOTIVATIONS_OPTIONS } from "@/lib/onboarding-options";
 import { toast } from "sonner";
 import { Loader2, Save, User, Target, Calendar, Heart, Shield, ChevronRight, Trophy } from "lucide-react";
 import { useIsAdmin } from "@/hooks/use-is-admin";
@@ -16,17 +17,18 @@ export const Route = createFileRoute("/perfil")({
 type Goal = "fat_loss" | "hypertrophy" | "general_health" | "conditioning" | "run_5k" | "hybrid";
 
 const GOAL_OPTIONS: { v: Goal; label: string }[] = [
-  { v: "fat_loss", label: "Fat Loss" },
-  { v: "hypertrophy", label: "Muscle Gain" },
-  { v: "general_health", label: "General Health" },
-  { v: "conditioning", label: "Improve Conditioning" },
-  { v: "run_5k", label: "Run 5K" },
-  { v: "hybrid", label: "Hybrid Performance" },
+  { v: "fat_loss", label: "Perda de gordura" },
+  { v: "hypertrophy", label: "Ganho de massa" },
+  { v: "general_health", label: "Saúde geral" },
+  { v: "conditioning", label: "Condicionamento" },
+  { v: "run_5k", label: "Correr 5 km" },
+  { v: "hybrid", label: "Performance híbrida" },
 ];
 
-const SPORTS = ["Running", "CrossFit", "Jiu Jitsu", "Muay Thai", "Soccer", "Basketball", "Cycling", "Swimming"];
-const PREFERENCES = ["Strength", "Hypertrophy", "Conditioning", "Mobility", "Fast Workouts", "Heavy Workouts"];
-const MOTIVATIONS = ["Aesthetics", "Health", "Performance", "Competition", "Consistency"];
+// Listas reaproveitadas do onboarding (PT-BR) — mantêm Perfil ↔ Onboarding consistentes.
+const SPORTS = SPORTS_OPTIONS;
+const PREFERENCES = PREFERENCES_OPTIONS;
+const MOTIVATIONS = MOTIVATIONS_OPTIONS;
 
 function PerfilPage() {
   const navigate = useNavigate();
