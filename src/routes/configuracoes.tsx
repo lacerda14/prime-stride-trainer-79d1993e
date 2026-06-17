@@ -3,8 +3,9 @@ import { AppShell } from "@/components/app-shell";
 import { Watch, Bell, User, Database, Smartphone, RotateCcw, Loader2, Activity, Heart, ChevronRight } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueryClient, useQuery, useMutation } from "@tanstack/react-query";
 import { resetOnboarding } from "@/lib/profile.functions";
+import { getGarminStatus, startGarminConnect, disconnectGarmin } from "@/lib/garmin.functions";
 import { toast } from "sonner";
 import { Capacitor } from "@capacitor/core";
 import { WatchBridge } from "@/lib/watch-bridge";
@@ -25,7 +26,6 @@ const HEALTH_PLATFORMS = [
 ];
 
 const WEARABLES = [
-  { name: "Garmin", desc: "Forerunner · Fenix · Epix", status: "Em breve" },
   { name: "Coros", desc: "Pace · Apex · Vertix", status: "Em breve" },
   { name: "Polar", desc: "Pacer · Vantage · Grit", status: "Em breve" },
 ];
@@ -44,6 +44,7 @@ function ConfigPage() {
 
         <Section icon={Watch} title="Wearables" description="Conecte seus dispositivos">
           <AppleWatchRow />
+          <GarminRow />
           {WEARABLES.map((w) => (
             <IntegrationRow key={w.name} name={w.name} desc={w.desc} status={w.status} />
           ))}
@@ -142,6 +143,91 @@ function AppleWatchRow() {
       <button disabled className={`rounded-full border px-3 py-1 text-[10.5px] font-medium uppercase tracking-[0.14em] ${badgeClass}`}>
         {label}
       </button>
+    </div>
+  );
+}
+
+function GarminRow() {
+  const qc = useQueryClient();
+  const status = useServerFn(getGarminStatus);
+  const start = useServerFn(startGarminConnect);
+  const disconnect = useServerFn(disconnectGarmin);
+
+  const { data, isLoading } = useQuery({
+    queryKey: ["garmin-status"],
+    queryFn: () => status(),
+  });
+  const connected = !!data?.connected;
+
+  // Toast de retorno do OAuth (?garmin=ok|erro) e limpa a query string.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const p = new URLSearchParams(window.location.search);
+    const g = p.get("garmin");
+    if (!g) return;
+    if (g === "ok") {
+      toast.success("Garmin conectado!");
+      qc.invalidateQueries({ queryKey: ["garmin-status"] });
+    } else if (g === "erro") {
+      toast.error(`Falha ao conectar o Garmin${p.get("motivo") ? ` (${p.get("motivo")})` : ""}.`);
+    }
+    p.delete("garmin"); p.delete("motivo");
+    const qs = p.toString();
+    window.history.replaceState({}, "", window.location.pathname + (qs ? `?${qs}` : ""));
+  }, [qc]);
+
+  const connectMut = useMutation({
+    mutationFn: () => start({ data: { redirect_to: `${window.location.origin}/configuracoes?garmin=ok` } }),
+    onSuccess: (res) => {
+      if (res.ok && res.url) {
+        window.location.href = res.url; // vai pro consent do Garmin
+      } else if (res.code === "garmin_not_configured") {
+        toast.message("Garmin em breve", { description: "A integração está sendo liberada. Volte logo." });
+      } else {
+        toast.error(res.error ?? "Não consegui iniciar a conexão com o Garmin.");
+      }
+    },
+    onError: () => toast.error("Não consegui iniciar a conexão com o Garmin."),
+  });
+
+  const disconnectMut = useMutation({
+    mutationFn: () => disconnect(),
+    onSuccess: () => {
+      toast.success("Garmin desconectado.");
+      qc.invalidateQueries({ queryKey: ["garmin-status"] });
+    },
+    onError: () => toast.error("Não consegui desconectar agora."),
+  });
+
+  const busy = connectMut.isPending || disconnectMut.isPending;
+
+  return (
+    <div className="flex items-center justify-between py-3.5">
+      <div>
+        <div className="text-[14px] font-medium tracking-tight">Garmin</div>
+        <div className="mt-0.5 text-[11.5px] text-muted-foreground">
+          {connected ? "Conectado · sono, HRV e atividades" : "Forerunner · Fenix · Epix"}
+        </div>
+      </div>
+      {isLoading ? (
+        <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+      ) : connected ? (
+        <button
+          onClick={() => disconnectMut.mutate()}
+          disabled={busy}
+          className="rounded-full border border-primary/50 bg-primary/10 px-3 py-1 text-[10.5px] font-medium uppercase tracking-[0.14em] text-primary disabled:opacity-60"
+        >
+          {disconnectMut.isPending ? "..." : "Conectado"}
+        </button>
+      ) : (
+        <button
+          onClick={() => connectMut.mutate()}
+          disabled={busy}
+          className="rounded-full border border-border bg-surface/60 px-3 py-1 text-[10.5px] font-medium uppercase tracking-[0.14em] text-foreground disabled:opacity-60"
+        >
+          {connectMut.isPending ? "..." : "Conectar"}
+        </button>
+      )}
     </div>
   );
 }
