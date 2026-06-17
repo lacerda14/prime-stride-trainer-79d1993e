@@ -1,7 +1,8 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { generatePlan, loadExercisePool, persistProgram, type Goal as EngineGoal, type UserProfileInput } from "@/lib/engine/pm-engine.server";
+import { generatePlan, loadExercisePool, mapDbGoalToEngineGoal, persistProgram, type Goal as EngineGoal, type UserProfileInput } from "@/lib/engine/pm-engine.server";
+import { dayNamesToNumbers } from "@/lib/engine/program.functions";
 
 
 // ============================================================
@@ -189,13 +190,9 @@ function mapPrimaryToDbGoal(g: PrimaryGoal): DbGoal {
   }
 }
 
+// Delega ao mapeamento canônico do motor (fonte única — ver pm-engine.server.ts).
 function mapDbToEngineGoal(g: DbGoal): EngineGoal {
-  switch (g) {
-    case "fat_loss": case "general_health": return "fat_loss";
-    case "hypertrophy": return "hypertrophy";
-    case "endurance": case "run_5k": return "endurance";
-    case "conditioning": case "hybrid": default: return "hybrid";
-  }
+  return mapDbGoalToEngineGoal(g);
 }
 
 // Aceita 1..7 dias por semana — respeita o onboarding (não força mais 3..5).
@@ -391,19 +388,44 @@ export const completeOnboarding = createServerFn({ method: "POST" })
     }
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    // Input COMPLETO do onboarding — cada resposta impacta a geração.
+    const runningModeOb = (data.running_mode as any) ?? null;
     const input: UserProfileInput = {
       age:              age ?? 30,
       sex:              (data.sex as any) ?? "other",
       weight_kg:        data.weight_kg ?? 70,
       height_cm:        data.height_cm ?? 170,
       experience_level: (data.experience_level as any) ?? "beginner",
-      goal:             mapDbToEngineGoal(dbGoal as any) ?? "general_health",
+      goal:             mapDbToEngineGoal(dbGoal as any) ?? "hybrid",
       available_days:   clampDays(data.available_days ?? 4),
+      selected_days:    dayNamesToNumbers(data.available_days_list ?? []),
+      wants_running:    runningModeOb ? runningModeOb !== "desabilitado" : true,
+      running_mode:     runningModeOb,
+      available_equipment: (data.equipment ?? []) as string[],
+      available_minutes: data.available_minutes ?? null,
+      seed:             userId,
+      pain_regions:     data.pain_regions ?? [],
+      past_injuries:    data.past_injuries ?? [],
+      uncomfortable_movements: data.uncomfortable_movements ?? [],
     };
-    const pool = await loadExercisePool(supabase);
-    if (pool.length === 0) throw new Error("Catálogo de exercícios vazio.");
-    const plan = generatePlan(input, pool);
-    const { program_id } = await persistProgram(supabase, userId, input, plan);
+
+    // A geração do programa NUNCA pode prender o usuário no onboarding.
+    // O perfil já foi salvo com onboarding_completed=true acima. Se a geração
+    // do plano falhar (schema, pool vazio, timeout), seguimos mesmo assim — o
+    // programa é regenerado sob demanda na home (getTodayTraining).
+    let program_id: string | null = null;
+    try {
+      const pool = await loadExercisePool(supabase);
+      if (pool.length > 0) {
+        const plan = generatePlan(input, pool);
+        const res = await persistProgram(supabase, userId, input, plan);
+        program_id = res.program_id;
+      } else {
+        console.error("[completeOnboarding] pool de exercícios vazio — programa será gerado depois");
+      }
+    } catch (e) {
+      console.error("[completeOnboarding] falha ao gerar programa (não-fatal):", e instanceof Error ? e.message : e);
+    }
 
     return { ok: true, program_id };
   });

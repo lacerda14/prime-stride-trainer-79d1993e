@@ -14,6 +14,8 @@ import { reportLovableError } from "../lib/lovable-error-reporting";
 import { AuthProvider } from "../hooks/use-auth";
 import { Toaster } from "../components/ui/sonner";
 import { initNative } from "../integrations/native";
+import { Capacitor } from "@capacitor/core";
+import { WatchBridge } from "../lib/watch-bridge";
 
 function NotFoundComponent() {
   return (
@@ -125,10 +127,41 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  const router = useRouter();
 
   useEffect(() => {
     initNative();
   }, []);
+
+  // Safety net: o Radix (Dialog/AlertDialog/Sheet) aplica `pointer-events: none`
+  // no <body> enquanto um modal está aberto e o remove ao fechar. Se a navegação
+  // acontece durante o fechamento, esse estilo fica preso e CONGELA o app inteiro.
+  // Assinamos as transições do router (sem re-render do RootComponent) e limpamos.
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    const clear = () => {
+      document.body.style.removeProperty("pointer-events");
+    };
+    const unsub = router.subscribe("onResolved", () => {
+      clear();
+      setTimeout(clear, 80);
+    });
+    return unsub;
+  }, [router]);
+
+  // Apple Watch iniciou o treino → abre a tela de treino no iPhone (que cria a
+  // sessão e passa a salvar as séries logadas no pulso).
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+    let remove: (() => void) | undefined;
+    WatchBridge.addListener("watchEvent", (d) => {
+      if (d.event === "started") {
+        try { sessionStorage.setItem("pm-watch-start", "1"); } catch { /* noop */ }
+        router.navigate({ to: "/treino" });
+      }
+    }).then((h) => { remove = () => { void h.remove(); }; });
+    return () => remove?.();
+  }, [router]);
 
   return (
     <QueryClientProvider client={queryClient}>

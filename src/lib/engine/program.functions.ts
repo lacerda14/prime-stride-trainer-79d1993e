@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { generatePlan, loadExercisePool, persistProgram, type UserProfileInput, type RunningMode } from "./pm-engine.server";
+import { generatePlan, loadExercisePool, mapDbGoalToEngineGoal, persistProgram, type UserProfileInput, type RunningMode } from "./pm-engine.server";
 
 /** "Segunda" → 1 ... "Domingo" → 7. Aceita variações com/sem acento. */
 const DAY_NAME_TO_NUM: Record<string, number> = {
@@ -19,11 +19,16 @@ export function dayNamesToNumbers(list: string[] | null | undefined): number[] {
 }
 
 export function buildEngineInput(profile: {
+  id?: string;
   age: number; sex: string; weight_kg: number | string; height_cm: number | string;
   experience_level: string; goal: string; available_days: number;
   equipment?: string[] | null;
   available_days_list?: string[] | null;
   running_mode?: string | null;
+  available_minutes?: number | null;
+  pain_regions?: string[] | null;
+  past_injuries?: string[] | null;
+  uncomfortable_movements?: string[] | null;
 }): UserProfileInput {
   const selected = dayNamesToNumbers(profile.available_days_list ?? []);
   const days = selected.length > 0 ? selected.length : profile.available_days;
@@ -35,12 +40,19 @@ export function buildEngineInput(profile: {
     weight_kg: Number(profile.weight_kg),
     height_cm: Number(profile.height_cm),
     experience_level: profile.experience_level as UserProfileInput["experience_level"],
-    goal: profile.goal as UserProfileInput["goal"],
+    // `profile.goal` é o objetivo do banco (pode ser conditioning/run_5k/
+    // general_health); o motor só entende 4 buckets → mapeia aqui.
+    goal: mapDbGoalToEngineGoal(profile.goal),
     available_days: days,
     selected_days: selected.length > 0 ? selected : undefined,
     wants_running: wantsRunning,
     running_mode: runningMode,
     available_equipment: (profile.equipment ?? []) as string[],
+    available_minutes: profile.available_minutes ?? null,
+    seed: profile.id,
+    pain_regions: (profile.pain_regions ?? []) as string[],
+    past_injuries: (profile.past_injuries ?? []) as string[],
+    uncomfortable_movements: (profile.uncomfortable_movements ?? []) as string[],
   };
 }
 
@@ -55,7 +67,7 @@ export const generateProgramForCurrentUser = createServerFn({ method: "POST" })
 
     const { data: profile, error: pErr } = await supabase
       .from("profiles")
-      .select("age, sex, weight_kg, height_cm, experience_level, goal, available_days, equipment, available_days_list, running_mode")
+      .select("id, age, sex, weight_kg, height_cm, experience_level, goal, available_days, equipment, available_days_list, running_mode, available_minutes, pain_regions, past_injuries, uncomfortable_movements")
       .eq("id", userId)
       .single();
     if (pErr) throw new Error(pErr.message);

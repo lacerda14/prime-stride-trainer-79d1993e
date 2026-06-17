@@ -7,18 +7,23 @@ interface Props {
   open: boolean;
   exerciseId: string | null;
   exerciseName: string;
+  /** IDs já presentes no treino — removidos das sugestões (sem repetidos). */
+  excludeIds?: string[];
   onClose: () => void;
   onSelect: (swap: SwapSuggestion) => void;
 }
 
-export function ExerciseSwapSheet({ open, exerciseId, exerciseName, onClose, onSelect }: Props) {
+export function ExerciseSwapSheet({ open, exerciseId, exerciseName, excludeIds = [], onClose, onSelect }: Props) {
   const fetchSwaps = useServerFn(suggestExerciseSwaps);
   const q = useQuery({
     queryKey: ["exercise-swaps", exerciseId],
-    queryFn: () => fetchSwaps({ data: { exercise_id: exerciseId!, limit: 6 } }),
+    queryFn: () => fetchSwaps({ data: { exercise_id: exerciseId!, limit: 12 } }),
     enabled: !!exerciseId && open,
     staleTime: 60_000,
   });
+  // Filtra exercícios que já estão no treino (regra: sem repetidos).
+  const exclude = new Set(excludeIds);
+  const suggestions = (q.data ?? []).filter((s) => !exclude.has(s.id));
 
   if (!open) return null;
   return (
@@ -52,13 +57,13 @@ export function ExerciseSwapSheet({ open, exerciseId, exerciseName, onClose, onS
           <div className="flex justify-center py-10">
             <Loader2 className="h-5 w-5 animate-spin text-primary" />
           </div>
-        ) : !q.data || q.data.length === 0 ? (
+        ) : suggestions.length === 0 ? (
           <div className="py-8 text-center text-sm text-muted-foreground">
-            Nenhuma alternativa equivalente encontrada.
+            Nenhuma alternativa equivalente disponível (as demais já estão no treino).
           </div>
         ) : (
           <ul className="max-h-[60vh] space-y-2 overflow-y-auto pr-1">
-            {q.data.map((s) => (
+            {suggestions.map((s) => (
               <li key={s.id}>
                 <button
                   onClick={() => onSelect(s)}

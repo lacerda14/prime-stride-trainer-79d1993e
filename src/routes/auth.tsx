@@ -12,7 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
-import pmLogo from "@/assets/pm-logo.png.asset.json";
+import pmLogo from "@/assets/pm-logo.png";
 
 export const Route = createFileRoute("/auth")({
   validateSearch: (s: Record<string, unknown>) => {
@@ -47,7 +47,7 @@ function AuthPage() {
       <div className="relative w-full max-w-md">
         <div className="mb-8 flex flex-col items-center text-center">
           <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-surface-elevated ring-1 ring-white/10 overflow-hidden">
-            <img src={pmLogo.url} alt="PM Hybrid" className="h-10 w-10 object-contain" />
+            <img src={pmLogo} alt="PM Hybrid" className="h-10 w-10 object-contain" />
           </div>
           <span className="text-[11px] font-medium uppercase tracking-[0.22em] text-muted-foreground">
             PM Hybrid
@@ -89,9 +89,24 @@ function SignInForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
+  const [forgotMode, setForgotMode] = useState(false);
+  const [resetSent, setResetSent] = useState(false);
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (forgotMode) {
+      try { emailSchema.parse(email); } catch (err) {
+        if (err instanceof z.ZodError) { toast.error(err.issues[0].message); return; }
+      }
+      setBusy(true);
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+      setBusy(false);
+      if (error) { toast.error(error.message); return; }
+      setResetSent(true);
+      return;
+    }
     try {
       emailSchema.parse(email);
       passwordSchema.parse(password);
@@ -111,20 +126,54 @@ function SignInForm() {
     toast.success("Bem-vindo de volta");
   };
 
+  if (resetSent) {
+    return (
+      <div className="space-y-4 text-center">
+        <p className="text-sm text-muted-foreground">
+          Email de redefinição enviado para <span className="font-medium text-foreground">{email}</span>.
+          Verifique sua caixa de entrada.
+        </p>
+        <Button variant="ghost" className="w-full" onClick={() => { setForgotMode(false); setResetSent(false); }}>
+          Voltar ao login
+        </Button>
+      </div>
+    );
+  }
+
   return (
     <form onSubmit={onSubmit} className="space-y-4">
       <div className="space-y-2">
         <Label htmlFor="si-email">Email</Label>
         <Input id="si-email" type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
       </div>
-      <div className="space-y-2">
-        <Label htmlFor="si-pass">Senha</Label>
-        <Input id="si-pass" type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} required />
-      </div>
+      {!forgotMode && (
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <Label htmlFor="si-pass">Senha</Label>
+            <button
+              type="button"
+              onClick={() => setForgotMode(true)}
+              className="text-[11px] text-muted-foreground underline-offset-2 hover:text-foreground hover:underline transition-colors"
+            >
+              Esqueci minha senha
+            </button>
+          </div>
+          <Input id="si-pass" type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+        </div>
+      )}
       <Button type="submit" className="w-full" disabled={busy}>
         {busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-        Entrar
+        {forgotMode ? "Enviar link de redefinição" : "Entrar"}
       </Button>
+      {forgotMode && (
+        <button
+          type="button"
+          onClick={() => setForgotMode(false)}
+          className="w-full text-center text-[12px] text-muted-foreground hover:text-foreground transition-colors"
+        >
+          Voltar ao login
+        </button>
+      )}
     </form>
   );
 }

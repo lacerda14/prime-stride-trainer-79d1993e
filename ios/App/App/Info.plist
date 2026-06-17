@@ -2,12 +2,12 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-    <key>CAPACITOR_DEBUG</key>
+	<key>CAPACITOR_DEBUG</key>
 	<string>$(CAPACITOR_DEBUG)</string>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>en</string>
 	<key>CFBundleDisplayName</key>
-        <string>PM Hybrid</string>
+	<string>PM Hybrid</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -20,10 +20,44 @@
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
 	<string>$(MARKETING_VERSION)</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>com.googleusercontent.apps.230882994224-evkdovsrvjr12sqkmg253tec4q8ivh9l</string>
+			</array>
+		</dict>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLName</key>
+			<string>com.pmhybrid.app</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>pmhybrid</string>
+			</array>
+		</dict>
+	</array>
 	<key>CFBundleVersion</key>
 	<string>$(CURRENT_PROJECT_VERSION)</string>
+	<key>GIDClientID</key>
+	<string>230882994224-evkdovsrvjr12sqkmg253tec4q8ivh9l.apps.googleusercontent.com</string>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsLocalNetworking</key>
+		<true/>
+	</dict>
+	<key>NSHealthShareUsageDescription</key>
+	<string>O PM Hybrid lê sua frequência cardíaca, treinos e métricas de recuperação pra calibrar a intensidade do seu programa e mostrar progresso real.</string>
+	<key>NSHealthUpdateUsageDescription</key>
+	<string>O PM Hybrid salva os treinos que você completa no app diretamente no Apple Saúde, incluindo duração, calorias e tipo de exercício.</string>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
 	<key>UIMainStoryboardFile</key>
@@ -49,31 +83,8 @@
 	<true/>
 	<key>WKAppBoundDomains</key>
 	<array>
-		<string>lovable.app</string>
+		<string>pedrolacerda-m.workers.dev</string>
 		<string>supabase.co</string>
-	</array>
-	<key>GIDClientID</key>
-	<string>230882994224-evkdovsrvjr12sqkmg253tec4q8ivh9l.apps.googleusercontent.com</string>
-	<key>CFBundleURLTypes</key>
-	<array>
-		<dict>
-			<key>CFBundleTypeRole</key>
-			<string>Editor</string>
-			<key>CFBundleURLSchemes</key>
-			<array>
-				<string>com.googleusercontent.apps.230882994224-evkdovsrvjr12sqkmg253tec4q8ivh9l</string>
-			</array>
-		</dict>
-		<dict>
-			<key>CFBundleTypeRole</key>
-			<string>Editor</string>
-			<key>CFBundleURLName</key>
-			<string>com.pmhybrid.app</string>
-			<key>CFBundleURLSchemes</key>
-			<array>
-				<string>pmhybrid</string>
-			</array>
-		</dict>
 	</array>
 </dict>
 </plist>

@@ -1,11 +1,16 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { isOwnerEmail } from "@/lib/owner";
 
 // ============================================================
 // Admin guard
 // ============================================================
-async function ensureAdmin(supabase: any, userId: string) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function ensureAdmin(context: any) {
+  const { supabase, userId, claims } = context;
+  // Dono do sistema é sempre admin — não depende da tabela/RLS.
+  if (isOwnerEmail(claims?.email)) return;
   const { data, error } = await supabase
     .from("user_roles")
     .select("role")
@@ -22,7 +27,8 @@ async function ensureAdmin(supabase: any, userId: string) {
 export const getMyRole = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<{ isAdmin: boolean }> => {
-    const { supabase, userId } = context;
+    const { supabase, userId, claims } = context as typeof context & { claims?: { email?: string } };
+    if (isOwnerEmail(claims?.email)) return { isAdmin: true };
     const { data } = await supabase
       .from("user_roles")
       .select("role")
@@ -123,7 +129,7 @@ export const listExercisesWithStatus = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<ExerciseRowDTO[]> => {
     const { supabase, userId } = context;
-    await ensureAdmin(supabase, userId);
+    await ensureAdmin(context);
 
     const { data: exercises, error } = await supabase
       .from("exercise_pool")
@@ -161,7 +167,7 @@ export const listCandidates = createServerFn({ method: "POST" })
   .inputValidator((input) => z.object({ exercise_id: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }): Promise<ExerciseMediaDTO[]> => {
     const { supabase, userId } = context;
-    await ensureAdmin(supabase, userId);
+    await ensureAdmin(context);
 
     const { data: media, error } = await supabase
       .from("exercise_media")
@@ -188,7 +194,7 @@ export const listPendingQueue = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<PendingQueueItemDTO[]> => {
     const { supabase, userId } = context;
-    await ensureAdmin(supabase, userId);
+    await ensureAdmin(context);
 
     const { data: pending, error } = await supabase
       .from("exercise_media")
@@ -413,7 +419,7 @@ export const searchVideosForExercise = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }): Promise<SearchVideosResultDTO & { auto_approved?: number }> => {
     const { supabase, userId } = context;
-    await ensureAdmin(supabase, userId);
+    await ensureAdmin(context);
 
     const apiKey = process.env.YOUTUBE_API_KEY;
     if (!apiKey) throw new Error("YOUTUBE_API_KEY not configured");
@@ -555,7 +561,7 @@ export const bulkSearchMissingVideos = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }): Promise<BulkSearchResultDTO> => {
     const { supabase, userId } = context;
-    await ensureAdmin(supabase, userId);
+    await ensureAdmin(context);
 
     const apiKey = process.env.YOUTUBE_API_KEY;
     if (!apiKey) throw new Error("YOUTUBE_API_KEY not configured");
@@ -575,9 +581,12 @@ export const bulkSearchMissingVideos = createServerFn({ method: "POST" })
         .map((m) => m.exercise_id),
     );
 
+    // Cap em 20 por execução: cada exercício faz 2 chamadas YouTube, e o
+    // Cloudflare Worker (free) limita a 50 subrequisições por invocação.
+    const effectiveLimit = Math.min(data.limit, 20);
     const missing = (exercises ?? [])
       .filter((e: any) => !hasPrimary.has(e.id))
-      .slice(0, data.limit) as { id: string; name: string }[];
+      .slice(0, effectiveLimit) as { id: string; name: string }[];
 
     const result: BulkSearchResultDTO = {
       processed: 0,
@@ -586,6 +595,10 @@ export const bulkSearchMissingVideos = createServerFn({ method: "POST" })
       errors: [],
       stopped_reason: null,
     };
+
+    // Candidatos de TODOS os exercícios — gravados em lote no final.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const allCandidates: any[] = [];
 
     for (const ex of missing) {
       const q = `${ex.name} como fazer execução técnica correta`;
@@ -651,39 +664,77 @@ export const bulkSearchMissingVideos = createServerFn({ method: "POST" })
         };
       });
 
-      const savedRows: ExerciseMediaDTO[] = [];
-      for (const c of candidates) {
-        const row = await upsertCandidate(supabase, c);
-        if (row) {
-          savedRows.push(row);
-          result.total_saved += 1;
-        }
+      // Acumula em memória — todas as gravações no banco são em lote no FINAL,
+      // pra respeitar o limite de subrequisições do Cloudflare Worker (50/exec).
+      allCandidates.push(...candidates);
+      result.processed += 1;
+    }
+
+    // ── Gravações em LOTE (poucas subrequisições) ──────────────────
+    if (allCandidates.length > 0) {
+      // 1) dedup contra o que já existe (1 query)
+      const exIds = [...new Set(allCandidates.map((c) => c.exercise_id))];
+      const { data: existing } = await supabase
+        .from("exercise_media")
+        .select("id,exercise_id,source,external_id")
+        .in("exercise_id", exIds);
+      const existingKey = new Set(
+        ((existing ?? []) as any[]).map((r) => `${r.exercise_id}|${r.source}|${r.external_id}`),
+      );
+      const toInsert = allCandidates.filter(
+        (c) => !existingKey.has(`${c.exercise_id}|${c.source}|${c.external_id}`),
+      );
+
+      // 2) insert em lote (1 query) — retorna as linhas criadas
+      let insertedRows: ExerciseMediaDTO[] = [];
+      if (toInsert.length > 0) {
+        const { data: ins, error: insErr } = await supabase
+          .from("exercise_media")
+          .insert(toInsert)
+          .select("*");
+        if (insErr) throw new Error(`insert candidates: ${insErr.message}`);
+        insertedRows = (ins ?? []) as ExerciseMediaDTO[];
+        result.total_saved = insertedRows.length;
       }
 
-      if (data.auto_approve && savedRows.length > 0) {
-        const eligible = savedRows
-          .filter((r) => r.embed_allowed && (r.source_quality_score ?? 0) >= data.auto_approve_min_score)
-          .sort((a, b) => (b.source_quality_score ?? 0) - (a.source_quality_score ?? 0));
-
+      // 3) auto-aprovação em lote
+      if (data.auto_approve && insertedRows.length > 0) {
+        const eligible = insertedRows.filter(
+          (r) => r.embed_allowed && (r.source_quality_score ?? 0) >= data.auto_approve_min_score,
+        );
         if (eligible.length > 0) {
+          // aprova todos os elegíveis de uma vez (1 query)
           await supabase
             .from("exercise_media")
             .update({ is_approved: true, reviewed_by: userId, reviewed_at: new Date().toISOString() })
             .in("id", eligible.map((r) => r.id));
-          result.total_auto_approved += eligible.length;
+          result.total_auto_approved = eligible.length;
 
-          await supabase
+          // melhor candidato por exercício vira primário
+          const bestByExercise = new Map<string, ExerciseMediaDTO>();
+          for (const r of eligible) {
+            const cur = bestByExercise.get(r.exercise_id);
+            if (!cur || (r.source_quality_score ?? 0) > (cur.source_quality_score ?? 0)) {
+              bestByExercise.set(r.exercise_id, r);
+            }
+          }
+          // só define primário pra exercícios que ainda não têm um aprovado
+          const exsNeedingPrimary = [...bestByExercise.keys()];
+          const { data: alreadyPrimary } = await supabase
             .from("exercise_media")
-            .update({ is_primary: false })
-            .eq("exercise_id", ex.id);
-          await supabase
-            .from("exercise_media")
-            .update({ is_primary: true })
-            .eq("id", eligible[0].id);
+            .select("exercise_id")
+            .in("exercise_id", exsNeedingPrimary)
+            .eq("is_approved", true)
+            .eq("is_primary", true);
+          const havePrimary = new Set(((alreadyPrimary ?? []) as any[]).map((r) => r.exercise_id));
+          const primaryIds = [...bestByExercise.entries()]
+            .filter(([exId]) => !havePrimary.has(exId))
+            .map(([, r]) => r.id);
+          if (primaryIds.length > 0) {
+            await supabase.from("exercise_media").update({ is_primary: true }).in("id", primaryIds);
+          }
         }
       }
-
-      result.processed += 1;
     }
 
     return result;
@@ -699,7 +750,7 @@ export const approveCandidate = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
-    await ensureAdmin(supabase, userId);
+    await ensureAdmin(context);
 
     const { data: m, error } = await supabase
       .from("exercise_media")
@@ -733,7 +784,7 @@ export const rejectCandidate = createServerFn({ method: "POST" })
   .inputValidator((input) => z.object({ media_id: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
-    await ensureAdmin(supabase, userId);
+    await ensureAdmin(context);
     const { error } = await supabase.from("exercise_media").delete().eq("id", data.media_id);
     if (error) throw new Error(error.message);
     return { ok: true };
@@ -744,7 +795,7 @@ export const setPrimaryMedia = createServerFn({ method: "POST" })
   .inputValidator((input) => z.object({ media_id: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
-    await ensureAdmin(supabase, userId);
+    await ensureAdmin(context);
     const { data: m, error } = await supabase
       .from("exercise_media")
       .select("id,exercise_id,is_approved")
@@ -779,7 +830,7 @@ export const addManualMedia = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
-    await ensureAdmin(supabase, userId);
+    await ensureAdmin(context);
 
     // Detect YouTube
     type MType = "external_video" | "youtube_embed" | "vimeo_embed";
@@ -849,7 +900,7 @@ export const updateExerciseCues = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
-    await ensureAdmin(supabase, userId);
+    await ensureAdmin(context);
     const patch: {
       instructions?: string;
       common_mistakes?: string;

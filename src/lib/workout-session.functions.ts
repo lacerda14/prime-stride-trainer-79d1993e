@@ -118,7 +118,9 @@ export const startWorkoutSession = createServerFn({ method: "POST" })
   .handler(async ({ data, context }): Promise<ActiveSessionDTO> => {
     const { supabase, userId } = context;
 
-    // já existe ativa para este mesmo treino? retorna ela
+    const nowIso = new Date().toISOString();
+
+    // já existe ativa para este mesmo treino? retorna ela (retomar)
     const { data: existing } = await supabase
       .from("workout_sessions")
       .select("*")
@@ -130,15 +132,23 @@ export const startWorkoutSession = createServerFn({ method: "POST" })
       .maybeSingle();
     if (existing) return existing as unknown as ActiveSessionDTO;
 
-    // existe ativa para OUTRO treino? abandona
+    // Reparo de dados: sessões já concluídas (completed_at preenchido) que ficaram
+    // com status active/paused ainda ocupam o índice único de "1 ativa por usuário".
+    // Marca como 'completed' para liberar o slot.
     await supabase
       .from("workout_sessions")
-      .update({ status: "abandoned", updated_at: new Date().toISOString() })
+      .update({ status: "completed", updated_at: nowIso })
       .eq("user_id", userId)
       .in("status", ["active", "paused"])
-      .is("completed_at", null);
+      .not("completed_at", "is", null);
 
-    const nowIso = new Date().toISOString();
+    // Qualquer ativa/pausada restante (de OUTRO treino, sem completar) é abandonada.
+    // Sem o filtro de completed_at o índice único fica garantidamente livre antes do insert.
+    await supabase
+      .from("workout_sessions")
+      .update({ status: "abandoned", updated_at: nowIso })
+      .eq("user_id", userId)
+      .in("status", ["active", "paused"]);
     const { data: created, error } = await supabase
       .from("workout_sessions")
       .insert({
@@ -226,11 +236,7 @@ export const appendSetLog = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
-    const { error } = await (supabase as unknown as {
-      from: (t: string) => {
-        upsert: (r: unknown, o: { onConflict: string }) => Promise<{ error: { message: string } | null }>;
-      };
-    })
+    const { error } = await supabase
       .from("workout_set_logs")
       .upsert(
         {
@@ -314,7 +320,9 @@ export const completeWorkoutSession = createServerFn({ method: "POST" })
 
 
 
-    // 1) finaliza a sessão
+    // 1) finaliza a sessão — guarda de idempotência: só transiciona se AINDA
+    //    não estava concluída. Se outra chamada/retry já concluiu, `sess` vem
+    //    null e retornamos sem recreditar XP/streak (evita XP duplicado).
     const finishedAtIso = new Date().toISOString();
     const { data: sess, error: uErr } = await supabase
       .from("workout_sessions")
@@ -327,9 +335,33 @@ export const completeWorkoutSession = createServerFn({ method: "POST" })
       })
       .eq("id", data.session_id)
       .eq("user_id", userId)
+      .neq("status", "completed")
       .select("id")
-      .single();
+      .maybeSingle();
     if (uErr) throw new Error(uErr.message);
+
+    if (!sess) {
+      // Já concluída anteriormente — no-op idempotente.
+      const { data: prof } = await supabase
+        .from("profiles")
+        .select("xp_total, streak_current, streak_longest")
+        .eq("id", userId)
+        .single();
+      const xp = prof?.xp_total ?? 0;
+      const lvl = levelFromXp(xp);
+      return {
+        xpGained: 0,
+        newXpTotal: xp,
+        oldLevel: lvl,
+        newLevel: lvl,
+        leveledUp: false,
+        streakCurrent: prof?.streak_current ?? 0,
+        streakLongest: prof?.streak_longest ?? 0,
+        durationSeconds: data.total_elapsed_seconds,
+        newAchievements: [],
+        newPRs: [],
+      };
+    }
 
     // 2) XP
     const xpGain = XP_REWARDS.workout;

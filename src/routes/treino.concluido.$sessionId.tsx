@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate, useRouter } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useAuth } from "@/hooks/use-auth";
@@ -20,6 +20,8 @@ import {
 import { getCompletedSession, saveWorkoutLogs, type SetLogDTO } from "@/lib/workout-logs.functions";
 import { getWeekDetail } from "@/lib/program.queries";
 import { estimateCalories } from "@/lib/calories";
+import { healthAvailable, requestHealthAuth, readSessionHealth, type SessionHealthMetrics } from "@/lib/healthkit";
+import { Heart, HeartPulse } from "lucide-react";
 import { toast } from "sonner";
 
 import {
@@ -91,6 +93,18 @@ function ConcluidoPage() {
   const params = Route.useParams();
   const sessionId = params.sessionId;
 
+  // Volta pra home do app. Limpa pointer-events antes (caso algum modal Radix
+  // tenha deixado o body travado) e, se a navegação SPA não acontecer, força hard.
+  const goHome = useCallback(() => {
+    try { document.body.style.removeProperty("pointer-events"); } catch { /* noop */ }
+    navigate({ to: "/" });
+    setTimeout(() => {
+      if (typeof window !== "undefined" && window.location.pathname.startsWith("/treino")) {
+        window.location.href = "/";
+      }
+    }, 300);
+  }, [navigate]);
+
   const fetchCompleted = useServerFn(getCompletedSession);
   const fetchWeek = useServerFn(getWeekDetail);
   const saveLogs = useServerFn(saveWorkoutLogs);
@@ -135,6 +149,8 @@ function ConcluidoPage() {
   const [readiness, setReadiness] = useState<{ score: number; decision: { message: string } } | null>(null);
   const [notesOpen, setNotesOpen] = useState(false);
   const [setsOpen, setSetsOpen] = useState(false);
+  const [repeatOpen, setRepeatOpen] = useState(false);
+  const [health, setHealth] = useState<SessionHealthMetrics | null>(null);
 
   // Constrói as linhas a partir do plano + logs existentes
   useEffect(() => {
@@ -207,6 +223,24 @@ function ConcluidoPage() {
       running_seconds: runSec,
     });
   }, [completedQ.data, planned?.running, runDuration, runAvgSpeed, runEffort, generalEffort, setRows.length]);
+
+  // Apple Watch / HealthKit: puxa FC (média/máx) e calorias reais da janela do treino.
+  useEffect(() => {
+    if (!healthAvailable() || !completedQ.data) return;
+    const sess = completedQ.data.session;
+    const startIso = sess.started_at;
+    if (!startIso) return;
+    const endIso =
+      sess.finished_at ??
+      new Date(new Date(startIso).getTime() + (sess.duration_seconds ?? 0) * 1000).toISOString();
+    let cancel = false;
+    (async () => {
+      await requestHealthAuth();
+      const m = await readSessionHealth(startIso, endIso);
+      if (!cancel && m) setHealth(m);
+    })();
+    return () => { cancel = true; };
+  }, [completedQ.data]);
 
   // ----------------------------------------------------------
   // Submit
@@ -293,7 +327,7 @@ function ConcluidoPage() {
               Tentar novamente
             </button>
             <button
-              onClick={() => navigate({ to: "/" })}
+              onClick={goHome}
               className="rounded-full border border-border bg-surface/60 px-6 py-3 text-sm font-medium text-muted-foreground"
             >
               Voltar ao início
@@ -411,10 +445,10 @@ function ConcluidoPage() {
             <div className="flex items-center gap-3 text-right">
               <div>
                 <div className="text-[10px] font-medium uppercase tracking-widest text-primary/60">
-                  Calorias
+                  Calorias{health?.calories != null ? " · Watch" : ""}
                 </div>
                 <div className="num mt-0.5 flex items-baseline gap-1 text-3xl font-semibold tabular-nums text-foreground">
-                  {estimatedCal}
+                  {health?.calories ?? estimatedCal}
                   <span className="text-sm font-normal text-muted-foreground">kcal</span>
                 </div>
               </div>
@@ -435,6 +469,22 @@ function ConcluidoPage() {
             label="Séries"
             value={String(completedSets)}
           />
+
+          {/* Frequência cardíaca (Apple Watch) */}
+          {health?.avgHeartRate != null && (
+            <StatCard
+              icon={<Heart className="h-4 w-4" />}
+              label="FC média · Watch"
+              value={`${health.avgHeartRate} bpm`}
+            />
+          )}
+          {health?.maxHeartRate != null && (
+            <StatCard
+              icon={<HeartPulse className="h-4 w-4" />}
+              label="FC máxima · Watch"
+              value={`${health.maxHeartRate} bpm`}
+            />
+          )}
         </div>
 
         {/* ── 3. Como foi o treino? — 5 botões ── */}
@@ -714,14 +764,14 @@ function ConcluidoPage() {
               Ver histórico
             </button>
             <button
-              onClick={() => navigate({ to: "/" })}
+              onClick={goHome}
               className="rounded-full border border-border bg-surface/60 py-3 text-sm font-medium text-foreground transition-colors hover:bg-surface active:opacity-80"
             >
               Voltar ao início
             </button>
           </div>
 
-          <AlertDialog>
+          <AlertDialog open={repeatOpen} onOpenChange={setRepeatOpen}>
             <AlertDialogTrigger asChild>
               <button
                 className="w-full rounded-full border border-border/30 bg-transparent py-2.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground active:opacity-70"
@@ -746,7 +796,17 @@ function ConcluidoPage() {
               <AlertDialogFooter>
                 <AlertDialogCancel>Cancelar</AlertDialogCancel>
                 <AlertDialogAction
-                  onClick={() => navigate({ to: "/treino", search: { force: "1" } as never })}
+                  onClick={(e) => {
+                    // Evita o bug do Radix que deixa pointer-events:none no body
+                    // (congela o app) quando navegamos durante o fechamento do diálogo.
+                    e.preventDefault();
+                    try { sessionStorage.setItem("pm-force-repeat", "1"); } catch { /* noop */ }
+                    setRepeatOpen(false);
+                    setTimeout(() => {
+                      try { document.body.style.pointerEvents = ""; } catch { /* noop */ }
+                      navigate({ to: "/treino" });
+                    }, 50);
+                  }}
                   className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                 >
                   Repetir mesmo assim

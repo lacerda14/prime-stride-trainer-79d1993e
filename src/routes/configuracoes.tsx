@@ -1,11 +1,13 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { AppShell } from "@/components/app-shell";
 import { Watch, Bell, User, Database, Smartphone, RotateCcw, Loader2, Activity, Heart, ChevronRight } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { useQueryClient } from "@tanstack/react-query";
 import { resetOnboarding } from "@/lib/profile.functions";
 import { toast } from "sonner";
+import { Capacitor } from "@capacitor/core";
+import { WatchBridge } from "@/lib/watch-bridge";
 
 export const Route = createFileRoute("/configuracoes")({
   head: () => ({
@@ -23,7 +25,6 @@ const HEALTH_PLATFORMS = [
 ];
 
 const WEARABLES = [
-  { name: "Apple Watch", desc: "watchOS 10+", status: "Em breve" },
   { name: "Garmin", desc: "Forerunner · Fenix · Epix", status: "Em breve" },
   { name: "Coros", desc: "Pace · Apex · Vertix", status: "Em breve" },
   { name: "Polar", desc: "Pacer · Vantage · Grit", status: "Em breve" },
@@ -42,6 +43,7 @@ function ConfigPage() {
         </Section>
 
         <Section icon={Watch} title="Wearables" description="Conecte seus dispositivos">
+          <AppleWatchRow />
           {WEARABLES.map((w) => (
             <IntegrationRow key={w.name} name={w.name} desc={w.desc} status={w.status} />
           ))}
@@ -88,6 +90,59 @@ function PerfilLink() {
       </div>
       <ChevronRight className="h-5 w-5 text-muted-foreground" />
     </Link>
+  );
+}
+
+function AppleWatchRow() {
+  // Estados: loading → checando; web → não-nativo; ready → plugin nativo ativo; off → indisponível.
+  const [state, setState] = useState<"loading" | "web" | "ready" | "off">("loading");
+
+  useEffect(() => {
+    let cancel = false;
+    (async () => {
+      if (!Capacitor.isNativePlatform()) {
+        if (!cancel) setState("web");
+        return;
+      }
+      try {
+        const { supported } = await WatchBridge.isSupported();
+        if (!cancel) setState(supported ? "ready" : "off");
+      } catch {
+        if (!cancel) setState("off");
+      }
+    })();
+    return () => {
+      cancel = true;
+    };
+  }, []);
+
+  const label =
+    state === "loading" ? "..." :
+    state === "ready" ? "Conectado" :
+    state === "web" ? "Em breve" : "Indisponível";
+
+  const desc =
+    state === "ready"
+      ? "Abra um treino para enviá-lo ao relógio"
+      : state === "web"
+        ? "Disponível no app iOS"
+        : "watchOS 10+";
+
+  const badgeClass =
+    state === "ready"
+      ? "border-primary/50 bg-primary/10 text-primary"
+      : "border-border bg-surface/60 text-muted-foreground/70";
+
+  return (
+    <div className="flex items-center justify-between py-3.5">
+      <div>
+        <div className="text-[14px] font-medium tracking-tight">Apple Watch</div>
+        <div className="mt-0.5 text-[11.5px] text-muted-foreground">{desc}</div>
+      </div>
+      <button disabled className={`rounded-full border px-3 py-1 text-[10.5px] font-medium uppercase tracking-[0.14em] ${badgeClass}`}>
+        {label}
+      </button>
+    </div>
   );
 }
 

@@ -14,6 +14,7 @@ import { Route as TreinoRouteImport } from './routes/treino'
 import { Route as SuporteRouteImport } from './routes/suporte'
 import { Route as SocialRouteImport } from './routes/social'
 import { Route as SemanasRouteImport } from './routes/semanas'
+import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as ProgressaoRouteImport } from './routes/progressao'
 import { Route as PerformanceRouteImport } from './routes/performance'
 import { Route as PerfilRouteImport } from './routes/perfil'
@@ -24,6 +25,7 @@ import { Route as EvolucaoRouteImport } from './routes/evolucao'
 import { Route as CorridaRouteImport } from './routes/corrida'
 import { Route as ConfiguracoesRouteImport } from './routes/configuracoes'
 import { Route as CoachesRouteImport } from './routes/coaches'
+import { Route as CoachChatRouteImport } from './routes/coach-chat'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AssinaturasRouteImport } from './routes/assinaturas'
 import { Route as IndexRouteImport } from './routes/index'
@@ -56,6 +58,11 @@ const SocialRoute = SocialRouteImport.update({
 const SemanasRoute = SemanasRouteImport.update({
   id: '/semanas',
   path: '/semanas',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ResetPasswordRoute = ResetPasswordRouteImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ProgressaoRoute = ProgressaoRouteImport.update({
@@ -108,6 +115,11 @@ const CoachesRoute = CoachesRouteImport.update({
   path: '/coaches',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CoachChatRoute = CoachChatRouteImport.update({
+  id: '/coach-chat',
+  path: '/coach-chat',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
@@ -154,6 +166,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/assinaturas': typeof AssinaturasRoute
   '/auth': typeof AuthRoute
+  '/coach-chat': typeof CoachChatRoute
   '/coaches': typeof CoachesRoute
   '/configuracoes': typeof ConfiguracoesRoute
   '/corrida': typeof CorridaRoute
@@ -164,6 +177,7 @@ export interface FileRoutesByFullPath {
   '/perfil': typeof PerfilRoute
   '/performance': typeof PerformanceRoute
   '/progressao': typeof ProgressaoRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/semanas': typeof SemanasRoute
   '/social': typeof SocialRoute
   '/suporte': typeof SuporteRoute
@@ -179,6 +193,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/assinaturas': typeof AssinaturasRoute
   '/auth': typeof AuthRoute
+  '/coach-chat': typeof CoachChatRoute
   '/coaches': typeof CoachesRoute
   '/configuracoes': typeof ConfiguracoesRoute
   '/corrida': typeof CorridaRoute
@@ -189,6 +204,7 @@ export interface FileRoutesByTo {
   '/perfil': typeof PerfilRoute
   '/performance': typeof PerformanceRoute
   '/progressao': typeof ProgressaoRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/semanas': typeof SemanasRoute
   '/social': typeof SocialRoute
   '/suporte': typeof SuporteRoute
@@ -205,6 +221,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/assinaturas': typeof AssinaturasRoute
   '/auth': typeof AuthRoute
+  '/coach-chat': typeof CoachChatRoute
   '/coaches': typeof CoachesRoute
   '/configuracoes': typeof ConfiguracoesRoute
   '/corrida': typeof CorridaRoute
@@ -215,6 +232,7 @@ export interface FileRoutesById {
   '/perfil': typeof PerfilRoute
   '/performance': typeof PerformanceRoute
   '/progressao': typeof ProgressaoRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/semanas': typeof SemanasRoute
   '/social': typeof SocialRoute
   '/suporte': typeof SuporteRoute
@@ -232,6 +250,7 @@ export interface FileRouteTypes {
     | '/'
     | '/assinaturas'
     | '/auth'
+    | '/coach-chat'
     | '/coaches'
     | '/configuracoes'
     | '/corrida'
@@ -242,6 +261,7 @@ export interface FileRouteTypes {
     | '/perfil'
     | '/performance'
     | '/progressao'
+    | '/reset-password'
     | '/semanas'
     | '/social'
     | '/suporte'
@@ -257,6 +277,7 @@ export interface FileRouteTypes {
     | '/'
     | '/assinaturas'
     | '/auth'
+    | '/coach-chat'
     | '/coaches'
     | '/configuracoes'
     | '/corrida'
@@ -267,6 +288,7 @@ export interface FileRouteTypes {
     | '/perfil'
     | '/performance'
     | '/progressao'
+    | '/reset-password'
     | '/semanas'
     | '/social'
     | '/suporte'
@@ -282,6 +304,7 @@ export interface FileRouteTypes {
     | '/'
     | '/assinaturas'
     | '/auth'
+    | '/coach-chat'
     | '/coaches'
     | '/configuracoes'
     | '/corrida'
@@ -292,6 +315,7 @@ export interface FileRouteTypes {
     | '/perfil'
     | '/performance'
     | '/progressao'
+    | '/reset-password'
     | '/semanas'
     | '/social'
     | '/suporte'
@@ -308,6 +332,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AssinaturasRoute: typeof AssinaturasRoute
   AuthRoute: typeof AuthRoute
+  CoachChatRoute: typeof CoachChatRoute
   CoachesRoute: typeof CoachesRoute
   ConfiguracoesRoute: typeof ConfiguracoesRoute
   CorridaRoute: typeof CorridaRoute
@@ -318,6 +343,7 @@ export interface RootRouteChildren {
   PerfilRoute: typeof PerfilRoute
   PerformanceRoute: typeof PerformanceRoute
   ProgressaoRoute: typeof ProgressaoRoute
+  ResetPasswordRoute: typeof ResetPasswordRoute
   SemanasRoute: typeof SemanasRoute
   SocialRoute: typeof SocialRoute
   SuporteRoute: typeof SuporteRoute
@@ -364,6 +390,13 @@ declare module '@tanstack/react-router' {
       path: '/semanas'
       fullPath: '/semanas'
       preLoaderRoute: typeof SemanasRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reset-password': {
+      id: '/reset-password'
+      path: '/reset-password'
+      fullPath: '/reset-password'
+      preLoaderRoute: typeof ResetPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/progressao': {
@@ -434,6 +467,13 @@ declare module '@tanstack/react-router' {
       path: '/coaches'
       fullPath: '/coaches'
       preLoaderRoute: typeof CoachesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/coach-chat': {
+      id: '/coach-chat'
+      path: '/coach-chat'
+      fullPath: '/coach-chat'
+      preLoaderRoute: typeof CoachChatRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/auth': {
@@ -510,6 +550,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AssinaturasRoute: AssinaturasRoute,
   AuthRoute: AuthRoute,
+  CoachChatRoute: CoachChatRoute,
   CoachesRoute: CoachesRoute,
   ConfiguracoesRoute: ConfiguracoesRoute,
   CorridaRoute: CorridaRoute,
@@ -520,6 +561,7 @@ const rootRouteChildren: RootRouteChildren = {
   PerfilRoute: PerfilRoute,
   PerformanceRoute: PerformanceRoute,
   ProgressaoRoute: ProgressaoRoute,
+  ResetPasswordRoute: ResetPasswordRoute,
   SemanasRoute: SemanasRoute,
   SocialRoute: SocialRoute,
   SuporteRoute: SuporteRoute,

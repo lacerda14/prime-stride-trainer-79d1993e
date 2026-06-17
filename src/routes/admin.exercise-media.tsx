@@ -185,11 +185,11 @@ function CuratorBoard() {
                 <Button
                   size="sm"
                   variant="outline"
-                  onClick={() => bulkSearch.mutate(25)}
+                  onClick={() => bulkSearch.mutate(20)}
                   disabled={bulkSearch.isPending || missingCount === 0}
                   className="h-8"
                 >
-                  Buscar 25
+                  Buscar 20
                 </Button>
               </div>
               <p className="text-[10px] leading-relaxed text-muted-foreground/70">

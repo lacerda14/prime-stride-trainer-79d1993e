@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { getTodayTraining } from "@/lib/program.queries";
 import { useAuth } from "@/hooks/use-auth";
-import { Pause, Play, SkipForward, X, Check, Loader2, Footprints, Timer, Flame, Wind, ArrowRightLeft, ListOrdered, BarChart3 } from "lucide-react";
+import { Pause, Play, SkipForward, X, Check, Loader2, Footprints, Timer, Flame, Wind, ArrowRightLeft, ListOrdered, BarChart3, Video } from "lucide-react";
 import { RequireAuth } from "@/components/require-auth";
 import { buildRunPhases, paceRange, runningHeadline, type RunPhase } from "@/lib/format-running";
 import { useLocalToday } from "@/hooks/use-local-today";
@@ -20,12 +20,27 @@ import { getLastWeightsForExercises } from "@/lib/workout-logs.functions";
 import { computeVolume, formatVolume } from "@/lib/workout-volume";
 import { ExerciseSwapSheet } from "@/components/exercise-swap-sheet";
 import { ExerciseReorderSheet, type ReorderItem } from "@/components/exercise-reorder-sheet";
+import { ExerciseDetailModal, useExerciseDetail } from "@/components/exercise-detail-modal";
 import type { SwapSuggestion } from "@/lib/exercise-swap.functions";
+import { toast } from "sonner";
+import { startWorkoutOnWatch } from "@/lib/watch-bridge";
+import { useWatchSync } from "@/hooks/use-watch-sync";
+import {
+  computeAdvance,
+  isFinished,
+  elapsedMsInPhase as calcElapsedInPhase,
+  totalElapsedMs as calcTotalElapsed,
+} from "@/lib/engine/workout-machine";
 
 import { syncSaveState, syncComplete, flushQueue } from "@/lib/offline-sync";
 import { OfflineBadge } from "@/components/offline-badge";
 
 export const Route = createFileRoute("/treino")({
+  // `force=1` chega quando o usuário escolhe repetir o mesmo treino no mesmo dia.
+  // Sem validateSearch o TanStack descarta o param e o redirect entra em loop.
+  validateSearch: (search: Record<string, unknown>): { force?: "1" } => ({
+    force: search.force === "1" || search.force === 1 ? "1" : undefined,
+  }),
   head: () => ({
     meta: [
       { title: "Treino em Execução · PM Hybrid" },
@@ -133,8 +148,16 @@ function TreinoPage() {
       }),
     enabled: !!user && !!weekNumber && !!dayKey,
   });
-  const search = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
-  const [allowRepeat] = useState(() => search?.get("force") === "1");
+  // "Repetir treino hoje" grava esta flag antes de navegar. Não dependemos do
+  // search param do roteador (que era descartado e causava loop de redirect).
+  const [allowRepeat] = useState(
+    () => typeof window !== "undefined" && sessionStorage.getItem("pm-force-repeat") === "1",
+  );
+  useEffect(() => {
+    if (allowRepeat) {
+      try { sessionStorage.removeItem("pm-force-repeat"); } catch { /* noop */ }
+    }
+  }, [allowRepeat]);
 
   // Redireciona para o resumo UMA VEZ quando há sessão concluída hoje
   // e não estamos no meio de finalizar uma nova sessão
@@ -161,6 +184,7 @@ function TreinoPage() {
   const [exerciseOrder, setExerciseOrder] = useState<number[] | null>(null);
   const [swapOpenFor, setSwapOpenFor] = useState<{ index: number; id: string; name: string } | null>(null);
   const [reorderOpen, setReorderOpen] = useState(false);
+  const detail = useExerciseDetail(); // modal de vídeo/execução do exercício
 
   // Últimos pesos por exercício (sugestão de carga)
   const fetchLastWeights = useServerFn(getLastWeightsForExercises);
@@ -322,14 +346,42 @@ function TreinoPage() {
   // ----------------------------------------------------------
   // Iniciar (ou recuperar) sessão
   // ----------------------------------------------------------
-  const beginSession = useCallback(async () => {
+  const [starting, setStarting] = useState(false);
+  const beginSession = useCallback(async (opts?: { fromWatch?: boolean }) => {
+    if (!weekNumber || !dayKey || starting) return;
+    setStarting(true);
+    try {
+      const res = await startSession({ data: { week_number: weekNumber, day_key: dayKey } });
+      adoptActive(res);
+      setPhaseStartedAt(Date.now());
+      setPhaseAccumMs(0);
+      qc.invalidateQueries({ queryKey: ["active-workout-session", user?.id] });
+      // Espelha o "play" no relógio (a não ser que o início tenha vindo do próprio relógio).
+      if (!opts?.fromWatch) void startWorkoutOnWatch();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Não foi possível iniciar o treino. Tente de novo.");
+      setStarting(false);
+    }
+  }, [weekNumber, dayKey, starting, startSession, adoptActive, qc, user?.id]);
+
+  // Início veio do Apple Watch: __root navegou pra cá com a flag. Inicia a sessão
+  // no iPhone automaticamente (sem reenviar o "start" pro relógio).
+  const [watchStartFlag] = useState(
+    () => typeof window !== "undefined" && sessionStorage.getItem("pm-watch-start") === "1",
+  );
+  useEffect(() => {
+    if (watchStartFlag) {
+      try { sessionStorage.removeItem("pm-watch-start"); } catch { /* noop */ }
+    }
+  }, [watchStartFlag]);
+  useEffect(() => {
+    if (!watchStartFlag) return;
+    if (recoverState.kind !== "ready") return;
+    if (sessionId || starting) return;
     if (!weekNumber || !dayKey) return;
-    const res = await startSession({ data: { week_number: weekNumber, day_key: dayKey } });
-    adoptActive(res);
-    setPhaseStartedAt(Date.now());
-    setPhaseAccumMs(0);
-    qc.invalidateQueries({ queryKey: ["active-workout-session", user?.id] });
-  }, [weekNumber, dayKey, startSession, adoptActive, qc, user?.id]);
+    void beginSession({ fromWatch: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [watchStartFlag, recoverState.kind, sessionId, weekNumber, dayKey]);
 
   // ----------------------------------------------------------
   // Cálculo de tempo decorrido (timestamp-based)
@@ -337,16 +389,10 @@ function TreinoPage() {
   const current = queue[step];
   const next = queue[step + 1];
 
-  const elapsedMsInPhase = (() => {
-    if (paused || phaseStartedAt == null) return phaseAccumMs;
-    return phaseAccumMs + (Date.now() - phaseStartedAt);
-  })();
+  const elapsedMsInPhase = calcElapsedInPhase({ paused, phaseStartedAt, phaseAccumMs }, Date.now());
   const elapsedSecondsInPhase = Math.floor(elapsedMsInPhase / 1000);
 
-  const totalElapsedMs = (() => {
-    if (paused || phaseStartedAt == null) return totalAccumMs + phaseAccumMs;
-    return totalAccumMs + phaseAccumMs + (Date.now() - phaseStartedAt);
-  })();
+  const totalElapsedMs = calcTotalElapsed({ paused, phaseStartedAt, phaseAccumMs, totalAccumMs }, Date.now());
   const totalElapsedSeconds = Math.floor(totalElapsedMs / 1000);
 
   const phaseSeconds = !current
@@ -480,14 +526,9 @@ function TreinoPage() {
 
   const handleAdvance = useCallback(() => {
     if (!current) return;
-    if (current.kind === "run") {
-      advanceTo(step + 1, "work");
-    } else if (phase === "work") {
-      captureCurrentSet();
-      advanceTo(step, "rest");
-    } else {
-      advanceTo(step + 1, "work");
-    }
+    const adv = computeAdvance(current.kind, phase, step);
+    if (adv.captureSet) captureCurrentSet();
+    advanceTo(adv.step, adv.phase);
   }, [current, phase, step, advanceTo, captureCurrentSet]);
 
   // Reset/precarrega inputs ao trocar de set
@@ -517,10 +558,35 @@ function TreinoPage() {
     );
   }, [setLogs]);
 
+  // IDs de exercícios JÁ presentes no treino (aplicando swaps) — base da regra
+  // "sem exercícios repetidos". Reflete o estado atual da sessão.
+  const workoutExerciseIds = useMemo(() => {
+    const ids = new Set<string>();
+    if (!today) return ids;
+    today.exercises.forEach((e, idx) => {
+      const id = swaps[idx]?.id ?? e.exercise.id;
+      if (id) ids.add(id);
+    });
+    return ids;
+  }, [today, swaps]);
+
+  // IDs a excluir das sugestões: tudo que já está no treino, exceto o exercício
+  // que está sendo trocado agora (esse vai ser substituído).
+  const swapExcludeIds = useMemo(() => {
+    const out = new Set(workoutExerciseIds);
+    if (swapOpenFor) out.delete(swapOpenFor.id);
+    return [...out];
+  }, [workoutExerciseIds, swapOpenFor]);
+
   // Handlers de swap/reorder
   const handleSelectSwap = useCallback(
     (sug: SwapSuggestion) => {
       if (!swapOpenFor) return;
+      // Regra obrigatória: não pode haver dois exercícios iguais no treino.
+      if (sug.id !== swapOpenFor.id && workoutExerciseIds.has(sug.id)) {
+        toast.error("Este exercício já está no treino. Escolha outro.");
+        return;
+      }
       setSwaps((prev) => ({
         ...prev,
         [swapOpenFor.index]: { id: sug.id, name: sug.name, category: sug.category },
@@ -528,7 +594,7 @@ function TreinoPage() {
       setSwapOpenFor(null);
       setTimeout(() => persistNow(), 0);
     },
-    [swapOpenFor, persistNow],
+    [swapOpenFor, workoutExerciseIds, persistNow],
   );
 
   const handleApplyReorder = useCallback(
@@ -567,6 +633,9 @@ function TreinoPage() {
     });
   }, [today, exerciseOrder, swaps, setLogs, current]);
 
+  // Apple Watch — envia o treino do dia + recebe logs de série (ver useWatchSync).
+  useWatchSync({ today, sessionId, swaps, exerciseOrder, lastWeights, appendSetLog: appendSetLogFn });
+
   // auto-advance quando countdown chega a zero
   useEffect(() => {
     if (!current || paused || phaseStartedAt == null) return;
@@ -599,7 +668,7 @@ function TreinoPage() {
   const [finishing, setFinishing] = useState(false);
   finishingRef.current = finishing;
   sessionIdRef.current = sessionId ?? null;
-  const finished = sessionId && step >= queue.length && queue.length > 0;
+  const finished = !!sessionId && isFinished(step, queue.length);
 
   useEffect(() => {
     if (!finished || finishing) return;
@@ -719,11 +788,12 @@ function TreinoPage() {
         )}
 
         <button
-          onClick={beginSession}
-          className="mt-8 inline-flex items-center gap-2 rounded-full bg-primary px-8 py-4 text-base font-semibold text-primary-foreground shadow-glow active:scale-95"
+          onClick={() => beginSession()}
+          disabled={starting}
+          className="mt-8 inline-flex items-center gap-2 rounded-full bg-primary px-8 py-4 text-base font-semibold text-primary-foreground shadow-glow active:scale-95 disabled:opacity-60"
         >
-          <Play className="h-5 w-5 fill-current" />
-          {alreadyDoneToday ? "Treinar mesmo assim" : "Começar treino"}
+          {starting ? <Loader2 className="h-5 w-5 animate-spin" /> : <Play className="h-5 w-5 fill-current" />}
+          {starting ? "Iniciando…" : alreadyDoneToday ? "Treinar mesmo assim" : "Começar treino"}
         </button>
         <button
           onClick={() => navigate({ to: "/hoje" })}
@@ -813,6 +883,8 @@ function TreinoPage() {
             onRepsChange={setLiveReps}
             onSwap={() => current.exerciseId && setSwapOpenFor({ index: current.exerciseIndex, id: current.exerciseId, name: current.name })}
             onReorder={() => setReorderOpen(true)}
+            onVideo={() => current.exerciseId && detail.open(current.exerciseId)}
+            videoAvailable={!!current.exerciseId}
           />
         )}
 
@@ -849,6 +921,7 @@ function TreinoPage() {
         open={!!swapOpenFor}
         exerciseId={swapOpenFor?.id ?? null}
         exerciseName={swapOpenFor?.name ?? ""}
+        excludeIds={swapExcludeIds}
         onClose={() => setSwapOpenFor(null)}
         onSelect={handleSelectSwap}
       />
@@ -858,6 +931,7 @@ function TreinoPage() {
         onClose={() => setReorderOpen(false)}
         onApply={handleApplyReorder}
       />
+      <ExerciseDetailModal {...detail.modalProps} />
     </div>
   );
 }
@@ -910,6 +984,8 @@ function StrengthView({
   onRepsChange,
   onSwap,
   onReorder,
+  onVideo,
+  videoAvailable,
 }: {
   current: StrengthItem;
   phaseLabel: string;
@@ -922,6 +998,8 @@ function StrengthView({
   onRepsChange: (v: string) => void;
   onSwap: () => void;
   onReorder: () => void;
+  onVideo: () => void;
+  videoAvailable: boolean;
 }) {
   return (
     <div className="w-full max-w-md text-center">
@@ -977,7 +1055,15 @@ function StrengthView({
         </div>
       )}
 
-      <div className="mt-6 flex items-center justify-center gap-2">
+      <div className="mt-6 flex flex-wrap items-center justify-center gap-2">
+        {videoAvailable && (
+          <button
+            onClick={onVideo}
+            className="flex items-center gap-1.5 rounded-full border border-border bg-surface/60 px-4 py-2 text-xs font-semibold text-foreground active:scale-95"
+          >
+            <Video className="h-3.5 w-3.5" /> Vídeo
+          </button>
+        )}
         <button
           onClick={onSwap}
           className="rounded-full border border-border bg-surface/60 px-4 py-2 text-xs font-semibold text-foreground active:scale-95"

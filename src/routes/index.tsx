@@ -10,15 +10,20 @@ import {
   Star,
   TrendingUp,
   Play,
+  Crown,
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { firstName, inferGender, timeOfDayGreeting, type Gender } from "@/lib/greeting";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { getDashboard } from "@/lib/profile.functions";
+import { getMySubscription } from "@/lib/subscription.functions";
 import { getTodayTraining } from "@/lib/program.queries";
 import { levelProgress, getTitleForLevel } from "@/lib/gamification";
 import { useLocalToday } from "@/hooks/use-local-today";
+import { buildWatchWorkout, sendWorkoutToWatch, WatchBridge } from "@/lib/watch-bridge";
+import { Capacitor } from "@capacitor/core";
+import { useEffect } from "react";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -56,6 +61,17 @@ function DashboardContent() {
     enabled: !!user,
   });
 
+  const fetchSub = useServerFn(getMySubscription);
+  const { data: subData } = useQuery({
+    queryKey: ["subscription", "me"],
+    queryFn: () => fetchSub(),
+    enabled: !!user,
+    staleTime: 5 * 60_000,
+  });
+  const isPremium =
+    (subData?.plan === "premium_ai" && subData?.billing_status === "active") ||
+    subData?.billing_status === "trialing";
+
   const profile = dash?.profile;
   const xp = profile?.xp_total ?? 0;
   const prog = levelProgress(xp);
@@ -67,6 +83,26 @@ function DashboardContent() {
 
   const summary = programData?.program ?? null;
   const today = programData?.today ?? null;
+
+  // Sincroniza o treino do dia com o Apple Watch assim que o app abre (sem
+  // precisar iniciar o treino). Durante a execução, a tela de treino reenvia
+  // a versão com trocas/cargas ao vivo.
+  useEffect(() => {
+    if (!today) return;
+    void sendWorkoutToWatch(buildWatchWorkout(today));
+  }, [today]);
+
+  // Reenvia quando o relógio pede (botão "Recarregar" / abertura do app no pulso).
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+    let remove: (() => void) | undefined;
+    WatchBridge.addListener("watchEvent", (d) => {
+      if (d.event === "requestWorkout" && today) {
+        void sendWorkoutToWatch(buildWatchWorkout(today));
+      }
+    }).then((h) => { remove = () => { void h.remove(); }; });
+    return () => remove?.();
+  }, [today]);
   const activeWeek = summary?.active_week ?? 1;
   const totalWeeks = summary?.total_weeks ?? 48;
 
@@ -95,8 +131,13 @@ function DashboardContent() {
         <div className="text-[11px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
           {greetWord(gender)}
         </div>
-        <h2 className="mt-0.5 text-[24px] font-semibold leading-tight tracking-tight">
-          {timeOfDayGreeting()}, {name || "atleta"} 👋
+        <h2 className="mt-0.5 flex items-center gap-2 text-[24px] font-semibold leading-tight tracking-tight">
+          <span>{timeOfDayGreeting()}, {name || "atleta"}</span>
+          <Crown
+            className={`h-5 w-5 shrink-0 ${
+              isPremium ? "fill-amber-400/30 text-amber-400" : "fill-white/10 text-white/70"
+            }`}
+          />
         </h2>
         <div className="mt-1.5 flex flex-wrap items-center gap-2">
           <span className="inline-flex items-center gap-1 rounded-full border border-primary/30 bg-primary/10 px-2.5 py-1 text-[11px] font-semibold text-primary">

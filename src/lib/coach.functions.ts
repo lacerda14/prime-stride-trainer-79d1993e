@@ -62,6 +62,76 @@ export const listCoaches = createServerFn({ method: "GET" })
     return data as CoachDTO[];
   });
 
+// ============================================================
+// sendCoachMessage — chat com o coach (ponte p/ edge fn ai-coach-chat).
+// Coach Geral é free (cota própria); específicos exigem premium.
+// ============================================================
+export interface CoachChatMessage {
+  role: "user" | "assistant";
+  content: string;
+}
+
+export interface CoachChatResult {
+  ok: boolean;
+  message?: string;
+  coach_name?: string;
+  coach_persona?: string;
+  remaining?: number;
+  limit?: number;
+  error?: string;
+  code?: string;
+}
+
+export const sendCoachMessage = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) =>
+    z
+      .object({
+        message: z.string().min(1).max(4000),
+        coach_persona: z.string().optional(),
+        conversation_history: z
+          .array(z.object({ role: z.enum(["user", "assistant"]), content: z.string() }))
+          .max(40)
+          .optional(),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data, context }): Promise<CoachChatResult> => {
+    try {
+      const { data: res, error } = await context.supabase.functions.invoke("ai-coach-chat", {
+        body: {
+          message: data.message,
+          coach_persona: data.coach_persona,
+          conversation_history: data.conversation_history ?? [],
+        },
+      });
+      if (error) {
+        // FunctionsHttpError expõe o Response em .context — extrai code/error do corpo
+        let code: string | undefined;
+        let msg: string | undefined;
+        try {
+          const body = await (error as { context?: Response }).context?.json?.();
+          code = (body as { code?: string })?.code;
+          msg = (body as { error?: string })?.error;
+        } catch {
+          /* noop */
+        }
+        return { ok: false, error: msg ?? "Não foi possível falar com o coach agora.", code };
+      }
+      const r = (res ?? {}) as Record<string, unknown>;
+      return {
+        ok: true,
+        message: r.message as string,
+        coach_name: r.coach_name as string,
+        coach_persona: r.coach_persona as string,
+        remaining: r.ai_requests_remaining as number,
+        limit: r.ai_requests_limit as number,
+      };
+    } catch {
+      return { ok: false, error: "Não foi possível falar com o coach agora." };
+    }
+  });
+
 export const getCoachRefinement = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) =>

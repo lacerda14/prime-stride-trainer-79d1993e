@@ -13,13 +13,29 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { Loader2, ShieldAlert, Trash2, Flame, Zap } from "lucide-react";
+import { Loader2, ShieldAlert, Trash2, Flame, Zap, Crown } from "lucide-react";
 import { getMyRole } from "@/lib/exercise-media.functions";
 import {
   listAllUsers,
   deleteUserById,
+  grantPremiumToUser,
+  revokePremiumFromUser,
   type AdminUserDTO,
 } from "@/lib/admin-users.functions";
+
+// Opções de duração do premium concedido.
+const PREMIUM_DURATIONS: { label: string; days: number | null }[] = [
+  { label: "1 mês", days: 30 },
+  { label: "3 meses", days: 90 },
+  { label: "6 meses", days: 180 },
+  { label: "1 ano", days: 365 },
+  { label: "Vitalício", days: null },
+];
+
+function formatPremiumUntil(iso: string | null): string {
+  if (!iso) return "vitalício";
+  return `até ${new Date(iso).toLocaleDateString("pt-BR")}`;
+}
 
 export const Route = createFileRoute("/admin/users")({
   head: () => ({
@@ -66,6 +82,8 @@ function UsersBoard() {
   const qc = useQueryClient();
   const fetchUsers = useServerFn(listAllUsers);
   const deleteFn = useServerFn(deleteUserById);
+  const grantFn = useServerFn(grantPremiumToUser);
+  const revokeFn = useServerFn(revokePremiumFromUser);
 
   const { data, isLoading } = useQuery({
     queryKey: ["admin-users"],
@@ -73,12 +91,34 @@ function UsersBoard() {
   });
 
   const [target, setTarget] = useState<AdminUserDTO | null>(null);
+  const [premiumTarget, setPremiumTarget] = useState<AdminUserDTO | null>(null);
 
   const del = useMutation({
     mutationFn: (id: string) => deleteFn({ data: { targetUserId: id } }),
     onSuccess: () => {
       toast.success("Conta excluída");
       setTarget(null);
+      qc.invalidateQueries({ queryKey: ["admin-users"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const grant = useMutation({
+    mutationFn: (v: { id: string; days: number | null }) =>
+      grantFn({ data: { targetUserId: v.id, durationDays: v.days } }),
+    onSuccess: () => {
+      toast.success("Premium concedido 👑");
+      setPremiumTarget(null);
+      qc.invalidateQueries({ queryKey: ["admin-users"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const revoke = useMutation({
+    mutationFn: (id: string) => revokeFn({ data: { targetUserId: id } }),
+    onSuccess: () => {
+      toast.success("Premium removido");
+      setPremiumTarget(null);
       qc.invalidateQueries({ queryKey: ["admin-users"] });
     },
     onError: (e: Error) => toast.error(e.message),
@@ -113,8 +153,13 @@ function UsersBoard() {
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0 flex-1">
-                    <div className="truncate text-[14px] font-semibold">
-                      {u.name || "—"}
+                    <div className="flex items-center gap-1.5">
+                      <span className="truncate text-[14px] font-semibold">{u.name || "—"}</span>
+                      {u.plan === "premium_ai" && (
+                        <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-amber-400/15 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-amber-400">
+                          <Crown className="h-2.5 w-2.5" /> {formatPremiumUntil(u.premium_until)}
+                        </span>
+                      )}
                     </div>
                     <div className="truncate text-[11px] text-muted-foreground">
                       {u.email ?? u.id}
@@ -135,6 +180,15 @@ function UsersBoard() {
                       )}
                     </div>
                   </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className={`shrink-0 ${u.plan === "premium_ai" ? "text-amber-400 hover:bg-amber-400/10" : "text-muted-foreground hover:bg-surface hover:text-amber-400"}`}
+                    onClick={() => setPremiumTarget(u)}
+                    title="Gerenciar Premium"
+                  >
+                    <Crown className="h-4 w-4" />
+                  </Button>
                   <Button
                     variant="ghost"
                     size="sm"
@@ -176,6 +230,68 @@ function UsersBoard() {
               ) : (
                 "Excluir conta"
               )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Conceder / remover Premium */}
+      <Dialog open={!!premiumTarget} onOpenChange={(open) => !open && setPremiumTarget(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Crown className="h-5 w-5 text-amber-400" /> Premium
+            </DialogTitle>
+            <DialogDescription>
+              {premiumTarget?.plan === "premium_ai" ? (
+                <>
+                  <span className="font-semibold text-foreground">
+                    {premiumTarget?.name || premiumTarget?.email}
+                  </span>{" "}
+                  já é Premium ({formatPremiumUntil(premiumTarget?.premium_until ?? null)}). Escolha uma nova
+                  duração ou remova.
+                </>
+              ) : (
+                <>
+                  Conceder Premium gratuito a{" "}
+                  <span className="font-semibold text-foreground">
+                    {premiumTarget?.name || premiumTarget?.email}
+                  </span>
+                  . Escolha a duração:
+                </>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="grid grid-cols-2 gap-2 py-1">
+            {PREMIUM_DURATIONS.map((d) => (
+              <Button
+                key={d.label}
+                variant="outline"
+                disabled={grant.isPending || revoke.isPending}
+                onClick={() => premiumTarget && grant.mutate({ id: premiumTarget.id, days: d.days })}
+                className="justify-center"
+              >
+                {grant.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : d.label}
+              </Button>
+            ))}
+          </div>
+
+          <DialogFooter className="sm:justify-between">
+            {premiumTarget?.plan === "premium_ai" ? (
+              <Button
+                variant="ghost"
+                className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                disabled={grant.isPending || revoke.isPending}
+                onClick={() => premiumTarget && revoke.mutate(premiumTarget.id)}
+              >
+                {revoke.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Remover Premium"}
+              </Button>
+            ) : (
+              <span />
+            )}
+            <Button variant="ghost" onClick={() => setPremiumTarget(null)}>
+              Fechar
             </Button>
           </DialogFooter>
         </DialogContent>

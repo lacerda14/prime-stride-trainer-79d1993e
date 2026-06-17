@@ -151,25 +151,22 @@ async function loadExpectedSchedule(supabase: any, userId: string): Promise<{
 } | null> {
   const { data: profile, error } = await supabase
     .from("profiles")
-    .select("age, sex, weight_kg, height_cm, experience_level, goal, available_days, equipment, available_days_list, running_mode")
+    .select("id, age, sex, weight_kg, height_cm, experience_level, goal, available_days, equipment, available_days_list, running_mode, available_minutes, pain_regions, past_injuries, uncomfortable_movements")
     .eq("id", userId)
     .maybeSingle();
   if (error) throw new Error(error.message);
   if (!profile) return { days: [], wantsRunning: true, hasProfile: false, profile: null };
-  const { dayNamesToNumbers } = await import("@/lib/engine/program.functions");
-  const selected = dayNamesToNumbers(profile.available_days_list ?? []);
   const wantsRunning = profile.running_mode
     ? profile.running_mode !== "desabilitado"
     : true;
-  let nums = selected;
-  if (nums.length === 0) {
-    const n = Math.min(7, Math.max(1, profile.available_days || 5));
-    nums = Array.from({ length: n }, (_, i) => i + 1);
-  }
-  const days = nums.map((num, idx) => ({
-    num,
-    kind: (wantsRunning && idx % 2 === 1 ? "run" : "fb") as "fb" | "run",
-  }));
+  // Deriva os dias esperados do MESMO activeDays que o gerador usa: assim a
+  // validação (nº de dias + presença de corrida) nunca diverge do programa
+  // gerado. Antes usava idx%2, que podia discordar do runDaysCount do motor e
+  // disparar regeneração infinita (ex.: running_mode="principal" com 1 dia).
+  const { buildEngineInput } = await import("@/lib/engine/program.functions");
+  const { activeDays } = await import("@/lib/engine/pm-engine.server");
+  const input = buildEngineInput(profile);
+  const days = activeDays(input).map((d) => ({ num: d.num, kind: d.kind }));
   return { days, wantsRunning, hasProfile: true, profile };
 }
 
@@ -179,47 +176,43 @@ async function hasValidDistribution(
   expected: { num: number; kind: "fb" | "run" }[],
 ): Promise<boolean> {
   if (expected.length === 0) return true; // sem expectativa, não força regen
+  // Validação LEVE: só estrutura (dias, tipo de sessão, presença de corrida).
+  // O join pesado em session_exercises→exercise_pool foi removido — ele rodava
+  // a cada carregamento de dashboard/semana e era o principal gargalo. A
+  // distribuição de exercícios por categoria já é garantida na geração.
   const { data, error } = await supabase
     .from("training_days")
-    .select("day_number,session_type,objective,running_protocols(id),session_exercises(exercise:exercise_pool(category)),week:weeks!inner(week_number,program_id)")
+    .select("day_number,session_type,objective,running_protocols(id),week:weeks!inner(week_number,program_id)")
     .eq("week.program_id", programId)
     .in("week.week_number", [1, 2])
     .order("day_number");
   if (error) throw new Error(error.message);
 
+  // Motor v2: a estrutura (split/ênfase) é dinâmica por objetivo/frequência/
+  // nível. Só validamos o que é invariante ao perfil: o nº de dias bate e os
+  // dias de corrida têm protocolo. NÃO checamos mais ênfase Pull/Push fixa.
+  // Tolerante a posição: o motor v2 decide QUAIS dias são corrida por modo/
+  // objetivo. Só checamos invariantes: nº de dias bate e a presença de corrida
+  // condiz com a preferência (tem corrida ⇔ o usuário quer corrida).
   const rows = data ?? [];
-  for (const weekNumber of [1, 2]) {
-    const days = rows.filter((row: any) => row.week.week_number === weekNumber);
-    if (days.length !== expected.length) return false;
-    const fbText = weekNumber % 2 === 1 ? "Pull + Posterior" : "Push + Anterior";
-    const runText = weekNumber % 2 === 1 ? "PUSH" : "PULL";
-    const fbCategories = weekNumber % 2 === 1
-      ? new Set(["biceps", "lats", "back", "trap", "rotator_cuff", "posterior_chain", "calf", "core"])
-      : new Set(["chest", "shoulder", "triceps", "rotator_cuff", "anterior_chain", "calf", "core"]);
-    const runCategories = weekNumber % 2 === 1
-      ? new Set(["chest", "shoulder", "triceps", "core"])
-      : new Set(["lats", "back", "biceps", "trap", "core"]);
-
-    for (const exp of expected) {
-      const day = days.find((row: any) => row.day_number === exp.num);
-      if (!day) return false;
-      if (exp.kind === "fb") {
-        if (day.session_type !== "full_body" || !String(day.objective ?? "").includes(fbText) || (day.running_protocols ?? []).length > 0) return false;
-        if ((day.session_exercises ?? []).some((e: any) => !fbCategories.has(e.exercise?.category))) return false;
-      } else {
-        if (day.session_type !== "run_upper" || !String(day.objective ?? "").includes(runText) || (day.running_protocols ?? []).length === 0) return false;
-        if ((day.session_exercises ?? []).some((e: any) => !runCategories.has(e.exercise?.category))) return false;
-      }
-    }
-  }
+  const days = rows.filter((row: any) => row.week.week_number === 1);
+  if (days.length !== expected.length) return false;
+  const wantsRun = expected.some((e) => e.kind === "run");
+  const actualRun = days.filter((d: any) => (d.running_protocols ?? []).length > 0).length;
+  if (wantsRun && actualRun === 0) return false;
+  if (!wantsRun && actualRun > 0) return false;
   return true;
 }
 
 async function ensureValidActiveProgram(supabase: any, userId: string): Promise<string | null> {
-  const programId = await getActiveProgramId(supabase, userId);
+  // Programa ativo e perfil são independentes — buscar em paralelo corta uma
+  // ida e volta ao banco.
+  const [programId, schedule] = await Promise.all([
+    getActiveProgramId(supabase, userId),
+    loadExpectedSchedule(supabase, userId),
+  ]);
   if (!programId) return null;
 
-  const schedule = await loadExpectedSchedule(supabase, userId);
   if (!schedule || !schedule.hasProfile || !schedule.profile?.age || !schedule.profile?.sex ||
       !schedule.profile?.weight_kg || !schedule.profile?.height_cm ||
       !schedule.profile?.experience_level || !schedule.profile?.goal) {
@@ -293,7 +286,8 @@ async function loadProgramSummary(
         .order("sort_order"),
       supabase
         .from("mesocycles")
-        .select("id,name,start_week,end_week,method,objective,sort_order,macrocycle_id")
+        .select("id,name,start_week,end_week,method,objective,sort_order,macrocycle_id,macrocycle:macrocycles!inner(program_id)")
+        .eq("macrocycle.program_id", prog.id)
         .order("sort_order"),
       supabase
         .from("weeks")

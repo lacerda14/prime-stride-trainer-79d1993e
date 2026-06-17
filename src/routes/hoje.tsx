@@ -5,8 +5,9 @@ import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { getTodayTraining, type SessionExerciseDTO } from "@/lib/program.queries";
 import { getLastWeightsForExercises } from "@/lib/workout-logs.functions";
+import { getCoachRefinement, type CoachRefinementExercise, type CoachTechnique } from "@/lib/coach.functions";
 import { useAuth } from "@/hooks/use-auth";
-import { ChevronDown, Play, Timer, Target, Loader2, PlayCircle, ArrowRightLeft } from "lucide-react";
+import { ChevronDown, Play, Timer, Target, Loader2, PlayCircle, ArrowRightLeft, Sparkles } from "lucide-react";
 import { runningHeadline, runningInstructions } from "@/lib/format-running";
 import { useLocalToday } from "@/hooks/use-local-today";
 import { ExerciseDetailModal, useExerciseDetail } from "@/components/exercise-detail-modal";
@@ -140,14 +141,40 @@ function ExerciseRows({ exercise, onOpenVideo }: { exercise: SessionExerciseDTO;
   );
 }
 
+// Rótulos pt-BR das técnicas que o coach pode atribuir
+const TECHNIQUE_LABEL: Record<CoachTechnique, string> = {
+  straight: "", superset: "Supersérie", rest_pause: "Rest-pause", drop_set: "Drop-set",
+  tempo: "Tempo controlado", cluster: "Cluster", myo_reps: "Myo-reps",
+};
+
+// Bloco de cue do coach (camada 3) dentro de um card de exercício
+function CoachCue({ refine }: { refine: CoachRefinementExercise }) {
+  const tech = TECHNIQUE_LABEL[refine.technique];
+  return (
+    <div className="rounded-xl border border-primary/20 bg-primary/5 px-3 py-2.5 text-xs">
+      <div className="flex items-center gap-1.5 font-semibold text-primary">
+        <Sparkles className="h-3 w-3" /> Coach
+        {tech && (
+          <span className="rounded-full border border-primary/30 bg-primary/10 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-widest">
+            {tech}
+          </span>
+        )}
+      </div>
+      <p className="mt-1 leading-snug text-muted-foreground">{refine.cue}</p>
+      {refine.focus && <p className="mt-0.5 text-[11px] text-primary/80">Foco: {refine.focus}</p>}
+    </div>
+  );
+}
+
 // Card de exercício simples
-function SingleCard({ exercise, index, onOpenVideo, lastWeights, onRequestSwap, isSwapped }: {
+function SingleCard({ exercise, index, onOpenVideo, lastWeights, onRequestSwap, isSwapped, refine }: {
   exercise: SessionExerciseDTO;
   index: number;
   onOpenVideo: (id: string) => void;
   lastWeights: Record<string, number | null>;
   onRequestSwap: (slotId: string, currentPoolId: string, currentName: string) => void;
   isSwapped: boolean;
+  refine?: CoachRefinementExercise;
 }) {
   const [open, setOpen] = useState(index === 0);
 
@@ -194,6 +221,7 @@ function SingleCard({ exercise, index, onOpenVideo, lastWeights, onRequestSwap, 
       <div className={`grid transition-[grid-template-rows] duration-300 ease-out ${open ? "grid-rows-[1fr]" : "grid-rows-[0fr]"}`}>
         <div className="overflow-hidden">
           <div className="space-y-2 border-t border-border px-5 pb-5 pt-4">
+            {refine && !isSwapped && <CoachCue refine={refine} />}
             {Array.from({ length: exercise.sets || 1 }).map((_, i) => (
               <SetRow key={i} exerciseId={exercise.id} setNum={i + 1} reps={exercise.reps} lastWeight={lastWeights[exercise.exercise.id]} />
             ))}
@@ -218,7 +246,7 @@ function SingleCard({ exercise, index, onOpenVideo, lastWeights, onRequestSwap, 
 }
 
 // Card de biset — agrupa todos os exercícios do par
-function BisetCard({ exercises, slot, index, onOpenVideo, lastWeights, onRequestSwap, swappedIds }: {
+function BisetCard({ exercises, slot, index, onOpenVideo, lastWeights, onRequestSwap, swappedIds, refineBySlot }: {
   exercises: SessionExerciseDTO[];
   slot: number;
   index: number;
@@ -226,6 +254,7 @@ function BisetCard({ exercises, slot, index, onOpenVideo, lastWeights, onRequest
   lastWeights: Record<string, number | null>;
   onRequestSwap: (slotId: string, currentPoolId: string, currentName: string) => void;
   swappedIds: Set<string>;
+  refineBySlot: Record<number, CoachRefinementExercise>;
 }) {
   const [open, setOpen] = useState(index === 0);
   const restSeconds = exercises.find((e) => e.rest_seconds)?.rest_seconds;
@@ -267,6 +296,16 @@ function BisetCard({ exercises, slot, index, onOpenVideo, lastWeights, onRequest
       <div className={`grid transition-[grid-template-rows] duration-300 ease-out ${open ? "grid-rows-[1fr]" : "grid-rows-[0fr]"}`}>
         <div className="overflow-hidden">
           <div className="border-t border-border/60 px-5 pb-5 pt-4">
+            {/* Cues do coach por exercício do par */}
+            {exercises.map((ex) => {
+              const r = refineBySlot[ex.slot];
+              return r && !swappedIds.has(ex.id) ? (
+                <div key={`cue-${ex.id}`} className="mb-3">
+                  <div className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{ex.exercise.name}</div>
+                  <CoachCue refine={r} />
+                </div>
+              ) : null;
+            })}
             {/* Séries em paralelo: para cada rodada, mostra os dois exercícios */}
             {Array.from({ length: exercises[0]?.sets || 1 }).map((_, setIdx) => (
               <div key={setIdx} className="mb-4">
@@ -343,8 +382,9 @@ function BisetCard({ exercises, slot, index, onOpenVideo, lastWeights, onRequest
 
 function HojePage() {
   const { user } = useAuth();
-  const fetchToday   = useServerFn(getTodayTraining);
-  const fetchWeights = useServerFn(getLastWeightsForExercises);
+  const fetchToday      = useServerFn(getTodayTraining);
+  const fetchWeights    = useServerFn(getLastWeightsForExercises);
+  const fetchRefinement = useServerFn(getCoachRefinement);
   const localToday   = useLocalToday();
   const detail       = useExerciseDetail();
 
@@ -381,6 +421,21 @@ function HojePage() {
     queryFn: () => fetchWeights({ data: { exercise_ids: exerciseIds } }),
     enabled: !!user && exerciseIds.length > 0,
   });
+
+  // Camada 3 (AI Reasoning): refina a sessão de força com cues/técnica do coach.
+  // Opcional e cacheado (server-side + 1h client) — nunca bloqueia o treino.
+  const todayId = data?.today?.id;
+  const isStrengthDay = data?.today?.session_type === "full_body";
+  const { data: coachData } = useQuery({
+    queryKey: ["coach-refine", user?.id, todayId],
+    queryFn: () => fetchRefinement({ data: { training_day_id: todayId! } }),
+    enabled: !!user && !!todayId && isStrengthDay,
+    staleTime: 1000 * 60 * 60,
+  });
+  const refineBySlot: Record<number, CoachRefinementExercise> =
+    coachData?.refined && coachData.refinement
+      ? Object.fromEntries(coachData.refinement.exercises.map((e) => [e.slot, e]))
+      : {};
 
   if (isLoading) {
     return (
@@ -449,6 +504,16 @@ function HojePage() {
         {/* IA — Readiness */}
         <ReadinessCard />
 
+        {/* Coach — estratégia da sessão (camada 3 / AI Reasoning) */}
+        {coachData?.refined && coachData.refinement?.session_strategy && (
+          <section className="glass animate-fade-in rounded-2xl border border-primary/20 p-5">
+            <div className="flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-[0.18em] text-primary">
+              <Sparkles className="h-3.5 w-3.5" /> {coachData.coach ?? "Coach"} · Estratégia
+            </div>
+            <p className="mt-2 text-sm leading-snug text-foreground/90">{coachData.refinement.session_strategy}</p>
+          </section>
+        )}
+
         {/* Corrida */}
         {today.running && (
           <section className="glass rounded-2xl p-5">
@@ -488,6 +553,7 @@ function HojePage() {
                     lastWeights={lastWeights}
                     onRequestSwap={onRequestSwap}
                     isSwapped={!!swaps[g.exercise.id]}
+                    refine={refineBySlot[g.exercise.slot]}
                   />
                 ) : (
                   <BisetCard
@@ -499,6 +565,7 @@ function HojePage() {
                     lastWeights={lastWeights}
                     onRequestSwap={onRequestSwap}
                     swappedIds={new Set(g.exercises.filter((e) => swaps[e.id]).map((e) => e.id))}
+                    refineBySlot={refineBySlot}
                   />
                 );
               })}

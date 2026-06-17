@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Loader2, VideoOff } from "lucide-react";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import { Loader2, VideoOff, X } from "lucide-react";
 import { getExerciseDetail } from "@/lib/exercise-media.functions";
 
 // Remove link externo e branding do YouTube no embed
@@ -35,13 +35,28 @@ export function ExerciseDetailModal({ exerciseId, open, onOpenChange }: Props) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-[440px] max-h-[90vh] overflow-y-auto bg-background border-border/60 p-0">
+        {/* Cabeçalho com o ÚNICO botão de fechar — separado do vídeo pra não
+            confundir com a UI/link do YouTube. Fechar volta pra tela de origem. */}
+        <div className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-border/40 bg-background/95 px-4 py-3 backdrop-blur-sm">
+          <DialogTitle className="truncate text-base font-semibold tracking-tight">
+            {data?.exercise.name ?? "Exercício"}
+          </DialogTitle>
+          <button
+            onClick={() => onOpenChange(false)}
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-surface/70 text-foreground transition-colors hover:bg-surface focus:outline-none"
+            aria-label="Fechar e voltar"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
         {isLoading || !data ? (
           <div className="flex h-64 items-center justify-center">
             <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
           </div>
         ) : (
           <div>
-            {/* Video */}
+            {/* Video (sem botão sobreposto) */}
             <div className="relative aspect-video w-full bg-surface-elevated">
               {data.primary_media && data.primary_media.embed_allowed && data.primary_media.embed_url ? (
                 data.primary_media.media_type === "uploaded_video" ? (
@@ -66,30 +81,14 @@ export function ExerciseDetailModal({ exerciseId, open, onOpenChange }: Props) {
                   <p className="text-xs">Vídeo de execução em breve</p>
                 </div>
               )}
-
-              {/* Botão fechar — grande, no canto superior direito do vídeo */}
-              <button
-                onClick={() => onOpenChange(false)}
-                className="absolute right-2 top-2 flex h-9 w-9 items-center justify-center rounded-full bg-black/70 text-white backdrop-blur-sm transition-opacity hover:bg-black/90 focus:outline-none"
-                aria-label="Fechar vídeo"
-              >
-                <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                  <path d="M1 1l12 12M13 1L1 13" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-                </svg>
-              </button>
             </div>
 
             <div className="space-y-5 p-5">
-              <DialogHeader className="space-y-1">
-                <DialogTitle className="text-lg font-semibold tracking-tight">
-                  {data.exercise.name}
-                </DialogTitle>
-                {data.primary_media?.channel_name && (
-                  <p className="text-xs text-muted-foreground">
-                    Por {data.primary_media.channel_name}
-                  </p>
-                )}
-              </DialogHeader>
+              {data.primary_media?.channel_name && (
+                <p className="-mt-1 text-xs text-muted-foreground">
+                  Por {data.primary_media.channel_name}
+                </p>
+              )}
 
               {data.exercise.primary_muscles.length > 0 && (
                 <div>

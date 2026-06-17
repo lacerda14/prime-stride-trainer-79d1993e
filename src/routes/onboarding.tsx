@@ -5,9 +5,10 @@ import { ArrowLeft, ArrowRight, Check, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/use-auth";
 import { completeOnboarding, getProfile } from "@/lib/profile.functions";
+import { getMyRole } from "@/lib/exercise-media.functions";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getLocalToday } from "@/lib/local-today";
-import pmLogo from "@/assets/pm-logo.png.asset.json";
+import pmLogo from "@/assets/pm-logo.png";
 import {
   PRIMARY_GOAL_OPTIONS,
   SECONDARY_GOALS,
@@ -163,6 +164,7 @@ function OnboardingPage() {
   const navigate = useNavigate();
   const { user, loading } = useAuth();
   const fetchProfile = useServerFn(getProfile);
+  const fetchRole = useServerFn(getMyRole);
   const submit = useServerFn(completeOnboarding);
   const qc = useQueryClient();
 
@@ -171,6 +173,13 @@ function OnboardingPage() {
     queryFn: () => fetchProfile(),
     enabled: !!user,
   });
+
+  const roleQ = useQuery({
+    queryKey: ["my-role"],
+    queryFn: () => fetchRole(),
+    enabled: !!user,
+  });
+  const isAdmin = roleQ.data?.isAdmin === true;
 
   const [step, setStep] = useState(0);
   const [saving, setSaving] = useState(false);
@@ -216,7 +225,7 @@ function OnboardingPage() {
         d.sex !== "" && typeof d.height_cm === "number" && typeof d.weight_kg === "number";
       case 2: return d.primary_goal !== "";
       case 3: return d.experience_level !== "" && d.training_history !== "" &&
-        d.available_days_list.length > 0 && d.available_minutes !== "" && d.preferred_time !== "";
+        d.available_days_list.length > 0 && d.available_minutes !== "";
       case 4: return d.running_mode !== "";
       case 5: return true; // saúde toda opcional
       case 6: return d.gym_setup.location !== "";
@@ -289,6 +298,55 @@ function OnboardingPage() {
     }
   };
 
+  const skipOnboarding = async () => {
+    setSaving(true);
+    try {
+      await submit({
+        data: {
+          first_name: d.first_name.trim() || "Admin",
+          birth_date: d.birth_date || "1990-01-01",
+          sex: (d.sex as Sex) || "male",
+          height_cm: (d.height_cm as number) || 175,
+          weight_kg: (d.weight_kg as number) || 75,
+          primary_goal: "saude_geral" as never,
+          secondary_goals: [],
+          experience_level: "intermediate" as Experience,
+          training_history: "gt_5y" as never,
+          training_location: "gym",
+          available_days: 5,
+          available_minutes: 60,
+          available_days_list: ["Segunda", "Terça", "Quarta", "Quinta", "Sexta"],
+          preferred_time: "Manhã",
+          sports: [], sports_frequency: {},
+          running_mode: "desabilitado" as never,
+          running_level: null, running_continuous_minutes: null,
+          running_goals: [], running_preferred_days: [],
+          cardio_preference: null,
+          medical_conditions: [], medications: null, surgeries: [],
+          medical_restrictions: null,
+          current_pain_level: 0, pain_regions: [], past_injuries: [],
+          uncomfortable_movements: [],
+          equipment: ["Academia completa"],
+          gym_setup: { ...EMPTY_GYM_SETUP, location: "Academia Completa" },
+          preferences: [], training_style: null, motivations: [],
+          program_start_date: getLocalToday().local_date,
+        },
+      });
+      if (user?.id) {
+        qc.setQueryData(["profile", user.id], (current: unknown) => ({
+          ...(current && typeof current === "object" ? current : {}),
+          onboarding_completed: true,
+        }));
+      }
+      void qc.invalidateQueries({ queryKey: ["profile"] });
+      navigate({ to: "/", replace: true });
+    } catch {
+      navigate({ to: "/", replace: true });
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const forceView = typeof window !== "undefined" && new URLSearchParams(window.location.search).get("force") === "1";
   if (loading || !user || profileQ.isPending || (profileQ.data?.onboarding_completed === true && !forceView)) {
     return (
@@ -303,6 +361,15 @@ function OnboardingPage() {
 
   return (
     <div className="relative mx-auto flex min-h-screen w-full max-w-[480px] flex-col bg-background">
+      {isAdmin && (
+        <div className="sticky top-0 z-30 flex items-center justify-between bg-background/95 px-6 pb-2 pt-[max(env(safe-area-inset-top,0px),0.75rem)] backdrop-blur-2xl">
+          <span className="text-[11px] font-medium uppercase tracking-widest text-primary/70">Admin</span>
+          <button onClick={skipOnboarding} disabled={saving}
+            className="rounded-xl border border-primary/40 bg-primary/10 px-4 py-2 text-[12px] font-semibold text-primary active:scale-95 disabled:opacity-50">
+            {saving ? <Loader2 className="inline h-3 w-3 animate-spin" /> : "Pular onboarding →"}
+          </button>
+        </div>
+      )}
       {step > 0 && (
         <div className="sticky top-0 z-10 bg-background/85 px-6 pt-7 pb-4 backdrop-blur-2xl">
           <div className="h-[3px] w-full overflow-hidden rounded-full bg-surface">
@@ -357,7 +424,7 @@ function OnboardingPage() {
 function Splash({ onStart }: { onStart: () => void }) {
   return (
     <div className="flex min-h-[80vh] flex-col items-center justify-center text-center animate-fade-in">
-      <img src={pmLogo.url} alt="PM Hybrid" className="h-24 w-auto object-contain mb-10 opacity-95" />
+      <img src={pmLogo} alt="PM Hybrid" className="h-24 w-auto object-contain mb-10 opacity-95" />
       <div className="text-[10px] font-medium uppercase tracking-[0.32em] text-muted-foreground">
         Avaliação inteligente
       </div>

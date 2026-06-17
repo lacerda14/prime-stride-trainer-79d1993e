@@ -219,12 +219,24 @@ function DocRow({
 
 type UploadMode = "text" | "file";
 
+// Bases de conhecimento: "geral" (aluno sem coach) + 1 tag por coach (persona).
+// A tag marcada vira o escopo de RAG: o coach só busca na própria base + geral.
+const KNOWLEDGE_BASES: { tag: string; label: string; emoji: string }[] = [
+  { tag: "geral",     label: "Base Geral",  emoji: "📚" },
+  { tag: "strength",  label: "Coach Alex (Força)",     emoji: "💪" },
+  { tag: "cardio",    label: "Coach Maya (Corrida)",   emoji: "🏃" },
+  { tag: "nutrition", label: "Coach Nut (Nutrição)",   emoji: "🥗" },
+  { tag: "recovery",  label: "Coach Zen (Recuperação)", emoji: "🧘" },
+  { tag: "mindset",   label: "Coach Max (Mente)",      emoji: "🧠" },
+];
+
 function UploadDialog({ onClose }: { onClose: () => void }) {
   const [mode, setMode]               = useState<UploadMode>("text");
   const [title, setTitle]             = useState("");
   const [sourceType, setSourceType]   = useState<SourceType>("scientific_paper");
   const [author, setAuthor]           = useState("");
   const [tags, setTags]               = useState("");
+  const [bases, setBases]             = useState<string[]>(["geral"]);
   const [textContent, setTextContent] = useState("");
   const [file, setFile]               = useState<File | null>(null);
   const [busy, setBusy]               = useState(false);
@@ -269,7 +281,11 @@ function UploadDialog({ onClose }: { onClose: () => void }) {
         source_type: sourceType,
         content,
         author:      author.trim() || undefined,
-        tags:        tags ? tags.split(",").map((t) => t.trim()).filter(Boolean) : [],
+        // bases (geral/coach) + tags livres → dedup
+        tags:        [...new Set([
+                       ...bases,
+                       ...(tags ? tags.split(",").map((t) => t.trim()).filter(Boolean) : []),
+                     ])],
         language:    "pt-BR",
         force:       true,
       },
@@ -320,13 +336,37 @@ function UploadDialog({ onClose }: { onClose: () => void }) {
             </Select>
           </div>
 
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-muted-foreground">Base de conhecimento</label>
+            <div className="flex flex-wrap gap-1.5">
+              {KNOWLEDGE_BASES.map((b) => {
+                const on = bases.includes(b.tag);
+                return (
+                  <button
+                    key={b.tag}
+                    type="button"
+                    onClick={() => setBases((prev) => on ? prev.filter((t) => t !== b.tag) : [...prev, b.tag])}
+                    className={`rounded-full border px-3 py-1.5 text-[12px] font-medium transition-all ${
+                      on ? "border-primary/60 bg-primary/[0.12] text-foreground" : "border-border bg-surface/40 text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    {b.emoji} {b.label}
+                  </button>
+                );
+              })}
+            </div>
+            <p className="text-[11px] text-muted-foreground">
+              Marque os coaches que devem usar este documento. Cada coach busca só na própria base + na Geral.
+            </p>
+          </div>
+
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
               <label className="text-xs font-medium text-muted-foreground">Autor</label>
               <Input placeholder="Opcional" value={author} onChange={(e) => setAuthor(e.target.value)} />
             </div>
             <div className="space-y-1">
-              <label className="text-xs font-medium text-muted-foreground">Tags (vírgula)</label>
+              <label className="text-xs font-medium text-muted-foreground">Tags extras (vírgula)</label>
               <Input placeholder="hipertrofia, força" value={tags} onChange={(e) => setTags(e.target.value)} />
             </div>
           </div>

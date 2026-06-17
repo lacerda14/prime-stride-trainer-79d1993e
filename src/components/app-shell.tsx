@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { Link, useRouterState } from "@tanstack/react-router";
 import { Home, Dumbbell, TrendingUp, Users, User, LogOut, History, Settings, BarChart3, LifeBuoy, CreditCard } from "lucide-react";
-import pmLogo from "@/assets/pm-logo.png.asset.json";
+import pmLogo from "@/assets/pm-logo.png";
 import { RequireAuth } from "@/components/require-auth";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
@@ -53,7 +53,7 @@ export function AppShell({ children, title, eyebrow, action }: AppShellProps) {
             aria-label="Ir para o início"
             className="flex h-9 w-9 items-center justify-center rounded-xl bg-surface-elevated ring-1 ring-white/10 overflow-hidden transition-transform active:scale-95"
           >
-            <img src={pmLogo.url} alt="PM Hybrid" className="h-7 w-7 object-contain" />
+            <img src={pmLogo} alt="PM Hybrid" className="h-7 w-7 object-contain" />
           </Link>
           <div className="flex flex-1 flex-col leading-tight min-w-0">
             {eyebrow && (

@@ -19,7 +19,8 @@ export const SECONDARY_GOALS = [
 ];
 
 export const TRAINING_HISTORY_OPTIONS = [
-  { v: "none", label: "Nunca treinei" },
+  { v: "sedentary", label: "Não pratico atividade física" },
+  { v: "none", label: "Nunca treinei com regularidade" },
   { v: "lt_6m", label: "Menos de 6 meses" },
   { v: "6m_2y", label: "Entre 6 meses e 2 anos" },
   { v: "2_5y", label: "Entre 2 e 5 anos" },

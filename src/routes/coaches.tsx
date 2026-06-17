@@ -1,8 +1,8 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { AppShell } from "@/components/app-shell";
-import { Sparkles, MessageSquare, Brain, Zap, Lock, Loader2 } from "lucide-react";
+import { Sparkles, MessageSquare, Brain, Zap, Lock, Loader2, ChevronRight } from "lucide-react";
 import { listCoaches, type CoachDTO } from "@/lib/coach.functions";
 import { getMySubscription } from "@/lib/subscription.functions";
 
@@ -110,9 +110,11 @@ function CoachesPage() {
               const accent = ACCENT[coach.persona] ?? FALLBACK_ACCENT;
               const locked = coach.is_premium && !isPremium;
               return (
-                <div
+                <Link
                   key={coach.id}
-                  className={`relative overflow-hidden rounded-2xl border ${accent.border} bg-gradient-to-br ${accent.color} px-5 py-4 ${locked ? "opacity-80" : ""}`}
+                  to="/coach-chat"
+                  search={{ persona: coach.persona }}
+                  className={`relative block overflow-hidden rounded-2xl border ${accent.border} bg-gradient-to-br ${accent.color} px-5 py-4 transition-colors hover:border-primary/40 active:scale-[0.99] ${locked ? "opacity-80" : ""}`}
                 >
                   {/* Badge: Grátis / Premium / Disponível */}
                   <div className="absolute right-3 top-3">
@@ -145,22 +147,27 @@ function CoachesPage() {
                           {coach.description}
                         </p>
                       )}
+                      <div className={`mt-2.5 inline-flex items-center gap-0.5 text-[11px] font-medium ${accent.text}`}>
+                        {locked ? "Ver coach" : "Conversar"}
+                        <ChevronRight className="h-3.5 w-3.5" />
+                      </div>
                     </div>
                   </div>
-                </div>
+                </Link>
               );
             })
           )}
         </div>
 
         {/* CTA */}
-        <div className="rounded-2xl border border-primary/20 bg-primary/5 px-5 py-5 text-center">
-          <p className="text-sm font-semibold">Chat em breve</p>
-          <p className="mt-1 text-xs text-muted-foreground">
-            A conversa com os coaches está chegando. O <span className="font-medium text-foreground">PM Geral</span> será
-            grátis; os especialistas fazem parte do PM Hybrid Premium.
-          </p>
-        </div>
+        <Link
+          to="/coach-chat"
+          search={{ persona: "general" }}
+          className="flex items-center justify-center gap-2 rounded-2xl border border-primary/30 bg-primary/10 px-5 py-4 text-sm font-semibold text-primary transition-colors hover:bg-primary/15"
+        >
+          <MessageSquare className="h-4 w-4" />
+          Conversar com o PM Geral (grátis)
+        </Link>
       </div>
     </AppShell>
   );

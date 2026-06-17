@@ -3,18 +3,17 @@ import type { CapacitorConfig } from '@capacitor/cli';
 const config: CapacitorConfig = {
   appId: 'com.pmhybrid.app',
   appName: 'PM Hybrid',
-  webDir: 'dist',
+  webDir: '.output/public',
   ios: {
     contentInset: 'always',
     backgroundColor: '#000000',
-    limitsNavigationsToAppBoundDomains: false,
+    limitsNavigationsToAppBoundDomains: true,
     scheme: 'PM Hybrid',
   },
+  // App é TanStack Start (SSR + server functions). Precisa apontar para o
+  // próprio Worker do Cloudflare — é infra do Pedro, não do Lovable.
   server: {
-    // App nativo carrega o web app publicado no Lovable (sem precisar de build estático).
-    // Pra apontar pra outro env, troque a URL. Pra modo offline/standalone, comente e
-    // configure um adapter SPA estático.
-    url: 'https://prime-stride-trainer.lovable.app',
+    url: 'https://pm-hybrid.pedrolacerda-m.workers.dev',
     cleartext: false,
     androidScheme: 'https',
     iosScheme: 'https',
@@ -22,7 +21,11 @@ const config: CapacitorConfig = {
   plugins: {
     GoogleAuth: {
       scopes: ['profile', 'email'],
+      // serverClientId: usado pelo plugin nativo iOS (custom). clientId: usado
+      // pelo plugin @codetrix no Android (requestIdToken) — sem ele o Android
+      // cai em R.string.server_client_id inexistente e CRASHA.
       serverClientId: '230882994224-htbk9s0fvo33tdl4c1o9p7d12juke4po.apps.googleusercontent.com',
+      clientId: '230882994224-htbk9s0fvo33tdl4c1o9p7d12juke4po.apps.googleusercontent.com',
       forceCodeForRefreshToken: false,
     },
     SplashScreen: {

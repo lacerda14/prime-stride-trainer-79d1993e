@@ -370,6 +370,11 @@ export const saveWorkoutLogs = createServerFn({ method: "POST" })
 // Último peso por exercício — usado como sugestão no planejamento
 // ============================================================
 
+// Arredonda para o incremento de 0,5 kg mais próximo (anilhas de 0,25 kg/lado).
+function roundLoad(kg: number): number {
+  return Math.round(kg * 2) / 2;
+}
+
 export const getLastWeightsForExercises = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) =>
@@ -394,5 +399,28 @@ export const getLastWeightsForExercises = createServerFn({ method: "POST" })
         result[row.exercise_id] = row.actual_load_kg;
       }
     }
+
+    // Autorregulação: aplica o ajuste de carga da última readiness na sugestão.
+    // O readiness-card explica o porquê (ex.: "+2,5% pra destravar"); aqui a
+    // carga sugerida já vem ajustada. Não compõe: a base é sempre o último
+    // peso REAL logado, então o ajuste vale só para a próxima sessão.
+    const { data: lastReadiness } = await supabase
+      .from("readiness_scores")
+      .select("decision")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    const rawPct =
+      (lastReadiness?.decision as { load_adjust_pct?: number } | null)?.load_adjust_pct ?? 0;
+    // Trava de segurança: nunca ajusta além de -15%..+10% de uma só vez.
+    const adjustPct = Math.max(-0.15, Math.min(0.1, rawPct));
+    if (adjustPct !== 0) {
+      for (const id of Object.keys(result)) {
+        const w = result[id];
+        if (w != null && w > 0) result[id] = roundLoad(w * (1 + adjustPct));
+      }
+    }
+
     return result;
   });
