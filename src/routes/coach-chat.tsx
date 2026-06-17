@@ -163,7 +163,7 @@ function CoachChatPage() {
             <h2 className="text-lg font-semibold">{coach?.name} é Premium</h2>
             <p className="mt-1.5 text-sm text-muted-foreground">
               Os coaches especialistas fazem parte do PM Hybrid Premium. O{" "}
-              <span className="font-medium text-foreground">PM Geral</span> é grátis pra começar.
+              <span className="font-medium text-foreground">Coach Pedro</span> é grátis pra começar.
             </p>
           </div>
           <div className="flex w-full max-w-xs flex-col gap-2">
@@ -175,7 +175,7 @@ function CoachChatPage() {
               onClick={() => navigate({ to: "/coach-chat", search: { persona: "general" } })}
               className="w-full"
             >
-              Falar com o PM Geral (grátis)
+              Falar com o Coach Pedro (grátis)
             </Button>
           </div>
         </div>
