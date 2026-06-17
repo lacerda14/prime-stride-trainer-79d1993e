@@ -282,21 +282,33 @@ function GoogleButton() {
       return;
     }
 
-    const result = await lovable.auth.signInWithOAuth("google", {
-      redirect_uri: window.location.origin,
-      extraParams: { prompt: "select_account" },
-    });
-    if (result.error) {
-      setBusy(false);
-      const msg = String((result.error as Error)?.message || "");
-      if (/state/i.test(msg)) {
-        toast.error("Sessão expirou. Toque novamente em Continuar com Google.");
-      } else {
-        toast.error("Falha ao entrar com Google");
+    try {
+      const result = await lovable.auth.signInWithOAuth("google", {
+        redirect_uri: window.location.origin,
+        extraParams: { prompt: "select_account" },
+      });
+      if (result.error) {
+        const msg = String((result.error as Error)?.message || "");
+        console.error("[google-oauth] error:", result.error);
+        setBusy(false);
+        if (/state/i.test(msg)) {
+          toast.error("Sessão expirou. Toque novamente em Continuar com Google.");
+        } else {
+          toast.error(`Falha ao entrar com Google: ${msg || "erro desconhecido"}`);
+        }
+        return;
       }
-      return;
+      if (result.redirected) return; // navegando pro Google
+      // Sem url e sem erro: não conseguiu montar o redirect → não deixa o spinner preso.
+      console.error("[google-oauth] sem url e sem erro:", result);
+      setBusy(false);
+      toast.error("Não consegui abrir o login do Google. Tenta de novo?");
+    } catch (err: unknown) {
+      console.error("[google-oauth] throw:", err);
+      setBusy(false);
+      const msg = err instanceof Error ? err.message : String(err);
+      toast.error(`Falha ao entrar com Google: ${msg || "erro inesperado"}`);
     }
-    if (result.redirected) return;
   };
 
   return (
