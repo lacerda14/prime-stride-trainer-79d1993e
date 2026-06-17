@@ -5,6 +5,7 @@ import { AppShell } from "@/components/app-shell";
 import { Sparkles, MessageSquare, Brain, Zap, Lock, Loader2, ChevronRight } from "lucide-react";
 import { listCoaches, type CoachDTO } from "@/lib/coach.functions";
 import { getMySubscription } from "@/lib/subscription.functions";
+import { CoachAvatar } from "@/components/coach-avatar";
 
 export const Route = createFileRoute("/coaches")({
   head: () => ({
@@ -136,9 +137,7 @@ function CoachesPage() {
                   </div>
 
                   <div className="flex items-start gap-3">
-                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-border/40 bg-surface/60 text-2xl">
-                      {coach.emoji ?? "🤖"}
-                    </div>
+                    <CoachAvatar url={coach.avatar_url} emoji={coach.emoji} size="h-11 w-11" text="text-2xl" />
                     <div className="flex-1 pr-20">
                       <div className="font-semibold tracking-tight">{coach.name}</div>
                       <div className={`text-[11px] ${accent.text}/90`}>{coach.specialty}</div>

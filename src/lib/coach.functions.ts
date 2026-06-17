@@ -46,6 +46,7 @@ export interface CoachDTO {
   tone: string;
   description: string | null;
   emoji: string | null;
+  avatar_url: string | null;
   is_premium: boolean;
   sort_order: number;
 }
@@ -55,7 +56,7 @@ export const listCoaches = createServerFn({ method: "GET" })
   .handler(async ({ context }): Promise<CoachDTO[]> => {
     const { data, error } = await context.supabase
       .from("ai_coaches")
-      .select("id, persona, name, specialty, tone, description, emoji, is_premium, sort_order")
+      .select("id, persona, name, specialty, tone, description, emoji, avatar_url, is_premium, sort_order")
       .eq("is_active", true)
       .order("sort_order", { ascending: true });
     if (error || !data) return [];

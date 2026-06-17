@@ -5,6 +5,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { ArrowLeft, Send, Loader2, Crown, Sparkles } from "lucide-react";
 import { RequireAuth } from "@/components/require-auth";
 import { Button } from "@/components/ui/button";
+import { CoachAvatar } from "@/components/coach-avatar";
 import {
   listCoaches,
   sendCoachMessage,
@@ -194,9 +195,7 @@ function CoachChatPage() {
       <div ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto px-4 py-4">
         {messages.length === 0 && (
           <div className="flex flex-col items-center gap-4 px-4 pt-8 text-center">
-            <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-border/50 bg-surface/60 text-3xl">
-              {coach?.emoji ?? "🤖"}
-            </div>
+            <CoachAvatar url={coach?.avatar_url} emoji={coach?.emoji} size="h-14 w-14" text="text-3xl" className="rounded-2xl" />
             <div>
               <div className="font-semibold">{coach?.name ?? "Coach"}</div>
               <p className="mx-auto mt-1 max-w-xs text-xs text-muted-foreground">
@@ -287,9 +286,7 @@ function ChatHeader({
       <button onClick={onBack} className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-surface">
         <ArrowLeft className="h-5 w-5" />
       </button>
-      <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-border/40 bg-surface/60 text-xl">
-        {coach?.emoji ?? "🤖"}
-      </div>
+      <CoachAvatar url={coach?.avatar_url} emoji={coach?.emoji} size="h-9 w-9" text="text-xl" />
       <div className="min-w-0 flex-1">
         <div className="truncate text-sm font-semibold leading-tight">{coach?.name ?? "Coach"}</div>
         <div className="text-[11px] text-muted-foreground">{subtitle}</div>
