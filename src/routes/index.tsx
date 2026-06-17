@@ -237,14 +237,14 @@ function DashboardContent() {
               <Star className="h-5 w-5 text-primary" strokeWidth={2} />
             </div>
             <div className="min-w-0 flex-1">
-              <div className="inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.18em] text-primary">
-                Em breve · Premium
+              <div className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.18em] text-emerald-400">
+                Disponível · Grátis
               </div>
               <div className="mt-1.5 text-[14px] font-semibold tracking-tight">
                 Coach IA Pessoal
               </div>
               <p className="mt-0.5 text-[12px] leading-relaxed text-muted-foreground">
-                Análise do seu treino, recuperação e evolução em tempo real.
+                Já conhece seu treino, recuperação e evolução. Converse agora com o PM Geral.
               </p>
             </div>
             <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground" />
