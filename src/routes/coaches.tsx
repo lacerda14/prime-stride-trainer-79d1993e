@@ -15,13 +15,19 @@ export const Route = createFileRoute("/coaches")({
 });
 
 // Cor de destaque por persona (DB não guarda cor).
+// Cor distinta por coach (identidade visual). Classes completas p/ o Tailwind detectar.
 const ACCENT: Record<string, { color: string; border: string; text: string }> = {
-  general:   { color: "from-primary/20 to-primary/5",   border: "border-primary/30",  text: "text-primary" },
-  strength:  { color: "from-amber-500/20 to-amber-600/5", border: "border-amber-500/20", text: "text-amber-400" },
-  cardio:    { color: "from-sky-500/20 to-sky-600/5",     border: "border-sky-500/20",   text: "text-sky-400" },
-  nutrition: { color: "from-violet-500/20 to-violet-600/5", border: "border-violet-500/20", text: "text-violet-400" },
-  recovery:  { color: "from-emerald-500/20 to-emerald-600/5", border: "border-emerald-500/20", text: "text-emerald-400" },
-  mindset:   { color: "from-rose-500/20 to-rose-600/5",   border: "border-rose-500/20",  text: "text-rose-400" },
+  general:    { color: "from-primary/20 to-primary/5",         border: "border-primary/30",     text: "text-primary" },
+  strength:   { color: "from-amber-500/20 to-amber-600/5",     border: "border-amber-500/20",   text: "text-amber-400" },
+  cardio:     { color: "from-rose-500/20 to-rose-600/5",       border: "border-rose-500/20",    text: "text-rose-400" },
+  corrida:    { color: "from-sky-500/20 to-sky-600/5",         border: "border-sky-500/20",     text: "text-sky-400" },
+  nutrition:  { color: "from-emerald-500/20 to-emerald-600/5", border: "border-emerald-500/20", text: "text-emerald-400" },
+  recovery:   { color: "from-violet-500/20 to-violet-600/5",   border: "border-violet-500/20",  text: "text-violet-400" },
+  mindset:    { color: "from-indigo-500/20 to-indigo-600/5",   border: "border-indigo-500/20",  text: "text-indigo-400" },
+  lpo:        { color: "from-red-500/20 to-red-600/5",         border: "border-red-500/20",     text: "text-red-400" },
+  calistenia: { color: "from-lime-500/20 to-lime-600/5",       border: "border-lime-500/20",    text: "text-lime-400" },
+  crossfit:   { color: "from-orange-500/20 to-orange-600/5",   border: "border-orange-500/20",  text: "text-orange-400" },
+  casa:       { color: "from-teal-500/20 to-teal-600/5",       border: "border-teal-500/20",    text: "text-teal-400" },
 };
 const FALLBACK_ACCENT = { color: "from-border/20 to-surface", border: "border-border/40", text: "text-primary" };
 

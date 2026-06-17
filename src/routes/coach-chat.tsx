@@ -217,22 +217,34 @@ function CoachChatPage() {
           </div>
         )}
 
-        {messages.map((m, i) => (
-          <div key={i} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
-            <div
-              className={
-                m.role === "user"
-                  ? "max-w-[82%] rounded-2xl rounded-br-md bg-primary px-3.5 py-2.5 text-[13.5px] leading-relaxed text-primary-foreground"
-                  : "max-w-[88%] rounded-2xl rounded-bl-md border border-border/50 bg-surface/60 px-3.5 py-2.5 text-foreground"
-              }
-            >
-              {m.role === "user" ? m.content : <CoachText text={m.content} />}
+        {messages.map((m, i) => {
+          const isAssistant = m.role === "assistant";
+          // foto aparece 1x por grupo (na última fala do coach), estilo WhatsApp
+          const showAvatar = isAssistant && (i === messages.length - 1 || messages[i + 1].role !== "assistant");
+          return (
+            <div key={i} className={`flex items-end gap-2 ${isAssistant ? "justify-start" : "justify-end"}`}>
+              {isAssistant &&
+                (showAvatar ? (
+                  <CoachAvatar url={coach?.avatar_url} emoji={coach?.emoji} size="h-7 w-7" text="text-sm" round className="mb-0.5" />
+                ) : (
+                  <div className="h-7 w-7 shrink-0" />
+                ))}
+              <div
+                className={
+                  isAssistant
+                    ? "max-w-[80%] rounded-2xl rounded-bl-md border border-border/50 bg-surface/60 px-3.5 py-2.5 text-foreground"
+                    : "max-w-[82%] rounded-2xl rounded-br-md bg-primary px-3.5 py-2.5 text-[13.5px] leading-relaxed text-primary-foreground"
+                }
+              >
+                {isAssistant ? <CoachText text={m.content} /> : m.content}
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
 
         {mutation.isPending && (
-          <div className="flex justify-start">
+          <div className="flex items-end gap-2 justify-start">
+            <CoachAvatar url={coach?.avatar_url} emoji={coach?.emoji} size="h-7 w-7" text="text-sm" round className="mb-0.5" />
             <div className="flex items-center gap-1.5 rounded-2xl rounded-bl-md border border-border/50 bg-surface/60 px-4 py-3">
               <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-muted-foreground [animation-delay:-0.3s]" />
               <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-muted-foreground [animation-delay:-0.15s]" />

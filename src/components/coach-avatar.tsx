@@ -6,19 +6,21 @@ export function CoachAvatar({
   emoji,
   size = "h-11 w-11",
   text = "text-2xl",
+  round = false,
   className = "",
 }: {
   url?: string | null;
   emoji?: string | null;
   size?: string;
   text?: string;
+  round?: boolean;
   className?: string;
 }) {
   const [ok, setOk] = useState(true);
   const showImg = !!url && ok;
   return (
     <div
-      className={`${size} shrink-0 overflow-hidden rounded-xl border border-border/40 bg-surface/60 ${className}`}
+      className={`${size} shrink-0 overflow-hidden ${round ? "rounded-full" : "rounded-xl"} border border-border/40 bg-surface/60 ${className}`}
     >
       {showImg ? (
         <img

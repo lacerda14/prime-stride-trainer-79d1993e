@@ -7,7 +7,6 @@ import {
   Zap,
   Sparkles,
   Dumbbell,
-  Star,
   TrendingUp,
   Play,
   Crown,
@@ -253,8 +252,7 @@ function DashboardContent() {
       {/* ── 3. Card COACH IA — teaser premium ── */}
       <section className="animate-fade-in">
         <Link
-          to="/coach-chat"
-          search={{ persona: "general" }}
+          to="/coaches"
           className="relative block overflow-hidden rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/10 via-surface to-surface p-4 transition hover:border-primary/40"
         >
           <div className="pointer-events-none absolute -right-10 -top-10 h-28 w-28 rounded-full bg-primary/20 blur-3xl" />
