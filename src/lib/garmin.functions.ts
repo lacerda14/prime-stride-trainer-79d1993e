@@ -17,10 +17,7 @@ export interface GarminStatus {
 export const getGarminStatus = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<GarminStatus> => {
-    // garmin_connections ainda não está nos tipos gerados (aplicar migration 49
-    // + regen types). Cast pontual até lá.
-    // deno-lint-ignore no-explicit-any
-    const { data } = await (context.supabase as any)
+    const { data } = await context.supabase
       .from("garmin_connections")
       .select("connected_at")
       .maybeSingle();
@@ -65,8 +62,7 @@ export const disconnectGarmin = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<{ ok: boolean }> => {
     // RLS já restringe à própria linha; filtra por user_id explicitamente.
-    // deno-lint-ignore no-explicit-any
-    await (context.supabase as any).from("garmin_connections").delete().eq("user_id", context.userId);
+    await context.supabase.from("garmin_connections").delete().eq("user_id", context.userId);
     await context.supabase
       .from("health_integrations")
       .update({ is_active: false })

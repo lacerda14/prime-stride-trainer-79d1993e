@@ -6,6 +6,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useQueryClient, useQuery, useMutation } from "@tanstack/react-query";
 import { resetOnboarding } from "@/lib/profile.functions";
 import { getGarminStatus, startGarminConnect, disconnectGarmin } from "@/lib/garmin.functions";
+import { healthAvailable, syncDailyHealthMetrics } from "@/lib/healthkit";
 import { toast } from "sonner";
 import { Capacitor } from "@capacitor/core";
 import { WatchBridge } from "@/lib/watch-bridge";
@@ -21,7 +22,6 @@ export const Route = createFileRoute("/configuracoes")({
 });
 
 const HEALTH_PLATFORMS = [
-  { name: "Apple Health", desc: "iPhone · iCloud Health", status: "Em breve" },
   { name: "Samsung Health", desc: "Galaxy · Samsung Account", status: "Em breve" },
 ];
 
@@ -37,6 +37,7 @@ function ConfigPage() {
         <PerfilLink />
 
         <Section icon={Heart} title="Saúde" description="Sincronize seus dados de saúde">
+          <AppleHealthRow />
           {HEALTH_PLATFORMS.map((p) => (
             <IntegrationRow key={p.name} name={p.name} desc={p.desc} status={p.status} />
           ))}
@@ -91,6 +92,50 @@ function PerfilLink() {
       </div>
       <ChevronRight className="h-5 w-5 text-muted-foreground" />
     </Link>
+  );
+}
+
+function AppleHealthRow() {
+  // iOS: lê Apple Saúde (inclui o que o Garmin Connect sincroniza lá) e envia
+  // pro backend. Web/Android: ainda não disponível.
+  const available = healthAvailable();
+  const [syncing, setSyncing] = useState(false);
+
+  const sync = async () => {
+    setSyncing(true);
+    try {
+      const { synced } = await syncDailyHealthMetrics(14);
+      if (synced > 0) toast.success(`Apple Saúde sincronizado (${synced} dia${synced > 1 ? "s" : ""}).`);
+      else toast.message("Nada novo pra sincronizar", { description: "Confirme as permissões do Apple Saúde." });
+    } catch {
+      toast.error("Não consegui sincronizar com o Apple Saúde.");
+    } finally {
+      setSyncing(false);
+    }
+  };
+
+  return (
+    <div className="flex items-center justify-between py-3.5">
+      <div>
+        <div className="text-[14px] font-medium tracking-tight">Apple Saúde</div>
+        <div className="mt-0.5 text-[11.5px] text-muted-foreground">
+          {available ? "Sono, FC, passos · inclui Garmin via Apple Saúde" : "Disponível no app iOS"}
+        </div>
+      </div>
+      {available ? (
+        <button
+          onClick={sync}
+          disabled={syncing}
+          className="rounded-full border border-primary/50 bg-primary/10 px-3 py-1 text-[10.5px] font-medium uppercase tracking-[0.14em] text-primary disabled:opacity-60"
+        >
+          {syncing ? "..." : "Sincronizar"}
+        </button>
+      ) : (
+        <button disabled className="rounded-full border border-border bg-surface/60 px-3 py-1 text-[10.5px] font-medium uppercase tracking-[0.14em] text-muted-foreground/70">
+          Em breve
+        </button>
+      )}
+    </div>
   );
 }
 
