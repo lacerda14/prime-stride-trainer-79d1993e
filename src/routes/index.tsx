@@ -18,6 +18,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { getDashboard } from "@/lib/profile.functions";
 import { getMySubscription } from "@/lib/subscription.functions";
+import { CoachAvatar } from "@/components/coach-avatar";
 import { getTodayTraining } from "@/lib/program.queries";
 import { levelProgress, getTitleForLevel } from "@/lib/gamification";
 import { useLocalToday } from "@/hooks/use-local-today";
@@ -252,14 +253,19 @@ function DashboardContent() {
       {/* ── 3. Card COACH IA — teaser premium ── */}
       <section className="animate-fade-in">
         <Link
-          to="/coaches"
+          to="/coach-chat"
+          search={{ persona: "general" }}
           className="relative block overflow-hidden rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/10 via-surface to-surface p-4 transition hover:border-primary/40"
         >
           <div className="pointer-events-none absolute -right-10 -top-10 h-28 w-28 rounded-full bg-primary/20 blur-3xl" />
           <div className="relative flex items-start gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-primary/30 bg-primary/15 shadow-glow">
-              <Star className="h-5 w-5 text-primary" strokeWidth={2} />
-            </div>
+            <CoachAvatar
+              url="https://tkpnghmpylkptkrsywkh.supabase.co/storage/v1/object/public/coach-avatars/general.png"
+              emoji="🧭"
+              size="h-12 w-12"
+              text="text-2xl"
+              className="shadow-glow"
+            />
             <div className="min-w-0 flex-1">
               <div className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.18em] text-emerald-400">
                 Disponível · Grátis
