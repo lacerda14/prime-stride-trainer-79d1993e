@@ -6,7 +6,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useQueryClient, useQuery, useMutation } from "@tanstack/react-query";
 import { resetOnboarding } from "@/lib/profile.functions";
 import { getGarminStatus, startGarminConnect, disconnectGarmin } from "@/lib/garmin.functions";
-import { healthAvailable, syncDailyHealthMetrics } from "@/lib/healthkit";
+import { dailyHealthAvailable, dailyHealthLabel, syncDailyHealthMetrics } from "@/lib/healthkit";
 import { toast } from "sonner";
 import { Capacitor } from "@capacitor/core";
 import { WatchBridge } from "@/lib/watch-bridge";
@@ -37,7 +37,7 @@ function ConfigPage() {
         <PerfilLink />
 
         <Section icon={Heart} title="Saúde" description="Sincronize seus dados de saúde">
-          <AppleHealthRow />
+          <DeviceHealthRow />
           {HEALTH_PLATFORMS.map((p) => (
             <IntegrationRow key={p.name} name={p.name} desc={p.desc} status={p.status} />
           ))}
@@ -95,20 +95,21 @@ function PerfilLink() {
   );
 }
 
-function AppleHealthRow() {
-  // iOS: lê Apple Saúde (inclui o que o Garmin Connect sincroniza lá) e envia
-  // pro backend. Web/Android: ainda não disponível.
-  const available = healthAvailable();
+function DeviceHealthRow() {
+  // iOS lê Apple Saúde; Android lê Health Connect. Os dois incluem o que o
+  // Garmin Connect sincroniza no telefone. Web: indisponível.
+  const available = dailyHealthAvailable();
+  const label = dailyHealthLabel();
   const [syncing, setSyncing] = useState(false);
 
   const sync = async () => {
     setSyncing(true);
     try {
       const { synced } = await syncDailyHealthMetrics(14);
-      if (synced > 0) toast.success(`Apple Saúde sincronizado (${synced} dia${synced > 1 ? "s" : ""}).`);
-      else toast.message("Nada novo pra sincronizar", { description: "Confirme as permissões do Apple Saúde." });
+      if (synced > 0) toast.success(`${label} sincronizado (${synced} dia${synced > 1 ? "s" : ""}).`);
+      else toast.message("Nada novo pra sincronizar", { description: `Confirme as permissões do ${label}.` });
     } catch {
-      toast.error("Não consegui sincronizar com o Apple Saúde.");
+      toast.error(`Não consegui sincronizar com o ${label}.`);
     } finally {
       setSyncing(false);
     }
@@ -117,9 +118,9 @@ function AppleHealthRow() {
   return (
     <div className="flex items-center justify-between py-3.5">
       <div>
-        <div className="text-[14px] font-medium tracking-tight">Apple Saúde</div>
+        <div className="text-[14px] font-medium tracking-tight">{label}</div>
         <div className="mt-0.5 text-[11.5px] text-muted-foreground">
-          {available ? "Sono, FC, passos · inclui Garmin via Apple Saúde" : "Disponível no app iOS"}
+          {available ? "Sono, FC, passos · inclui Garmin pelo telefone" : "Disponível no app (iOS/Android)"}
         </div>
       </div>
       {available ? (

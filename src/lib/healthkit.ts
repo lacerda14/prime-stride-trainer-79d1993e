@@ -29,8 +29,19 @@ export interface DailyHealthMetric {
 
 const HealthKit = registerPlugin<HealthKitPlugin>("HealthKit");
 
+// Métricas de SESSÃO (FC/calorias do Apple Watch) — só iOS.
 export function healthAvailable(): boolean {
   return Capacitor.isNativePlatform() && Capacitor.getPlatform() === "ios";
+}
+
+// Sync DIÁRIO (passos/sono/HRV/FC) — iOS (Apple Saúde) e Android (Health Connect).
+// O plugin nativo é registrado como "HealthKit" nas duas plataformas.
+export function dailyHealthAvailable(): boolean {
+  return Capacitor.isNativePlatform();
+}
+
+export function dailyHealthLabel(): string {
+  return Capacitor.getPlatform() === "android" ? "Health Connect" : "Apple Saúde";
 }
 
 export async function requestHealthAuth(): Promise<boolean> {
@@ -102,8 +113,14 @@ export async function readSessionHealth(startIso: string, endIso: string): Promi
 // Traz, de quebra, o que o Garmin Connect sincroniza com o Apple Saúde — sem a
 // API do Garmin. Cada dia vira um upsert em daily_health_metrics → recuperação.
 export async function syncDailyHealthMetrics(days = 7): Promise<{ synced: number }> {
-  if (!healthAvailable()) return { synced: 0 };
-  const granted = await requestHealthAuth();
+  if (!dailyHealthAvailable()) return { synced: 0 };
+  let granted = false;
+  try {
+    const r = await HealthKit.requestAuthorization();
+    granted = !!r.granted;
+  } catch {
+    granted = false;
+  }
   if (!granted) return { synced: 0 };
 
   let metrics: DailyHealthMetric[] = [];
