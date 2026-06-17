@@ -167,7 +167,7 @@ function DashboardContent() {
             <div className="relative min-w-0 flex-1">
               <div className="text-[14px] font-semibold tracking-tight">Seja Premium</div>
               <div className="text-[12px] leading-tight text-muted-foreground">
-                Coaches IA, treinos por IA e tudo liberado.
+                Coaches especialistas, treinos sob medida e tudo liberado.
               </div>
             </div>
             <span className="relative shrink-0 rounded-full bg-amber-400 px-3.5 py-1.5 text-[12px] font-bold text-black">
@@ -269,7 +269,7 @@ function DashboardContent() {
                 Disponível · Grátis
               </div>
               <div className="mt-1.5 text-[14px] font-semibold tracking-tight">
-                Personalize seu treino com IA
+                Personalize seu treino com seu coach
               </div>
               <p className="mt-0.5 text-[12px] leading-relaxed text-muted-foreground">
                 Coaches especialistas que conhecem teu treino, recuperação e evolução. Fale agora.

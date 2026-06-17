@@ -45,8 +45,8 @@ const FREE_FEATURES = [
 
 const PREMIUM_FEATURES = [
   "Tudo do plano Grátis",
-  "Chat com IA Coach",
-  "Geração de treinos por IA",
+  "Chat com seu coach",
+  "Treinos personalizados com seu coach",
   "5 coaches especializados",
   "Análise de recuperação",
   "Periodização inteligente",

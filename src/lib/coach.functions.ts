@@ -36,7 +36,7 @@ export interface CoachRefinementResult {
 
 // ============================================================
 // listCoaches — lista os coaches AI (ai_coaches) para a tela /coaches.
-// Coach Pedro (persona 'general') é free; os demais exigem premium.
+// Pedro (persona 'general') é free; os demais exigem premium.
 // ============================================================
 export interface CoachDTO {
   id: string;

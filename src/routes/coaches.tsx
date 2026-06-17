@@ -9,7 +9,7 @@ import { CoachAvatar } from "@/components/coach-avatar";
 
 export const Route = createFileRoute("/coaches")({
   head: () => ({
-    meta: [{ title: "Coaches AI · PM Hybrid" }],
+    meta: [{ title: "Coaches · PM Hybrid" }],
   }),
   component: CoachesPage,
 });
@@ -40,7 +40,7 @@ const FEATURES = [
   {
     icon: <Brain className="h-5 w-5" />,
     title: "Base de conhecimento própria",
-    description: "Cada coach consulta uma base científica do seu domínio; o Coach Pedro consulta tudo.",
+    description: "Cada coach consulta uma base científica do seu domínio; o Pedro consulta tudo.",
   },
   {
     icon: <Zap className="h-5 w-5" />,
@@ -67,7 +67,7 @@ function CoachesPage() {
     subData?.billing_status === "trialing";
 
   return (
-    <AppShell eyebrow="Premium" title="Coaches AI">
+    <AppShell eyebrow="Premium" title="Coaches">
       <div className="mx-auto max-w-2xl space-y-8 p-4 pb-16 sm:p-6">
         {/* Hero */}
         <div className="relative overflow-hidden rounded-3xl border border-primary/20 bg-gradient-to-br from-primary/10 via-surface to-surface px-6 py-8 text-center">
@@ -76,10 +76,10 @@ function CoachesPage() {
             <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border border-primary/30 bg-primary/15 shadow-glow">
               <Sparkles className="h-7 w-7 text-primary" />
             </div>
-            <h1 className="mt-1 text-2xl font-semibold tracking-tight">Coaches AI personalizados</h1>
+            <h1 className="mt-1 text-2xl font-semibold tracking-tight">Coaches personalizados</h1>
             <p className="mx-auto mt-2 max-w-sm text-sm text-muted-foreground">
               Especialistas treinados com seu histórico e uma base de conhecimento própria por domínio.
-              Comece grátis com o <span className="font-medium text-foreground">Coach Pedro</span>.
+              Comece grátis com o <span className="font-medium text-foreground">Pedro</span>.
             </p>
           </div>
         </div>
@@ -171,7 +171,7 @@ function CoachesPage() {
           className="flex items-center justify-center gap-2 rounded-2xl border border-primary/30 bg-primary/10 px-5 py-4 text-sm font-semibold text-primary transition-colors hover:bg-primary/15"
         >
           <MessageSquare className="h-4 w-4" />
-          Conversar com o Coach Pedro (grátis)
+          Conversar com o Pedro (grátis)
         </Link>
       </div>
     </AppShell>

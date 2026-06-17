@@ -223,11 +223,11 @@ type UploadMode = "text" | "file";
 // A tag marcada vira o escopo de RAG: o coach só busca na própria base + geral.
 const KNOWLEDGE_BASES: { tag: string; label: string; emoji: string }[] = [
   { tag: "geral",     label: "Base Geral",  emoji: "📚" },
-  { tag: "strength",  label: "Coach Alex (Força)",     emoji: "💪" },
-  { tag: "cardio",    label: "Coach Maya (Corrida)",   emoji: "🏃" },
-  { tag: "nutrition", label: "Coach Nut (Nutrição)",   emoji: "🥗" },
-  { tag: "recovery",  label: "Coach Zen (Recuperação)", emoji: "🧘" },
-  { tag: "mindset",   label: "Coach Max (Mente)",      emoji: "🧠" },
+  { tag: "strength",  label: "Alex (Força)",     emoji: "💪" },
+  { tag: "cardio",    label: "Maya (Corrida)",   emoji: "🏃" },
+  { tag: "nutrition", label: "Nut (Nutrição)",   emoji: "🥗" },
+  { tag: "recovery",  label: "Carlos (Recuperação)", emoji: "🧘" },
+  { tag: "mindset",   label: "Max (Mente)",      emoji: "🧠" },
 ];
 
 function UploadDialog({ onClose }: { onClose: () => void }) {

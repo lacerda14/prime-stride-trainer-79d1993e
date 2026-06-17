@@ -18,7 +18,7 @@ export const Route = createFileRoute("/coach-chat")({
   validateSearch: (s: Record<string, unknown>) => ({
     persona: typeof s.persona === "string" ? s.persona : "general",
   }),
-  head: () => ({ meta: [{ title: "Chat · Coaches AI · PM Hybrid" }] }),
+  head: () => ({ meta: [{ title: "Chat · Coaches · PM Hybrid" }] }),
   component: () => (
     <RequireAuth>
       <CoachChatPage />
@@ -163,7 +163,7 @@ function CoachChatPage() {
             <h2 className="text-lg font-semibold">{coach?.name} é Premium</h2>
             <p className="mt-1.5 text-sm text-muted-foreground">
               Os coaches especialistas fazem parte do PM Hybrid Premium. O{" "}
-              <span className="font-medium text-foreground">Coach Pedro</span> é grátis pra começar.
+              <span className="font-medium text-foreground">Pedro</span> é grátis pra começar.
             </p>
           </div>
           <div className="flex w-full max-w-xs flex-col gap-2">
@@ -175,7 +175,7 @@ function CoachChatPage() {
               onClick={() => navigate({ to: "/coach-chat", search: { persona: "general" } })}
               className="w-full"
             >
-              Falar com o Coach Pedro (grátis)
+              Falar com o Pedro (grátis)
             </Button>
           </div>
         </div>
@@ -189,7 +189,7 @@ function CoachChatPage() {
       <ChatHeader
         coach={coach}
         onBack={() => navigate({ to: "/coaches" })}
-        subtitle={coach?.is_premium ? "Premium" : "Grátis"}
+        subtitle={coach?.specialty ?? (coach?.is_premium ? "Premium" : "Grátis")}
       />
 
       <div ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto px-4 py-4">
