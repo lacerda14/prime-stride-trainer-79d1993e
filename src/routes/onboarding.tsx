@@ -160,6 +160,23 @@ interface Data {
 // 7 seções de conteúdo + splash
 const TOTAL_STEPS = 8;
 
+// Idade mínima para usar o app (compliance). Trava no passo da data de nascimento.
+const MIN_AGE = 16;
+function ageFromISO(iso: string): number | null {
+  if (!iso) return null;
+  const b = new Date(iso);
+  if (isNaN(b.getTime())) return null;
+  const now = new Date();
+  let age = now.getUTCFullYear() - b.getUTCFullYear();
+  const m = now.getUTCMonth() - b.getUTCMonth();
+  if (m < 0 || (m === 0 && now.getUTCDate() < b.getUTCDate())) age--;
+  return age;
+}
+const isAtLeast16 = (iso: string): boolean => {
+  const a = ageFromISO(iso);
+  return a !== null && a >= MIN_AGE;
+};
+
 function OnboardingPage() {
   const navigate = useNavigate();
   const { user, loading } = useAuth();
@@ -221,7 +238,7 @@ function OnboardingPage() {
   const canAdvance = useMemo<boolean>(() => {
     switch (step) {
       case 0: return true;
-      case 1: return d.first_name.trim() !== "" && d.birth_date !== "" &&
+      case 1: return d.first_name.trim() !== "" && d.birth_date !== "" && isAtLeast16(d.birth_date) &&
         d.sex !== "" && typeof d.height_cm === "number" && typeof d.weight_kg === "number";
       case 2: return d.primary_goal !== "";
       case 3: return d.experience_level !== "" && d.training_history !== "" &&
@@ -540,6 +557,11 @@ function S1({ d, setD }: SP) {
           <label className={labelCls}>Data de nascimento</label>
           <input type="date" className={inputCls} value={d.birth_date}
             onChange={(e) => setD({ ...d, birth_date: e.target.value })} />
+          {d.birth_date !== "" && !isAtLeast16(d.birth_date) && (
+            <p className="mt-2 text-[12px] font-medium text-destructive">
+              É necessário ter pelo menos {MIN_AGE} anos para usar o PM Hybrid.
+            </p>
+          )}
         </div>
         <div>
           <label className={labelCls}>Sexo</label>

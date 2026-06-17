@@ -314,6 +314,10 @@ export const completeOnboarding = createServerFn({ method: "POST" })
     const { supabase, userId } = context;
 
     const age = data.birth_date ? computeAge(data.birth_date) : null;
+    // Idade mínima (compliance) — rejeita server-side mesmo se o cliente burlar.
+    if (age !== null && age < 16) {
+      throw new Error("É necessário ter pelo menos 16 anos para usar o PM Hybrid.");
+    }
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const dbGoal = data.primary_goal ? mapPrimaryToDbGoal(data.primary_goal as any) : null;
     const name = [data.first_name, data.last_name].filter(Boolean).join(" ").trim() || data.first_name;
