@@ -269,10 +269,10 @@ function DashboardContent() {
                 Disponível · Grátis
               </div>
               <div className="mt-1.5 text-[14px] font-semibold tracking-tight">
-                Coach IA Pessoal
+                Personalize seu treino com IA
               </div>
               <p className="mt-0.5 text-[12px] leading-relaxed text-muted-foreground">
-                Já conhece seu treino, recuperação e evolução. Converse agora com o Coach Pedro.
+                Coaches especialistas que conhecem teu treino, recuperação e evolução. Fale agora.
               </p>
             </div>
             <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground" />
