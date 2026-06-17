@@ -67,14 +67,54 @@ export const listCoaches = createServerFn({ method: "GET" })
 // sendCoachMessage — chat com o coach (ponte p/ edge fn ai-coach-chat).
 // Coach Geral é free (cota própria); específicos exigem premium.
 // ============================================================
+// ── Alteração de treino (proposta pelo coach → prévia → aplicar) ──
+export interface WorkoutChangeOp {
+  action: "adjust" | "add" | "remove" | "adjust_running";
+  block: "strength" | "running";
+  day_id: string;
+  day_name: string | null;
+  se_id?: string;
+  rp_id?: string;
+  exercise_name?: string;
+  category?: string | null;
+  sets?: number;
+  reps?: string;
+  rpe?: number;
+  rest_seconds?: number;
+  running_minutes?: number;
+  running_protocol?: string;
+  reason?: string;
+}
+
+export interface WorkoutChangePreviewItem {
+  verb: string;
+  block: string;
+  day: string;
+  before: string;
+  after: string;
+  reason: string | null;
+}
+
+export interface WorkoutChange {
+  coach_persona: string;
+  coach_name: string;
+  operations: WorkoutChangeOp[];
+  preview: WorkoutChangePreviewItem[];
+  rejected_notes: string[];
+}
+
 export interface CoachChatMessage {
   role: "user" | "assistant";
   content: string;
+  workoutChange?: WorkoutChange | null;
+  applied?: boolean; // marca o card de prévia como já aplicado
 }
 
 export interface CoachChatResult {
   ok: boolean;
   message?: string;
+  quick_replies?: string[];
+  workout_change?: WorkoutChange | null;
   coach_name?: string;
   coach_persona?: string;
   remaining?: number;
@@ -123,6 +163,8 @@ export const sendCoachMessage = createServerFn({ method: "POST" })
       return {
         ok: true,
         message: r.message as string,
+        quick_replies: Array.isArray(r.quick_replies) ? (r.quick_replies as string[]) : [],
+        workout_change: (r.workout_change as WorkoutChange | null) ?? null,
         coach_name: r.coach_name as string,
         coach_persona: r.coach_persona as string,
         remaining: r.ai_requests_remaining as number,
@@ -130,6 +172,49 @@ export const sendCoachMessage = createServerFn({ method: "POST" })
       };
     } catch {
       return { ok: false, error: "Não foi possível falar com o coach agora." };
+    }
+  });
+
+// ============================================================
+// applyWorkoutChange — aplica a alteração que o coach propôs (após o atleta
+// confirmar a prévia). Ponte p/ edge fn apply-workout-change.
+// ============================================================
+export interface ApplyWorkoutChangeResult {
+  ok: boolean;
+  applied: number;
+  summary: string;
+  failed?: Array<{ action: string; reason: string }>;
+  error?: string;
+}
+
+export const applyWorkoutChange = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) =>
+    z
+      .object({
+        coach_persona: z.string().min(1),
+        operations: z.array(z.record(z.string(), z.unknown())).min(1).max(20),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data, context }): Promise<ApplyWorkoutChangeResult> => {
+    try {
+      const { data: res, error } = await context.supabase.functions.invoke("apply-workout-change", {
+        body: { coach_persona: data.coach_persona, operations: data.operations },
+      });
+      if (error) {
+        return { ok: false, applied: 0, summary: "", error: "Não consegui aplicar a alteração agora." };
+      }
+      const r = (res ?? {}) as { applied?: number; summary?: string; failed?: Array<{ action: string; reason: string }> };
+      const applied = r.applied ?? 0;
+      return {
+        ok: applied > 0,
+        applied,
+        summary: r.summary ?? (applied > 0 ? "Alteração aplicada." : "Nada foi aplicado."),
+        failed: r.failed,
+      };
+    } catch {
+      return { ok: false, applied: 0, summary: "", error: "Não consegui aplicar a alteração agora." };
     }
   });
 
