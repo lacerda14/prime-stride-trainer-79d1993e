@@ -95,12 +95,28 @@ function PerfilLink() {
   );
 }
 
-type HealthSync = { ts: number; count: number };
+type HealthSync = { ts: number; count: number; present?: string[] };
+type HealthErr = { ts: number; msg: string };
 const HEALTH_SYNC_KEY = "pm_health_last_sync";
+const HEALTH_ERR_KEY = "pm_health_last_err";
+
+const HEALTH_METRICS: Array<{ key: string; label: string }> = [
+  { key: "sleep_duration_min", label: "Sono" },
+  { key: "resting_hr", label: "FC de repouso" },
+  { key: "hrv_ms", label: "HRV" },
+  { key: "steps", label: "Passos" },
+  { key: "active_energy_kcal", label: "Energia" },
+  { key: "exercise_minutes", label: "Exercício" },
+];
 
 function readHealthSync(): HealthSync | null {
   if (typeof window === "undefined") return null;
   try { const v = localStorage.getItem(HEALTH_SYNC_KEY); return v ? JSON.parse(v) as HealthSync : null; }
+  catch { return null; }
+}
+function readHealthErr(): HealthErr | null {
+  if (typeof window === "undefined") return null;
+  try { const v = localStorage.getItem(HEALTH_ERR_KEY); return v ? JSON.parse(v) as HealthErr : null; }
   catch { return null; }
 }
 function relTime(ts: number): string {
@@ -121,14 +137,15 @@ function DeviceHealthRow() {
   const label = dailyHealthLabel();
   const [syncing, setSyncing] = useState(false);
   const [lastSync, setLastSync] = useState<HealthSync | null>(() => readHealthSync());
+  const [showDiag, setShowDiag] = useState(false);
 
   const sync = async () => {
     setSyncing(true);
     try {
-      const { synced } = await syncDailyHealthMetrics(14);
+      const { synced, present } = await syncDailyHealthMetrics(14);
       if (synced > 0) {
-        const rec = { ts: Date.now(), count: synced };
-        try { localStorage.setItem(HEALTH_SYNC_KEY, JSON.stringify(rec)); } catch { /* ignore */ }
+        const rec: HealthSync = { ts: Date.now(), count: synced, present };
+        try { localStorage.setItem(HEALTH_SYNC_KEY, JSON.stringify(rec)); localStorage.removeItem(HEALTH_ERR_KEY); } catch { /* ignore */ }
         setLastSync(rec);
         toast.success(`Sincronizado · ${synced} dia${synced > 1 ? "s" : ""} importado${synced > 1 ? "s" : ""}`, {
           description: "Sono, FC, passos e treinos atualizados.",
@@ -138,7 +155,9 @@ function DeviceHealthRow() {
           description: `Verifique se o ${label} tem permissão de leitura (sono, FC, passos) em Ajustes do telefone.`,
         });
       }
-    } catch {
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "erro desconhecido";
+      try { localStorage.setItem(HEALTH_ERR_KEY, JSON.stringify({ ts: Date.now(), msg })); } catch { /* ignore */ }
       toast.error("Não foi possível sincronizar", {
         description: `Verifique sua conexão e as permissões do ${label}. Toque para tentar de novo.`,
       });
@@ -155,24 +174,108 @@ function DeviceHealthRow() {
       : "Sono, FC, passos e treinos · inclui Garmin pelo telefone";
 
   return (
-    <div className="flex items-center justify-between py-3.5">
-      <div className="min-w-0 pr-3">
-        <div className="text-[14px] font-medium tracking-tight">{label}</div>
-        <div className="mt-0.5 text-[11.5px] text-muted-foreground">{desc}</div>
-      </div>
-      {available ? (
+    <>
+      <div className="flex items-center justify-between py-3.5">
         <button
-          onClick={sync}
-          disabled={syncing}
-          className="shrink-0 rounded-full border border-primary/50 bg-primary/10 px-3 py-1 text-[10.5px] font-medium uppercase tracking-[0.14em] text-primary disabled:opacity-60"
+          onClick={() => available && setShowDiag(true)}
+          disabled={!available}
+          className="min-w-0 pr-3 text-left disabled:cursor-default"
         >
-          {syncing ? "Sincronizando…" : lastSync ? "Atualizar" : "Sincronizar"}
+          <div className="flex items-center gap-1.5 text-[14px] font-medium tracking-tight">
+            {label}
+            {available && <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/60" />}
+          </div>
+          <div className="mt-0.5 text-[11.5px] text-muted-foreground">{desc}</div>
         </button>
-      ) : (
-        <button disabled className="shrink-0 rounded-full border border-border bg-surface/60 px-3 py-1 text-[10.5px] font-medium uppercase tracking-[0.14em] text-muted-foreground/70">
-          Em breve
-        </button>
+        {available ? (
+          <button
+            onClick={sync}
+            disabled={syncing}
+            className="shrink-0 rounded-full border border-primary/50 bg-primary/10 px-3 py-1 text-[10.5px] font-medium uppercase tracking-[0.14em] text-primary disabled:opacity-60"
+          >
+            {syncing ? "Sincronizando…" : lastSync ? "Atualizar" : "Sincronizar"}
+          </button>
+        ) : (
+          <button disabled className="shrink-0 rounded-full border border-border bg-surface/60 px-3 py-1 text-[10.5px] font-medium uppercase tracking-[0.14em] text-muted-foreground/70">
+            Em breve
+          </button>
+        )}
+      </div>
+      {showDiag && (
+        <HealthDiagnosticsModal label={label} lastSync={lastSync} syncing={syncing} onSync={sync} onClose={() => setShowDiag(false)} />
       )}
+    </>
+  );
+}
+
+// Diagnóstico da integração de saúde (status, última sync, categorias, erro).
+function HealthDiagnosticsModal({ label, lastSync, syncing, onSync, onClose }: {
+  label: string; lastSync: HealthSync | null; syncing: boolean; onSync: () => void; onClose: () => void;
+}) {
+  const err = readHealthErr();
+  const present = new Set(lastSync?.present ?? []);
+  const status = lastSync ? "Conectado" : err ? "Erro na última tentativa" : "Pronto para sincronizar";
+  const statusColor = lastSync ? "text-primary" : err ? "text-destructive" : "text-muted-foreground";
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm sm:items-center" onClick={onClose}>
+      <div className="w-full max-w-[440px] rounded-t-3xl border border-border/60 bg-background p-6 pb-[max(env(safe-area-inset-bottom),1.5rem)] sm:rounded-3xl" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-start justify-between">
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary/10">
+              <Heart className="h-5 w-5 text-primary" />
+            </div>
+            <div>
+              <div className="text-[16px] font-semibold tracking-tight">{label}</div>
+              <div className={`text-[11.5px] font-medium ${statusColor}`}>{status}</div>
+            </div>
+          </div>
+          <button onClick={onClose} className="flex h-8 w-8 items-center justify-center rounded-full hover:bg-surface">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        <div className="mt-5 space-y-2 text-[13px]">
+          <div className="flex justify-between"><span className="text-muted-foreground">Última sincronização</span><span className="font-medium">{lastSync ? relTime(lastSync.ts) : "—"}</span></div>
+          <div className="flex justify-between"><span className="text-muted-foreground">Dias importados</span><span className="font-medium">{lastSync?.count ?? 0}</span></div>
+        </div>
+
+        <div className="mt-5">
+          <div className="mb-2 text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground">Dados encontrados</div>
+          <div className="space-y-1.5">
+            {HEALTH_METRICS.map((m) => {
+              const ok = present.has(m.key);
+              return (
+                <div key={m.key} className="flex items-center justify-between text-[13.5px]">
+                  <span>{m.label}</span>
+                  {ok
+                    ? <span className="flex items-center gap-1 text-primary"><Check className="h-3.5 w-3.5" /> Recebendo</span>
+                    : <span className="text-muted-foreground/70">{lastSync ? "Sem dados" : "—"}</span>}
+                </div>
+              );
+            })}
+          </div>
+          {lastSync && (
+            <p className="mt-2.5 text-[11.5px] leading-relaxed text-muted-foreground">
+              "Sem dados" pode ser falta de permissão de leitura ou ausência de registros. Ajuste em Ajustes do telefone → {label}.
+            </p>
+          )}
+        </div>
+
+        {err && !lastSync && (
+          <div className="mt-4 rounded-2xl bg-destructive/10 px-3.5 py-2.5 text-[12px] text-destructive">
+            Último erro: {err.msg}
+          </div>
+        )}
+
+        <button
+          onClick={onSync}
+          disabled={syncing}
+          className="mt-6 flex w-full items-center justify-center gap-2 rounded-2xl bg-primary py-3.5 text-[14px] font-semibold text-primary-foreground shadow-glow active:scale-[0.99] disabled:opacity-60"
+        >
+          {syncing ? <><Loader2 className="h-4 w-4 animate-spin" /> Sincronizando…</> : <><RotateCcw className="h-4 w-4" /> Sincronizar agora</>}
+        </button>
+      </div>
     </div>
   );
 }

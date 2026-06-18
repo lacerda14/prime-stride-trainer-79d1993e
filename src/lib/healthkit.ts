@@ -112,8 +112,13 @@ export async function readSessionHealth(startIso: string, endIso: string): Promi
 // Sincroniza as métricas diárias do Apple Saúde (últimos N dias) com o backend.
 // Traz, de quebra, o que o Garmin Connect sincroniza com o Apple Saúde — sem a
 // API do Garmin. Cada dia vira um upsert em daily_health_metrics → recuperação.
-export async function syncDailyHealthMetrics(days = 7): Promise<{ synced: number }> {
-  if (!dailyHealthAvailable()) return { synced: 0 };
+export interface HealthSyncResult {
+  synced: number;        // dias gravados no backend
+  present: string[];     // categorias com dados (ex.: ["steps","sleep_duration_min"])
+}
+
+export async function syncDailyHealthMetrics(days = 7): Promise<HealthSyncResult> {
+  if (!dailyHealthAvailable()) return { synced: 0, present: [] };
   let granted = false;
   try {
     const r = await HealthKit.requestAuthorization();
@@ -121,20 +126,23 @@ export async function syncDailyHealthMetrics(days = 7): Promise<{ synced: number
   } catch {
     granted = false;
   }
-  if (!granted) return { synced: 0 };
+  if (!granted) return { synced: 0, present: [] };
 
   let metrics: DailyHealthMetric[] = [];
   try {
     const res = await HealthKit.readDailyMetrics({ days });
     metrics = res.metrics ?? [];
   } catch {
-    return { synced: 0 };
+    return { synced: 0, present: [] };
   }
 
+  const present = new Set<string>();
   let synced = 0;
   for (const m of metrics) {
     const { date, ...fields } = m;
-    if (!date || Object.keys(fields).length === 0) continue; // dia sem dado útil
+    const keys = Object.keys(fields);
+    if (!date || keys.length === 0) continue; // dia sem dado útil
+    keys.forEach((k) => present.add(k));
     try {
       const { error } = await supabase.functions.invoke("ingest-healthkit-batch", {
         body: { date, platform: "healthkit", ...fields },
@@ -144,5 +152,5 @@ export async function syncDailyHealthMetrics(days = 7): Promise<{ synced: number
       /* ignora dia com falha; segue os demais */
     }
   }
-  return { synced };
+  return { synced, present: [...present] };
 }
