@@ -465,7 +465,7 @@ function HojePage() {
 
   return (
     <AppShell
-      eyebrow={`Hoje é ${data.calendar.day_name} · Semana ${String(week.week_number).padStart(2, "0")} de ${data.calendar.total_weeks}`}
+      eyebrow={`Hoje é ${data.calendar.day_name} · Semana ${String(week.week_number).padStart(2, "0")}`}
       title="Treino de Hoje"
       action={
         <Link

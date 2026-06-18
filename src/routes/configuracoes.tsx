@@ -52,7 +52,7 @@ function ConfigPage() {
         </Section>
 
         <Section icon={Activity} title="Treino">
-          <Row label="Programa" value="PM Hybrid · 48 semanas" />
+          <Row label="Plano" value="Adaptativo" hint="Evolui a cada semana com seus treinos, recuperação e evolução" />
           <Row label="Sincronização" value="Local" hint="Em breve: sincronização em nuvem" />
         </Section>
 
@@ -95,44 +95,81 @@ function PerfilLink() {
   );
 }
 
+type HealthSync = { ts: number; count: number };
+const HEALTH_SYNC_KEY = "pm_health_last_sync";
+
+function readHealthSync(): HealthSync | null {
+  if (typeof window === "undefined") return null;
+  try { const v = localStorage.getItem(HEALTH_SYNC_KEY); return v ? JSON.parse(v) as HealthSync : null; }
+  catch { return null; }
+}
+function relTime(ts: number): string {
+  const diff = Date.now() - ts;
+  const min = Math.round(diff / 60000);
+  if (min < 1) return "agora";
+  if (min < 60) return `há ${min} min`;
+  const today = new Date(); const d = new Date(ts);
+  const hhmm = d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+  if (d.toDateString() === today.toDateString()) return `hoje às ${hhmm}`;
+  return d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" }) + ` às ${hhmm}`;
+}
+
 function DeviceHealthRow() {
   // iOS lê Apple Saúde; Android lê Health Connect. Os dois incluem o que o
   // Garmin Connect sincroniza no telefone. Web: indisponível.
   const available = dailyHealthAvailable();
   const label = dailyHealthLabel();
   const [syncing, setSyncing] = useState(false);
+  const [lastSync, setLastSync] = useState<HealthSync | null>(() => readHealthSync());
 
   const sync = async () => {
     setSyncing(true);
     try {
       const { synced } = await syncDailyHealthMetrics(14);
-      if (synced > 0) toast.success(`${label} sincronizado (${synced} dia${synced > 1 ? "s" : ""}).`);
-      else toast.message("Nada novo pra sincronizar", { description: `Confirme as permissões do ${label}.` });
+      if (synced > 0) {
+        const rec = { ts: Date.now(), count: synced };
+        try { localStorage.setItem(HEALTH_SYNC_KEY, JSON.stringify(rec)); } catch { /* ignore */ }
+        setLastSync(rec);
+        toast.success(`Sincronizado · ${synced} dia${synced > 1 ? "s" : ""} importado${synced > 1 ? "s" : ""}`, {
+          description: "Sono, FC, passos e treinos atualizados.",
+        });
+      } else {
+        toast.message("Conectado, mas sem dados novos", {
+          description: `Verifique se o ${label} tem permissão de leitura (sono, FC, passos) em Ajustes do telefone.`,
+        });
+      }
     } catch {
-      toast.error(`Não consegui sincronizar com o ${label}.`);
+      toast.error("Não foi possível sincronizar", {
+        description: `Verifique sua conexão e as permissões do ${label}. Toque para tentar de novo.`,
+      });
     } finally {
       setSyncing(false);
     }
   };
 
+  // Sub-linha = estado atual da integração (visibilidade do status do sistema).
+  const desc = !available
+    ? "Disponível no app (iOS/Android)"
+    : lastSync
+      ? `Última sincronização: ${relTime(lastSync.ts)} · ${lastSync.count} dia${lastSync.count > 1 ? "s" : ""}`
+      : "Sono, FC, passos e treinos · inclui Garmin pelo telefone";
+
   return (
     <div className="flex items-center justify-between py-3.5">
-      <div>
+      <div className="min-w-0 pr-3">
         <div className="text-[14px] font-medium tracking-tight">{label}</div>
-        <div className="mt-0.5 text-[11.5px] text-muted-foreground">
-          {available ? "Sono, FC, passos · inclui Garmin pelo telefone" : "Disponível no app (iOS/Android)"}
-        </div>
+        <div className="mt-0.5 text-[11.5px] text-muted-foreground">{desc}</div>
       </div>
       {available ? (
         <button
           onClick={sync}
           disabled={syncing}
-          className="rounded-full border border-primary/50 bg-primary/10 px-3 py-1 text-[10.5px] font-medium uppercase tracking-[0.14em] text-primary disabled:opacity-60"
+          className="shrink-0 rounded-full border border-primary/50 bg-primary/10 px-3 py-1 text-[10.5px] font-medium uppercase tracking-[0.14em] text-primary disabled:opacity-60"
         >
-          {syncing ? "..." : "Sincronizar"}
+          {syncing ? "Sincronizando…" : lastSync ? "Atualizar" : "Sincronizar"}
         </button>
       ) : (
-        <button disabled className="rounded-full border border-border bg-surface/60 px-3 py-1 text-[10.5px] font-medium uppercase tracking-[0.14em] text-muted-foreground/70">
+        <button disabled className="shrink-0 rounded-full border border-border bg-surface/60 px-3 py-1 text-[10.5px] font-medium uppercase tracking-[0.14em] text-muted-foreground/70">
           Em breve
         </button>
       )}
@@ -166,14 +203,14 @@ function AppleWatchRow() {
   const label =
     state === "loading" ? "..." :
     state === "ready" ? "Conectado" :
-    state === "web" ? "Em breve" : "Indisponível";
+    "Em breve";
 
   const desc =
     state === "ready"
       ? "Abra um treino para enviá-lo ao relógio"
       : state === "web"
-        ? "Disponível no app iOS"
-        : "watchOS 10+";
+        ? "Chegando no app iOS"
+        : "Em desenvolvimento · chegando nas próximas versões";
 
   const badgeClass =
     state === "ready"

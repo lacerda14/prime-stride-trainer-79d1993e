@@ -121,7 +121,7 @@ function TreinoHojeTab() {
         <div className="pointer-events-none absolute -right-12 -top-12 h-40 w-40 rounded-full bg-primary/20 blur-3xl" />
         <div className="relative">
           <div className="text-[10px] font-medium uppercase tracking-[0.22em] text-muted-foreground">
-            {data.calendar.day_name} · Semana {String(week.week_number).padStart(2, "0")} de {data.calendar.total_weeks}
+            {data.calendar.day_name} · Semana {String(week.week_number).padStart(2, "0")}
           </div>
           <h2 className="mt-1.5 text-[20px] font-semibold leading-tight tracking-tight">
             {today.objective ?? week.meso.name}

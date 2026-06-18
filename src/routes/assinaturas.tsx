@@ -36,7 +36,7 @@ export const Route = createFileRoute("/assinaturas")({
 });
 
 const FREE_FEATURES = [
-  "Programa de 48 semanas",
+  "Plano adaptativo que evolui com você",
   "Treinos diários personalizados",
   "Registro de séries e cargas",
   "Histórico de treinos",
