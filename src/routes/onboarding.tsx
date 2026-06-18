@@ -177,6 +177,13 @@ const isAtLeast16 = (iso: string): boolean => {
   return a !== null && a >= MIN_AGE;
 };
 
+// Objetivos cujo foco JÁ é corrida → não perguntamos "quer corrida?" de novo;
+// inferimos o modo e vamos direto pros detalhes.
+const RUNNING_GOAL_VALUES = ["correr_5k", "correr_10k", "performance_hibrida"];
+const isRunningGoal = (goal: string) => RUNNING_GOAL_VALUES.includes(goal);
+const inferredRunningMode = (goal: string) =>
+  goal === "performance_hibrida" ? "integrado" : "principal";
+
 function OnboardingPage() {
   const navigate = useNavigate();
   const { user, loading } = useAuth();
@@ -235,6 +242,12 @@ function OnboardingPage() {
     }
   }, [profileQ.data, navigate, d.first_name]);
 
+  // Ao trocar de etapa, sempre começa do topo (senão o scroll fica na posição
+  // anterior e o usuário cai no fim da tela nova).
+  useEffect(() => {
+    if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "auto" });
+  }, [step]);
+
   const canAdvance = useMemo<boolean>(() => {
     switch (step) {
       case 0: return true;
@@ -243,7 +256,7 @@ function OnboardingPage() {
       case 2: return d.primary_goal !== "";
       case 3: return d.experience_level !== "" && d.training_history !== "" &&
         d.available_days_list.length > 0 && d.available_minutes !== "";
-      case 4: return d.running_mode !== "";
+      case 4: return isRunningGoal(d.primary_goal) || d.running_mode !== "";
       case 5: return true; // saúde toda opcional
       case 6: return d.gym_setup.location !== "";
       case 7: return true; // preferências opcionais
@@ -277,7 +290,9 @@ function OnboardingPage() {
           available_days_list: d.available_days_list,
           preferred_time: d.preferred_time || null,
           sports: d.sports, sports_frequency: {},
-          running_mode: d.running_mode as never,
+          running_mode: (isRunningGoal(d.primary_goal)
+            ? inferredRunningMode(d.primary_goal)
+            : (d.running_mode || "desabilitado")) as never,
           running_level: d.running_level || null,
           running_continuous_minutes: d.running_continuous_minutes || null,
           running_goals: d.running_goals,
@@ -664,23 +679,37 @@ function S3({ d, setD }: SP) {
   );
 }
 
-// 4 · Cardio + esportes
+// 4 · Cardio + esportes (adaptativo: não repete o que o objetivo já disse,
+// e se a pessoa não quer cardio, as perguntas de cardio somem)
 function S4({ d, setD }: SP) {
+  const goalIsRunning = isRunningGoal(d.primary_goal);
+  // Quem tem objetivo de corrida já quer corrida; senão, depende do modo escolhido.
+  const wantsRunning = goalIsRunning || (d.running_mode !== "" && d.running_mode !== "desabilitado");
+  const noCardio = !goalIsRunning && d.running_mode === "desabilitado";
+
   return (
     <div className="space-y-6">
-      <Hero title="Cardio e outras atividades" hint="Define se o programa terá corrida e como considerar seus outros esportes." />
+      <Hero
+        title={goalIsRunning ? "Sua corrida" : "Cardio e outras atividades"}
+        hint={goalIsRunning
+          ? "A corrida é o foco do seu objetivo — me conta seu ponto de partida."
+          : "Quer corrida/cardio no plano? Se não, é só seguir — dá pra adicionar depois."}
+      />
       <div className="animate-fade-in space-y-6">
-        <div>
-          <label className={labelCls}>Como a corrida entra no seu plano?</label>
-          <div className="grid gap-2">
-            {RUNNING_MODES.map((r) => (
-              <BigChoice key={r.v} active={d.running_mode === r.v} title={r.label} hint={r.hint}
-                onClick={() => setD({ ...d, running_mode: r.v })} />
-            ))}
+        {/* Gate de corrida só aparece quando o OBJETIVO não é corrida */}
+        {!goalIsRunning && (
+          <div>
+            <label className={labelCls}>Quer corrida ou cardio no seu plano?</label>
+            <div className="grid gap-2">
+              {RUNNING_MODES.map((r) => (
+                <BigChoice key={r.v} active={d.running_mode === r.v} title={r.label} hint={r.hint}
+                  onClick={() => setD({ ...d, running_mode: r.v })} />
+              ))}
+            </div>
           </div>
-        </div>
+        )}
 
-        {d.running_mode !== "" && d.running_mode !== "desabilitado" && (
+        {wantsRunning && (
           <div className="space-y-5">
             <div>
               <label className={labelCls}>Seu nível atual de corrida</label>
@@ -700,24 +729,36 @@ function S4({ d, setD }: SP) {
                 ))}
               </div>
             </div>
-            <Multi label="Objetivos com corrida" items={RUNNING_GOALS_OPTIONS}
-              selected={d.running_goals}
-              onToggle={(v) => setD({ ...d, running_goals: toggleArr(d.running_goals, v) })} />
+            {/* Objetivos de corrida só pra quem NÃO escolheu uma meta de corrida no passo 2 */}
+            {!goalIsRunning && (
+              <Multi label="Objetivos com corrida" items={RUNNING_GOALS_OPTIONS}
+                selected={d.running_goals}
+                onToggle={(v) => setD({ ...d, running_goals: toggleArr(d.running_goals, v) })} />
+            )}
             <Multi label="Dias preferidos para correr" items={WEEK_DAYS}
               selected={d.running_preferred_days}
               onToggle={(v) => setD({ ...d, running_preferred_days: toggleArr(d.running_preferred_days, v) })} />
           </div>
         )}
 
-        <div>
-          <label className={labelCls}>Se não quiser correr, qual cardio prefere?</label>
-          <div className="grid grid-cols-2 gap-1.5">
-            {CARDIO_OPTIONS.map((o) => (
-              <PillChoice key={o} active={d.cardio_preference === o}
-                onClick={() => setD({ ...d, cardio_preference: o })}>{o}</PillChoice>
-            ))}
+        {/* Cardio alternativo: só se quer cardio E não é objetivo de corrida pura */}
+        {wantsRunning && !goalIsRunning && (
+          <div>
+            <label className={labelCls}>Prefere algum cardio além de corrida? (opcional)</label>
+            <div className="grid grid-cols-2 gap-1.5">
+              {CARDIO_OPTIONS.map((o) => (
+                <PillChoice key={o} active={d.cardio_preference === o}
+                  onClick={() => setD({ ...d, cardio_preference: o })}>{o}</PillChoice>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
+
+        {noCardio && (
+          <p className="rounded-2xl border border-border/40 bg-surface/30 px-4 py-3 text-[12.5px] leading-relaxed text-muted-foreground">
+            Sem cardio no plano. Você pode adicionar depois contratando um coach ou pedindo pro Pedro montar.
+          </p>
+        )}
 
         <Multi label="Outros esportes que pratica (opcional)" items={SPORTS_OPTIONS} selected={d.sports}
           onToggle={(v) => setD({ ...d, sports: toggleArr(d.sports, v) })} />
