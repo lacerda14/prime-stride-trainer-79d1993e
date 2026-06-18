@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { ArrowLeft, ArrowRight, Check, Loader2 } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, Loader2, Info, ChevronDown } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/use-auth";
 import { completeOnboarding, getProfile } from "@/lib/profile.functions";
@@ -404,6 +404,14 @@ function OnboardingPage() {
       )}
       {step > 0 && (
         <div className="sticky top-0 z-10 bg-background/85 px-6 pt-7 pb-4 backdrop-blur-2xl">
+          <div className="mb-2 flex items-center justify-between">
+            <span className="text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
+              Passo {step} de {TOTAL_STEPS - 1}
+            </span>
+            <span className="text-[11px] font-medium text-primary/70">
+              {isLast ? "Quase lá — gerando seu plano" : "Montando seu plano personalizado"}
+            </span>
+          </div>
           <div className="h-[3px] w-full overflow-hidden rounded-full bg-surface">
             <div className="h-full bg-titanium transition-all duration-700" style={{ width: `${pct}%` }} />
           </div>
@@ -480,6 +488,69 @@ function Hero({ title, hint }: { title: string; hint?: string }) {
     <div className="animate-fade-in">
       <h1 className="text-[30px] font-semibold leading-[1.1] tracking-tight text-titanium">{title}</h1>
       {hint && <p className="mt-3 text-[14px] leading-relaxed text-muted-foreground">{hint}</p>}
+    </div>
+  );
+}
+
+// "Por que perguntamos isso?" — progressive disclosure, reduz carga cognitiva
+// sem poluir a tela. Acessível (<details>/<summary>).
+function WhyBox({ children }: { children: React.ReactNode }) {
+  return (
+    <details className="group rounded-2xl border border-border/40 bg-surface/25 px-4 py-3">
+      <summary className="flex cursor-pointer select-none items-center gap-2 text-[12.5px] font-medium text-muted-foreground [&::-webkit-details-marker]:hidden">
+        <Info className="h-3.5 w-3.5 shrink-0 text-primary/70" />
+        Por que perguntamos isso?
+        <ChevronDown className="ml-auto h-4 w-4 shrink-0 transition-transform group-open:rotate-180" />
+      </summary>
+      <p className="mt-2 text-[12.5px] leading-relaxed text-muted-foreground">{children}</p>
+    </details>
+  );
+}
+
+// Seletor de data por rolagem (Dia/Mês/Ano) — selects nativos viram picker
+// de rolagem no iOS/Android e dropdown no desktop. Bem mais rápido que navegar
+// num calendário ano a ano. Emite ISO "YYYY-MM-DD".
+const MONTHS_PT = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+function DateWheel({ value, onChange }: { value: string; onChange: (iso: string) => void }) {
+  const nowYear = new Date().getFullYear();
+  const maxYear = nowYear - 13;
+  const minYear = nowYear - 100;
+  const parsed = /^\d{4}-\d{2}-\d{2}$/.test(value) ? value.split("-").map(Number) : [0, 0, 0];
+  const [year, setYear] = useState<number>(parsed[0] || 0);
+  const [month, setMonth] = useState<number>(parsed[1] || 0);
+  const [day, setDay] = useState<number>(parsed[2] || 0);
+
+  const daysInMonth = (y: number, m: number) => new Date(y || 2000, m || 1, 0).getDate();
+  const dim = daysInMonth(year, month);
+  const days = Array.from({ length: month ? dim : 31 }, (_, i) => i + 1);
+  const years = Array.from({ length: maxYear - minYear + 1 }, (_, i) => maxYear - i);
+
+  const commit = (nd: number, nm: number, ny: number) => {
+    if (nd && nm && ny) {
+      const cd = Math.min(nd, daysInMonth(ny, nm));
+      onChange(`${ny}-${String(nm).padStart(2, "0")}-${String(cd).padStart(2, "0")}`);
+    }
+  };
+  const selCls =
+    "h-14 rounded-2xl border border-border bg-surface/40 px-2 text-center text-[15px] font-medium tracking-tight outline-none focus:border-primary/50 focus:bg-surface/60 transition-colors appearance-none";
+
+  return (
+    <div className="grid grid-cols-3 gap-2">
+      <select aria-label="Dia" className={selCls} value={day || ""}
+        onChange={(e) => { const v = Number(e.target.value); setDay(v); commit(v, month, year); }}>
+        <option value="" disabled>Dia</option>
+        {days.map((n) => <option key={n} value={n}>{n}</option>)}
+      </select>
+      <select aria-label="Mês" className={selCls} value={month || ""}
+        onChange={(e) => { const v = Number(e.target.value); setMonth(v); commit(day, v, year); }}>
+        <option value="" disabled>Mês</option>
+        {MONTHS_PT.map((mo, i) => <option key={i} value={i + 1}>{mo}</option>)}
+      </select>
+      <select aria-label="Ano" className={selCls} value={year || ""}
+        onChange={(e) => { const v = Number(e.target.value); setYear(v); commit(day, month, v); }}>
+        <option value="" disabled>Ano</option>
+        {years.map((y) => <option key={y} value={y}>{y}</option>)}
+      </select>
     </div>
   );
 }
@@ -561,6 +632,7 @@ function S1({ d, setD }: SP) {
   return (
     <div className="space-y-6">
       <Hero title="Vamos te conhecer" hint="O básico para calibrar a prescrição." />
+      <WhyBox>Idade, sexo, altura e peso calibram o volume, a intensidade e as estimativas de carga e calorias do seu programa.</WhyBox>
       <div className="animate-fade-in space-y-5">
         <div>
           <label className={labelCls}>Nome</label>
@@ -570,8 +642,7 @@ function S1({ d, setD }: SP) {
         </div>
         <div>
           <label className={labelCls}>Data de nascimento</label>
-          <input type="date" className={inputCls} value={d.birth_date}
-            onChange={(e) => setD({ ...d, birth_date: e.target.value })} />
+          <DateWheel value={d.birth_date} onChange={(iso) => setD({ ...d, birth_date: iso })} />
           {d.birth_date !== "" && !isAtLeast16(d.birth_date) && (
             <p className="mt-2 text-[12px] font-medium text-destructive">
               É necessário ter pelo menos {MIN_AGE} anos para usar o PM Hybrid.
@@ -612,6 +683,7 @@ function S2({ d, setD }: SP) {
   return (
     <div className="space-y-6">
       <Hero title="Qual é o seu foco?" hint="Escolha o objetivo principal e, se quiser, até 3 secundários." />
+      <WhyBox>Seu objetivo define os exercícios escolhidos, as progressões de carga e a intensidade de cada sessão.</WhyBox>
       <div className="animate-fade-in space-y-6">
         <div>
           <label className={labelCls}>Objetivo principal</label>
@@ -634,6 +706,7 @@ function S3({ d, setD }: SP) {
   return (
     <div className="space-y-6">
       <Hero title="Sua rotina de treino" hint="Experiência e quando você consegue treinar." />
+      <WhyBox>Seu nível e sua disponibilidade definem a frequência semanal e o tamanho de cada sessão da sua programação inicial.</WhyBox>
       <div className="animate-fade-in space-y-6">
         <div>
           <label className={labelCls}>Nível</label>
@@ -653,9 +726,14 @@ function S3({ d, setD }: SP) {
             ))}
           </div>
         </div>
-        <Multi label="Dias da semana que pode treinar" items={WEEK_DAYS}
-          selected={d.available_days_list}
-          onToggle={(v) => setD({ ...d, available_days_list: toggleArr(d.available_days_list, v) })} />
+        <div>
+          <Multi label="Dias que você prefere treinar" items={WEEK_DAYS}
+            selected={d.available_days_list}
+            onToggle={(v) => setD({ ...d, available_days_list: toggleArr(d.available_days_list, v) })} />
+          <p className="mt-2 text-[12px] leading-relaxed text-muted-foreground">
+            Usamos esses dias só para montar sua <span className="text-foreground/80">programação inicial</span>. Você pode treinar em qualquer dia e ajustar a agenda depois.
+          </p>
+        </div>
         <div>
           <label className={labelCls}>Horário preferido</label>
           <div className="grid grid-cols-4 gap-1.5">
@@ -695,6 +773,7 @@ function S4({ d, setD }: SP) {
           ? "A corrida é o foco do seu objetivo — me conta seu ponto de partida."
           : "Quer corrida/cardio no plano? Se não, é só seguir — dá pra adicionar depois."}
       />
+      <WhyBox>Usamos isso para personalizar seus treinos aeróbicos — ou deixá-los de fora, se não fizerem parte do seu objetivo.</WhyBox>
       <div className="animate-fade-in space-y-6">
         {/* Gate de corrida só aparece quando o OBJETIVO não é corrida */}
         {!goalIsRunning && (
@@ -772,6 +851,7 @@ function S5({ d, setD }: SP) {
   return (
     <div className="space-y-6">
       <Hero title="Saúde e lesões" hint="Tudo confidencial — usado apenas para adaptar exercícios." />
+      <WhyBox>Lesões, dores e limitações filtram exercícios de risco e ajustam a execução. É sobre a sua segurança — nada aqui é obrigatório.</WhyBox>
       <div className="animate-fade-in space-y-6">
         <Multi label="Diagnósticos médicos" items={MEDICAL_CONDITIONS}
           selected={d.medical_conditions}
@@ -823,6 +903,7 @@ function S6({ d, setD }: SP) {
   return (
     <div className="space-y-6">
       <Hero title="Onde você treina?" hint="Só vamos prescrever exercícios que você consegue executar." />
+      <WhyBox>Recomendamos apenas exercícios possíveis com o que você tem disponível — academia, casa ou equipamento específico.</WhyBox>
 
       <div className="animate-fade-in space-y-6">
         <div className="grid gap-2">
@@ -923,6 +1004,7 @@ function S7({ d, setD }: SP) {
   return (
     <div className="space-y-6">
       <Hero title="Como você gosta de treinar?" hint="Última etapa — tudo opcional." />
+      <WhyBox>Estilo e motivação são ajustes finos pra deixar o plano com a sua cara. Pode pular — dá pra mudar depois com seu coach.</WhyBox>
       <div className="animate-fade-in space-y-6">
         <Multi label="O que mais gosta" items={PREFERENCES_OPTIONS}
           selected={d.preferences}
