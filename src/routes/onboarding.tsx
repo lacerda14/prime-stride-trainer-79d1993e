@@ -23,7 +23,6 @@ import {
   RUNNING_GOALS_OPTIONS,
   WEEK_DAYS,
   CARDIO_OPTIONS,
-  PREFERRED_TIMES,
   MEDICAL_CONDITIONS,
   PAIN_REGIONS,
   PAST_INJURIES,
@@ -158,7 +157,10 @@ interface Data {
 }
 
 // 7 seções de conteúdo + splash
-const TOTAL_STEPS = 8;
+// Estilo/motivação (antiga etapa 7) e horário preferido foram ADIADOS pro
+// pós-onboarding (editáveis no perfil) — reduz o tempo até o primeiro treino.
+// S7 segue definido para reativação futura, mas fora do fluxo (steps 1..6).
+const TOTAL_STEPS = 7;
 
 // Idade mínima para usar o app (compliance). Trava no passo da data de nascimento.
 const MIN_AGE = 16;
@@ -733,15 +735,6 @@ function S3({ d, setD }: SP) {
           <p className="mt-2 text-[12px] leading-relaxed text-muted-foreground">
             Usamos esses dias só para montar sua <span className="text-foreground/80">programação inicial</span>. Você pode treinar em qualquer dia e ajustar a agenda depois.
           </p>
-        </div>
-        <div>
-          <label className={labelCls}>Horário preferido</label>
-          <div className="grid grid-cols-4 gap-1.5">
-            {PREFERRED_TIMES.map((o) => (
-              <PillChoice key={o} active={d.preferred_time === o}
-                onClick={() => setD({ ...d, preferred_time: o })}>{o}</PillChoice>
-            ))}
-          </div>
         </div>
         <div>
           <label className={labelCls}>Tempo por treino</label>

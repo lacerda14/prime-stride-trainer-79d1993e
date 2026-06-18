@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { AppShell } from "@/components/app-shell";
-import { Watch, Bell, User, Database, Smartphone, RotateCcw, Loader2, Activity, Heart, ChevronRight } from "lucide-react";
+import { Watch, Bell, User, Database, Smartphone, RotateCcw, Loader2, Activity, Heart, ChevronRight, X, Check } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { useQueryClient, useQuery, useMutation } from "@tanstack/react-query";
@@ -217,15 +217,93 @@ function AppleWatchRow() {
       ? "border-primary/50 bg-primary/10 text-primary"
       : "border-border bg-surface/60 text-muted-foreground/70";
 
-  return (
-    <div className="flex items-center justify-between py-3.5">
+  const [showModal, setShowModal] = useState(false);
+  const comingSoon = state !== "ready" && state !== "loading";
+
+  // Linha tocável quando "em breve" → abre o roadmap.
+  const content = (
+    <>
       <div>
         <div className="text-[14px] font-medium tracking-tight">Apple Watch</div>
         <div className="mt-0.5 text-[11.5px] text-muted-foreground">{desc}</div>
       </div>
-      <button disabled className={`rounded-full border px-3 py-1 text-[10.5px] font-medium uppercase tracking-[0.14em] ${badgeClass}`}>
+      <span className={`rounded-full border px-3 py-1 text-[10.5px] font-medium uppercase tracking-[0.14em] ${badgeClass}`}>
         {label}
-      </button>
+      </span>
+    </>
+  );
+
+  return (
+    <>
+      {comingSoon ? (
+        <button onClick={() => setShowModal(true)} className="flex w-full items-center justify-between py-3.5 text-left active:opacity-70">
+          {content}
+        </button>
+      ) : (
+        <div className="flex items-center justify-between py-3.5">{content}</div>
+      )}
+      {showModal && <WatchRoadmapModal onClose={() => setShowModal(false)} />}
+    </>
+  );
+}
+
+const WATCH_INTEREST_KEY = "pm_watch_interest";
+function WatchRoadmapModal({ onClose }: { onClose: () => void }) {
+  const [notified, setNotified] = useState(() => {
+    if (typeof window === "undefined") return false;
+    try { return localStorage.getItem(WATCH_INTEREST_KEY) === "1"; } catch { return false; }
+  });
+  const features = [
+    "Iniciar treinos pelo relógio",
+    "Frequência cardíaca em tempo real",
+    "Sincronização automática",
+    "Métricas avançadas de corrida",
+    "Integração completa com o Apple Saúde",
+  ];
+  const notify = () => {
+    try { localStorage.setItem(WATCH_INTEREST_KEY, "1"); } catch { /* ignore */ }
+    setNotified(true);
+    toast.success("Avisaremos você", { description: "Você recebe um aviso assim que o Apple Watch estiver disponível." });
+  };
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm sm:items-center" onClick={onClose}>
+      <div
+        className="w-full max-w-[440px] rounded-t-3xl border border-border/60 bg-background p-6 pb-[max(env(safe-area-inset-bottom),1.5rem)] sm:rounded-3xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-start justify-between">
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary/10">
+              <Watch className="h-5 w-5 text-primary" />
+            </div>
+            <div>
+              <div className="text-[16px] font-semibold tracking-tight">Apple Watch</div>
+              <div className="text-[11.5px] text-muted-foreground">Em desenvolvimento</div>
+            </div>
+          </div>
+          <button onClick={onClose} className="flex h-8 w-8 items-center justify-center rounded-full hover:bg-surface">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+        <p className="mt-4 text-[13px] leading-relaxed text-muted-foreground">Estamos desenvolvendo suporte para:</p>
+        <div className="mt-3 space-y-2">
+          {features.map((f) => (
+            <div key={f} className="flex items-center gap-2.5 text-[13.5px]">
+              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10">
+                <Check className="h-3 w-3 text-primary" />
+              </span>
+              {f}
+            </div>
+          ))}
+        </div>
+        <button
+          onClick={notify}
+          disabled={notified}
+          className="mt-6 flex w-full items-center justify-center gap-2 rounded-2xl bg-primary py-3.5 text-[14px] font-semibold text-primary-foreground shadow-glow active:scale-[0.99] disabled:opacity-60"
+        >
+          {notified ? <><Check className="h-4 w-4" /> Você será avisado</> : <><Bell className="h-4 w-4" /> Avise-me quando disponível</>}
+        </button>
+      </div>
     </div>
   );
 }
