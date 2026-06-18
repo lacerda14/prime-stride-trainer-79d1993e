@@ -235,15 +235,23 @@ function DashboardContent() {
             <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-surface-elevated">
               <span className="text-xl">☕</span>
             </div>
-            <div className="text-[15px] font-semibold tracking-tight">Dia de descanso</div>
+            <div className="text-[15px] font-semibold tracking-tight">Hoje é dia de descanso no seu plano</div>
             <p className="mt-1 text-[12px] text-muted-foreground">
-              Aproveite para recuperar. O descanso também faz parte do treino.
+              O descanso faz parte do treino — mas você decide. Quer treinar mesmo assim?
             </p>
+            {/* Nunca bloqueia: sempre há uma ação clara pra treinar hoje. */}
             <Link
               to="/treinos"
-              className="mt-3 inline-flex items-center gap-1.5 text-[12px] font-medium text-primary"
+              className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-primary py-3 text-[13.5px] font-semibold text-primary-foreground shadow-glow transition-transform active:scale-[0.99]"
             >
-              Ver próximos treinos <ArrowRight className="h-3.5 w-3.5" />
+              <Play className="h-4 w-4 fill-current" />
+              Treinar mesmo assim
+            </Link>
+            <Link
+              to="/treinos"
+              className="mt-2.5 inline-flex items-center gap-1.5 text-[12px] font-medium text-muted-foreground"
+            >
+              Ver a semana <ArrowRight className="h-3.5 w-3.5" />
             </Link>
           </div>
         )}
