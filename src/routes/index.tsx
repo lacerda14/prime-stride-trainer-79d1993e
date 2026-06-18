@@ -1,5 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useState } from "react";
 import { AppShell } from "@/components/app-shell";
+import { WeekAdjustSheet } from "@/components/week-adjust-sheet";
 import {
   ArrowRight,
   Flame,
@@ -10,6 +12,7 @@ import {
   TrendingUp,
   Play,
   Crown,
+  SlidersHorizontal,
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { firstName, inferGender, timeOfDayGreeting, type Gender } from "@/lib/greeting";
@@ -123,8 +126,11 @@ function DashboardContent() {
   // Conquistas próximas — milestones de treinos/streak
   const nextMilestones = buildNextMilestones(totalCompleted, streak);
 
+  const [showAdjust, setShowAdjust] = useState(false);
+
   return (
     <div className="space-y-5 p-4 pb-6">
+      {showAdjust && <WeekAdjustSheet onClose={() => setShowAdjust(false)} />}
 
       {/* ── 1. Header pessoal ── */}
       <section className="animate-fade-in pt-1">
@@ -255,6 +261,13 @@ function DashboardContent() {
             </Link>
           </div>
         )}
+        {/* Controle do usuário: adaptar a semana a qualquer momento */}
+        <button
+          onClick={() => setShowAdjust(true)}
+          className="mt-2.5 flex w-full items-center justify-center gap-1.5 text-[12px] font-medium text-muted-foreground active:opacity-70"
+        >
+          <SlidersHorizontal className="h-3.5 w-3.5" /> Ajustar minha semana
+        </button>
       </section>
 
       {/* ── 3. Card COACH IA — teaser premium ── */}

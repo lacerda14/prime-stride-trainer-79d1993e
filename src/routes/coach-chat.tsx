@@ -241,6 +241,22 @@ function CoachChatPage() {
     mutation.mutate(t);
   }
 
+  // Mensagem pré-preenchida via sessionStorage — ex.: "Ajustar semana →
+  // Reorganizar com o Pedro" envia o pedido automaticamente uma vez.
+  const autoSentRef = useRef(false);
+  useEffect(() => {
+    if (autoSentRef.current || typeof window === "undefined") return;
+    if (loadingCoaches || locked || !coach) return;
+    if (messages.length > 0 || mutation.isPending) return;
+    let prefill: string | null = null;
+    try { prefill = sessionStorage.getItem("pm_coach_prefill"); } catch { /* ignore */ }
+    if (!prefill) return;
+    autoSentRef.current = true;
+    try { sessionStorage.removeItem("pm_coach_prefill"); } catch { /* ignore */ }
+    submit(prefill);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loadingCoaches, locked, coach]);
+
   // ── Aplicar alteração de treino (após confirmar a prévia) ─────
   const [applyingIdx, setApplyingIdx] = useState<number | null>(null);
   const applyMut = useMutation({
