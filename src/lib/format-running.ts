@@ -62,7 +62,9 @@ export function runningInstructions(p: RunningProtocolDTO): string[] {
     steps.push(`Tempo de tiro: ${formatRunSeconds(p.work_duration_seconds)} corrida`);
     steps.push(
       `Descanso entre tiros: ${
-        p.rest_duration_seconds ? `${formatRunSeconds(p.rest_duration_seconds)} caminhada` : "não configurado"
+        p.rest_duration_seconds
+          ? `${formatRunSeconds(p.rest_duration_seconds)} caminhada`
+          : "não configurado"
       }`,
     );
     steps.push(

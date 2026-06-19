@@ -26,7 +26,9 @@ function DayAccordion({ day }: { day: TrainingDayDTO }) {
           <Coffee className="h-4 w-4 text-muted-foreground" />
         </div>
         <div>
-          <div className="text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">{day.day_name}</div>
+          <div className="text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
+            {day.day_name}
+          </div>
           <div className="mt-0.5 text-sm font-semibold tracking-tight">OFF · Recuperação</div>
         </div>
       </div>
@@ -36,36 +38,63 @@ function DayAccordion({ day }: { day: TrainingDayDTO }) {
   const core = day.exercises.filter((e) => e.exercise.category === "core");
   return (
     <div className="glass overflow-hidden rounded-2xl">
-      <button onClick={() => setOpen((v) => !v)} className="flex w-full items-center justify-between px-5 py-4 text-left hover:bg-white/[0.02]">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="flex w-full items-center justify-between px-5 py-4 text-left hover:bg-white/[0.02]"
+      >
         <div>
-          <div className="text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">{day.day_name}</div>
-          <div className="mt-0.5 text-base font-semibold tracking-tight">{day.objective ?? day.session_type}</div>
+          <div className="text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
+            {day.day_name}
+          </div>
+          <div className="mt-0.5 text-base font-semibold tracking-tight">
+            {day.objective ?? day.session_type}
+          </div>
         </div>
-        <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${open ? "rotate-180" : ""}`} />
+        <ChevronDown
+          className={`h-4 w-4 text-muted-foreground transition-transform ${open ? "rotate-180" : ""}`}
+        />
       </button>
-      <div className={`grid transition-[grid-template-rows] duration-300 ease-out ${open ? "grid-rows-[1fr]" : "grid-rows-[0fr]"}`}>
+      <div
+        className={`grid transition-[grid-template-rows] duration-300 ease-out ${open ? "grid-rows-[1fr]" : "grid-rows-[0fr]"}`}
+      >
         <div className="overflow-hidden">
           <div className="space-y-4 border-t border-border px-5 pb-5 pt-4">
             {day.running && (
               <div>
-                <div className="mb-2 text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">Corrida</div>
+                <div className="mb-2 text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                  Corrida
+                </div>
                 <div className="num rounded-lg border border-border/60 bg-surface/40 px-3 py-2 text-sm">
-                  {day.running.protocol_type.toUpperCase()} · {day.running.total_duration_minutes} min
-                  {day.running.pace_min && day.running.pace_max && ` · ${day.running.pace_min.toFixed(2)}–${day.running.pace_max.toFixed(2)} min/km`}
+                  {day.running.protocol_type.toUpperCase()} · {day.running.total_duration_minutes}{" "}
+                  min
+                  {day.running.pace_min &&
+                    day.running.pace_max &&
+                    ` · ${day.running.pace_min.toFixed(2)}–${day.running.pace_max.toFixed(2)} min/km`}
                 </div>
               </div>
             )}
             {strength.length > 0 && (
               <div>
-                <div className="mb-2 text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">Força</div>
+                <div className="mb-2 text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                  Força
+                </div>
                 <div className="space-y-1.5">
                   {strength.map((e) => (
-                    <div key={e.id} className="num flex items-center justify-between rounded-lg border border-border/60 bg-surface/40 px-4 py-2.5 text-sm">
+                    <div
+                      key={e.id}
+                      className="num flex items-center justify-between rounded-lg border border-border/60 bg-surface/40 px-4 py-2.5 text-sm"
+                    >
                       <span className="flex items-center gap-2 font-medium">
                         {e.exercise.name}
-                        {e.pair_slot && <span className="rounded-full bg-primary/15 px-1.5 py-0.5 text-[9px] uppercase text-primary">Biset {e.pair_slot}</span>}
+                        {e.pair_slot && (
+                          <span className="rounded-full bg-primary/15 px-1.5 py-0.5 text-[9px] uppercase text-primary">
+                            Biset {e.pair_slot}
+                          </span>
+                        )}
                       </span>
-                      <span className="text-xs text-muted-foreground">{e.sets}x{e.reps}</span>
+                      <span className="text-xs text-muted-foreground">
+                        {e.sets}x{e.reps}
+                      </span>
                     </div>
                   ))}
                 </div>
@@ -73,12 +102,19 @@ function DayAccordion({ day }: { day: TrainingDayDTO }) {
             )}
             {core.length > 0 && (
               <div>
-                <div className="mb-2 text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">Core</div>
+                <div className="mb-2 text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                  Core
+                </div>
                 <div className="space-y-1.5">
                   {core.map((e) => (
-                    <div key={e.id} className="num flex items-center justify-between rounded-lg border border-border/60 bg-surface/40 px-4 py-2.5 text-sm">
+                    <div
+                      key={e.id}
+                      className="num flex items-center justify-between rounded-lg border border-border/60 bg-surface/40 px-4 py-2.5 text-sm"
+                    >
                       <span className="font-medium">{e.exercise.name}</span>
-                      <span className="text-xs text-muted-foreground">{e.sets}x{e.reps}</span>
+                      <span className="text-xs text-muted-foreground">
+                        {e.sets}x{e.reps}
+                      </span>
                     </div>
                   ))}
                 </div>
@@ -135,7 +171,9 @@ function SemanasPage() {
                 {week?.meso.objective ?? "Carregando…"}
               </div>
             </div>
-            <ChevronDown className={`h-5 w-5 text-muted-foreground transition-transform ${pickerOpen ? "rotate-180" : ""}`} />
+            <ChevronDown
+              className={`h-5 w-5 text-muted-foreground transition-transform ${pickerOpen ? "rotate-180" : ""}`}
+            />
           </button>
 
           {pickerOpen && (
@@ -146,9 +184,14 @@ function SemanasPage() {
                   return (
                     <button
                       key={n}
-                      onClick={() => { setSelected(n); setPickerOpen(false); }}
+                      onClick={() => {
+                        setSelected(n);
+                        setPickerOpen(false);
+                      }}
                       className={`num group relative rounded-lg px-3 py-3 text-sm font-semibold transition-all ${
-                        n === selected ? "bg-primary text-primary-foreground shadow-glow" : "text-muted-foreground hover:bg-surface-elevated hover:text-foreground"
+                        n === selected
+                          ? "bg-primary text-primary-foreground shadow-glow"
+                          : "text-muted-foreground hover:bg-surface-elevated hover:text-foreground"
                       }`}
                     >
                       {String(n).padStart(2, "0")}
@@ -165,15 +208,21 @@ function SemanasPage() {
           <div className="glass rounded-2xl p-5">
             <div className="grid gap-3 text-xs sm:grid-cols-3">
               <div>
-                <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Tipo</div>
+                <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                  Tipo
+                </div>
                 <div className="mt-0.5 font-medium">Semana {week.week_type}</div>
               </div>
               <div>
-                <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Método</div>
+                <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                  Método
+                </div>
                 <div className="mt-0.5 font-medium">{week.meso.method ?? "—"}</div>
               </div>
               <div>
-                <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Macro</div>
+                <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                  Macro
+                </div>
                 <div className="mt-0.5 font-medium">{week.macro.name}</div>
               </div>
             </div>
@@ -181,10 +230,14 @@ function SemanasPage() {
         )}
 
         {weekQ.isLoading ? (
-          <div className="flex justify-center p-8"><Loader2 className="h-5 w-5 animate-spin text-primary" /></div>
+          <div className="flex justify-center p-8">
+            <Loader2 className="h-5 w-5 animate-spin text-primary" />
+          </div>
         ) : (
           <div className="space-y-3">
-            {week?.days.map((d) => <DayAccordion key={d.id} day={d} />)}
+            {week?.days.map((d) => (
+              <DayAccordion key={d.id} day={d} />
+            ))}
           </div>
         )}
       </div>

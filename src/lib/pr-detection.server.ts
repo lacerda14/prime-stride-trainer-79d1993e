@@ -3,12 +3,19 @@
 // ============================================================
 // Lista fechada de exercícios oficiais de PR.
 
-export const STRENGTH_PR_LIFTS: Record<string, { code: string; label: string; metric: "weight_load" | "reps" }> = {
+export const STRENGTH_PR_LIFTS: Record<
+  string,
+  { code: string; label: string; metric: "weight_load" | "reps" }
+> = {
   back_squat: { code: "back_squat", label: "Back Squat", metric: "weight_load" },
   front_squat: { code: "front_squat", label: "Front Squat", metric: "weight_load" },
   deadlift: { code: "deadlift", label: "Deadlift", metric: "weight_load" },
   barbell_bench_press: { code: "bench_press", label: "Bench Press", metric: "weight_load" },
-  overhead_press: { code: "strict_military_press", label: "Strict Military Press", metric: "weight_load" },
+  overhead_press: {
+    code: "strict_military_press",
+    label: "Strict Military Press",
+    metric: "weight_load",
+  },
   pull_up: { code: "strict_pull_up", label: "Strict Pull-Up", metric: "reps" },
 };
 
@@ -17,7 +24,11 @@ export const PR_EXERCISE_CODES = {
   front_squat: { label: "Front Squat", category: "strength", metric: "weight_load" },
   deadlift: { label: "Deadlift", category: "strength", metric: "weight_load" },
   bench_press: { label: "Bench Press", category: "strength", metric: "weight_load" },
-  strict_military_press: { label: "Strict Military Press", category: "strength", metric: "weight_load" },
+  strict_military_press: {
+    label: "Strict Military Press",
+    category: "strength",
+    metric: "weight_load",
+  },
   strict_pull_up: { label: "Strict Pull-Up", category: "strength", metric: "reps" },
   run_5k: { label: "Melhor 5km", category: "running", metric: "time_seconds" },
   run_1k: { label: "Melhor 1km", category: "running", metric: "time_seconds" },
@@ -51,7 +62,11 @@ export function isImprovement(
   if (candidate.metric_type === "time_seconds" || candidate.metric_type === "pace_seconds_km") {
     return candidate.value < current.value;
   }
-  if (candidate.metric_type === "weight_load" && candidate.estimated_1rm != null && current.estimated_1rm != null) {
+  if (
+    candidate.metric_type === "weight_load" &&
+    candidate.estimated_1rm != null &&
+    current.estimated_1rm != null
+  ) {
     return candidate.estimated_1rm > current.estimated_1rm;
   }
   return candidate.value > current.value;
@@ -178,9 +193,18 @@ export async function runPRDetectionForSession(
     .eq("user_id", userId)
     .in("exercise_code", codes);
   const currentMap = new Map(
-    ((currentRows ?? []) as Array<{ exercise_code: string; value: number; estimated_1rm: number | null }>).map((r) => [
+    (
+      (currentRows ?? []) as Array<{
+        exercise_code: string;
+        value: number;
+        estimated_1rm: number | null;
+      }>
+    ).map((r) => [
       r.exercise_code as PRExerciseCode,
-      { value: Number(r.value), estimated_1rm: r.estimated_1rm != null ? Number(r.estimated_1rm) : null },
+      {
+        value: Number(r.value),
+        estimated_1rm: r.estimated_1rm != null ? Number(r.estimated_1rm) : null,
+      },
     ]),
   );
 
@@ -193,7 +217,10 @@ export async function runPRDetectionForSession(
 
     const previousValue = current?.value ?? null;
     const improvement =
-      previousValue != null && cand.metric_type === "weight_load" && cand.estimated_1rm && current?.estimated_1rm
+      previousValue != null &&
+      cand.metric_type === "weight_load" &&
+      cand.estimated_1rm &&
+      current?.estimated_1rm
         ? improvementPct(cand.estimated_1rm, current.estimated_1rm)
         : previousValue != null
           ? improvementPct(cand.value, previousValue)

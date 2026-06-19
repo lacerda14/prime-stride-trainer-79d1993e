@@ -54,8 +54,8 @@ export function OfflineNotice() {
       </div>
       <div className="text-xs leading-relaxed text-muted-foreground">
         <div className="text-sm font-semibold text-foreground">Você está offline</div>
-        Seu progresso continua sendo salvo no aparelho. Assim que voltar à internet,
-        sincronizamos tudo automaticamente.
+        Seu progresso continua sendo salvo no aparelho. Assim que voltar à internet, sincronizamos
+        tudo automaticamente.
       </div>
     </div>
   );

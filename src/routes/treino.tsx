@@ -4,7 +4,20 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { getTodayTraining } from "@/lib/program.queries";
 import { useAuth } from "@/hooks/use-auth";
-import { Pause, Play, SkipForward, X, Check, Loader2, Footprints, Timer, Flame, Wind, ArrowRightLeft, ListOrdered, BarChart3, Video } from "lucide-react";
+import {
+  Pause,
+  Play,
+  SkipForward,
+  X,
+  Check,
+  Loader2,
+  Footprints,
+  Timer,
+  Flame,
+  Wind,
+  BarChart3,
+  Video,
+} from "lucide-react";
 import { RequireAuth } from "@/components/require-auth";
 import { buildRunPhases, paceRange, runningHeadline, type RunPhase } from "@/lib/format-running";
 import { useLocalToday } from "@/hooks/use-local-today";
@@ -56,7 +69,11 @@ function TreinoRouteComponent() {
   });
 
   if (isSummaryRoute) return <Outlet />;
-  return <RequireAuth><TreinoPage /></RequireAuth>;
+  return (
+    <RequireAuth>
+      <TreinoPage />
+    </RequireAuth>
+  );
 }
 
 // ============================================================
@@ -123,7 +140,6 @@ function TreinoPage() {
   const abandonSession = useServerFn(abandonWorkoutSession);
   const localToday = useLocalToday();
 
-
   const todayQ = useQuery({
     queryKey: ["today-training", user?.id, localToday.local_date, localToday.timezone],
     queryFn: () => fetchToday({ data: localToday }),
@@ -155,7 +171,11 @@ function TreinoPage() {
   );
   useEffect(() => {
     if (allowRepeat) {
-      try { sessionStorage.removeItem("pm-force-repeat"); } catch { /* noop */ }
+      try {
+        sessionStorage.removeItem("pm-force-repeat");
+      } catch {
+        /* noop */
+      }
     }
   }, [allowRepeat]);
 
@@ -176,13 +196,18 @@ function TreinoPage() {
     });
   }, [completedTodayQ.data?.id, allowRepeat, navigate]);
 
-
   // ----------------------------------------------------------
   // Trocas e reordenação de exercícios (mantidas em memória + session_data)
   // ----------------------------------------------------------
-  const [swaps, setSwaps] = useState<Record<number, { id: string; name: string; category: string }>>({});
+  const [swaps, setSwaps] = useState<
+    Record<number, { id: string; name: string; category: string }>
+  >({});
   const [exerciseOrder, setExerciseOrder] = useState<number[] | null>(null);
-  const [swapOpenFor, setSwapOpenFor] = useState<{ index: number; id: string; name: string } | null>(null);
+  const [swapOpenFor, setSwapOpenFor] = useState<{
+    index: number;
+    id: string;
+    name: string;
+  } | null>(null);
   const [reorderOpen, setReorderOpen] = useState(false);
   const detail = useExerciseDetail(); // modal de vídeo/execução do exercício
 
@@ -210,9 +235,10 @@ function TreinoPage() {
       for (const phase of phases) items.push({ kind: "run", phase, protocolName, paceText });
     }
     const exercises = today.exercises;
-    const order = exerciseOrder && exerciseOrder.length === exercises.length
-      ? exerciseOrder
-      : exercises.map((_, i) => i);
+    const order =
+      exerciseOrder && exerciseOrder.length === exercises.length
+        ? exerciseOrder
+        : exercises.map((_, i) => i);
     for (const exIdx of order) {
       const e = exercises[exIdx];
       if (!e) continue;
@@ -284,9 +310,7 @@ function TreinoPage() {
   // Modal de recuperação
   // ----------------------------------------------------------
   const [recoverState, setRecoverState] = useState<
-    | { kind: "idle" }
-    | { kind: "modal"; active: ActiveSessionDTO }
-    | { kind: "ready" }
+    { kind: "idle" } | { kind: "modal"; active: ActiveSessionDTO } | { kind: "ready" }
   >({ kind: "idle" });
 
   useEffect(() => {
@@ -347,22 +371,27 @@ function TreinoPage() {
   // Iniciar (ou recuperar) sessão
   // ----------------------------------------------------------
   const [starting, setStarting] = useState(false);
-  const beginSession = useCallback(async (opts?: { fromWatch?: boolean }) => {
-    if (!weekNumber || !dayKey || starting) return;
-    setStarting(true);
-    try {
-      const res = await startSession({ data: { week_number: weekNumber, day_key: dayKey } });
-      adoptActive(res);
-      setPhaseStartedAt(Date.now());
-      setPhaseAccumMs(0);
-      qc.invalidateQueries({ queryKey: ["active-workout-session", user?.id] });
-      // Espelha o "play" no relógio (a não ser que o início tenha vindo do próprio relógio).
-      if (!opts?.fromWatch) void startWorkoutOnWatch();
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Não foi possível iniciar o treino. Tente de novo.");
-      setStarting(false);
-    }
-  }, [weekNumber, dayKey, starting, startSession, adoptActive, qc, user?.id]);
+  const beginSession = useCallback(
+    async (opts?: { fromWatch?: boolean }) => {
+      if (!weekNumber || !dayKey || starting) return;
+      setStarting(true);
+      try {
+        const res = await startSession({ data: { week_number: weekNumber, day_key: dayKey } });
+        adoptActive(res);
+        setPhaseStartedAt(Date.now());
+        setPhaseAccumMs(0);
+        qc.invalidateQueries({ queryKey: ["active-workout-session", user?.id] });
+        // Espelha o "play" no relógio (a não ser que o início tenha vindo do próprio relógio).
+        if (!opts?.fromWatch) void startWorkoutOnWatch();
+      } catch (err) {
+        toast.error(
+          err instanceof Error ? err.message : "Não foi possível iniciar o treino. Tente de novo.",
+        );
+        setStarting(false);
+      }
+    },
+    [weekNumber, dayKey, starting, startSession, adoptActive, qc, user?.id],
+  );
 
   // Início veio do Apple Watch: __root navegou pra cá com a flag. Inicia a sessão
   // no iPhone automaticamente (sem reenviar o "start" pro relógio).
@@ -371,7 +400,11 @@ function TreinoPage() {
   );
   useEffect(() => {
     if (watchStartFlag) {
-      try { sessionStorage.removeItem("pm-watch-start"); } catch { /* noop */ }
+      try {
+        sessionStorage.removeItem("pm-watch-start");
+      } catch {
+        /* noop */
+      }
     }
   }, [watchStartFlag]);
   useEffect(() => {
@@ -392,7 +425,10 @@ function TreinoPage() {
   const elapsedMsInPhase = calcElapsedInPhase({ paused, phaseStartedAt, phaseAccumMs }, Date.now());
   const elapsedSecondsInPhase = Math.floor(elapsedMsInPhase / 1000);
 
-  const totalElapsedMs = calcTotalElapsed({ paused, phaseStartedAt, phaseAccumMs, totalAccumMs }, Date.now());
+  const totalElapsedMs = calcTotalElapsed(
+    { paused, phaseStartedAt, phaseAccumMs, totalAccumMs },
+    Date.now(),
+  );
   const totalElapsedSeconds = Math.floor(totalElapsedMs / 1000);
 
   const phaseSeconds = !current
@@ -402,12 +438,12 @@ function TreinoPage() {
       : phase === "rest"
         ? current.rest
         : 0;
-  const remaining = phaseSeconds > 0 ? Math.max(0, phaseSeconds - elapsedSecondsInPhase) : elapsedSecondsInPhase;
+  const remaining =
+    phaseSeconds > 0 ? Math.max(0, phaseSeconds - elapsedSecondsInPhase) : elapsedSecondsInPhase;
 
   // ----------------------------------------------------------
   // Persistência (server + localStorage)
   // ----------------------------------------------------------
-  const persistTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const persistNow = useCallback(
     (override?: Partial<{ step: number; phase: "work" | "rest" }>) => {
@@ -416,7 +452,9 @@ function TreinoPage() {
       const p = override?.phase ?? phase;
       const item = queue[s];
       const phaseAccumNowMs =
-        paused || phaseStartedAt == null ? phaseAccumMs : phaseAccumMs + (Date.now() - phaseStartedAt);
+        paused || phaseStartedAt == null
+          ? phaseAccumMs
+          : phaseAccumMs + (Date.now() - phaseStartedAt);
       const totalNowMs =
         paused || phaseStartedAt == null
           ? totalAccumMs + phaseAccumMs
@@ -450,13 +488,20 @@ function TreinoPage() {
       // sync resiliente: tenta online, senão enfileira para mais tarde
       void syncSaveState(payload);
     },
-    [sessionId, step, phase, queue, paused, phaseAccumMs, phaseStartedAt, totalAccumMs, swaps, exerciseOrder, setLogs],
+    [
+      sessionId,
+      step,
+      phase,
+      queue,
+      paused,
+      phaseAccumMs,
+      phaseStartedAt,
+      totalAccumMs,
+      swaps,
+      exerciseOrder,
+      setLogs,
+    ],
   );
-
-  const schedulePersist = useCallback(() => {
-    if (persistTimer.current) clearTimeout(persistTimer.current);
-    persistTimer.current = setTimeout(() => persistNow(), 1500);
-  }, [persistNow]);
 
   // salva a cada ~5s enquanto roda
   useEffect(() => {
@@ -483,7 +528,9 @@ function TreinoPage() {
     (nextStep: number, nextPhaseValue: "work" | "rest") => {
       // fecha a fase atual: soma no total
       const phaseFinalMs =
-        paused || phaseStartedAt == null ? phaseAccumMs : phaseAccumMs + (Date.now() - phaseStartedAt);
+        paused || phaseStartedAt == null
+          ? phaseAccumMs
+          : phaseAccumMs + (Date.now() - phaseStartedAt);
       setTotalAccumMs((p) => p + phaseFinalMs);
       setPhaseAccumMs(0);
       setPhaseStartedAt(Date.now());
@@ -521,7 +568,9 @@ function TreinoPage() {
         actual_load_kg: loadNum,
         actual_reps: repsNum,
       },
-    }).catch(() => { /* offline-tolerant */ });
+    }).catch(() => {
+      /* offline-tolerant */
+    });
   }, [current, sessionId, liveLoad, liveReps, appendSetLogFn]);
 
   const handleAdvance = useCallback(() => {
@@ -545,7 +594,12 @@ function TreinoPage() {
       setLiveReps("");
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [step, current?.kind, current && current.kind === "strength" ? current.exerciseIndex : null, current && current.kind === "strength" ? current.set : null]);
+  }, [
+    step,
+    current?.kind,
+    current && current.kind === "strength" ? current.exerciseIndex : null,
+    current && current.kind === "strength" ? current.set : null,
+  ]);
 
   // Volume ao vivo
   const liveVolume = useMemo(() => {
@@ -609,10 +663,12 @@ function TreinoPage() {
   const reorderItems = useMemo<ReorderItem[]>(() => {
     if (!today) return [];
     const exercises = today.exercises;
-    const order = exerciseOrder && exerciseOrder.length === exercises.length
-      ? exerciseOrder
-      : exercises.map((_, i) => i);
-    const currentExerciseIndex = current && current.kind === "strength" ? current.exerciseIndex : -1;
+    const order =
+      exerciseOrder && exerciseOrder.length === exercises.length
+        ? exerciseOrder
+        : exercises.map((_, i) => i);
+    const currentExerciseIndex =
+      current && current.kind === "strength" ? current.exerciseIndex : -1;
     return order.map((exIdx) => {
       const e = exercises[exIdx];
       const swap = swaps[exIdx];
@@ -621,9 +677,14 @@ function TreinoPage() {
       // marca como done se todas as séries foram concluídas OU se já passou na fila
       let allDone = true;
       for (let s = 1; s <= sets; s++) {
-        if (!setLogs[setKey(exIdx, s)]?.completed) { allDone = false; break; }
+        if (!setLogs[setKey(exIdx, s)]?.completed) {
+          allDone = false;
+          break;
+        }
       }
-      const done = allDone || (currentExerciseIndex >= 0 && order.indexOf(exIdx) < order.indexOf(currentExerciseIndex));
+      const done =
+        allDone ||
+        (currentExerciseIndex >= 0 && order.indexOf(exIdx) < order.indexOf(currentExerciseIndex));
       return {
         id: String(exIdx),
         name,
@@ -634,7 +695,14 @@ function TreinoPage() {
   }, [today, exerciseOrder, swaps, setLogs, current]);
 
   // Apple Watch — envia o treino do dia + recebe logs de série (ver useWatchSync).
-  useWatchSync({ today, sessionId, swaps, exerciseOrder, lastWeights, appendSetLog: appendSetLogFn });
+  useWatchSync({
+    today,
+    sessionId,
+    swaps,
+    exerciseOrder,
+    lastWeights,
+    appendSetLog: appendSetLogFn,
+  });
 
   // auto-advance quando countdown chega a zero
   useEffect(() => {
@@ -681,15 +749,19 @@ function TreinoPage() {
 
     void syncComplete({ session_id: sid, total_elapsed_seconds: totalElapsedSeconds })
       .then(() => {
-        try { localStorage.removeItem(lsKey(sid)); } catch { /* noop */ }
+        try {
+          localStorage.removeItem(lsKey(sid));
+        } catch {
+          /* noop */
+        }
         qc.invalidateQueries({ queryKey: ["active-workout-session", user?.id] });
         qc.invalidateQueries({ queryKey: ["workout-history", user?.id] });
         qc.invalidateQueries({ queryKey: ["completed-session", sid] });
       })
-      .catch(() => { /* offline-sync já enfileira */ });
+      .catch(() => {
+        /* offline-sync já enfileira */
+      });
   }, [finished, finishing, sessionId, totalElapsedSeconds, qc, user?.id, navigate]);
-
-
 
   // drena a fila ao montar (caso tenha sobrado de uma sessão anterior)
   useEffect(() => {
@@ -715,7 +787,8 @@ function TreinoPage() {
           </div>
           <h2 className="mt-4 text-xl font-semibold tracking-tight">Treino em andamento</h2>
           <p className="mt-2 text-sm text-muted-foreground">
-            Encontramos uma sessão ativa de <span className="text-foreground">{a.day_key}</span> (Semana {a.week_number}). Quer continuar de onde parou?
+            Encontramos uma sessão ativa de <span className="text-foreground">{a.day_key}</span>{" "}
+            (Semana {a.week_number}). Quer continuar de onde parou?
           </p>
           <div className="mt-6 flex flex-col gap-2">
             <button
@@ -730,7 +803,11 @@ function TreinoPage() {
             <button
               onClick={async () => {
                 await abandonSession({ data: { session_id: a.id } });
-                try { localStorage.removeItem(lsKey(a.id)); } catch { /* noop */ }
+                try {
+                  localStorage.removeItem(lsKey(a.id));
+                } catch {
+                  /* noop */
+                }
                 qc.invalidateQueries({ queryKey: ["active-workout-session", user?.id] });
                 setRecoverState({ kind: "ready" });
               }}
@@ -760,7 +837,11 @@ function TreinoPage() {
       <CenteredMessage
         title={finishing ? "Salvando sessão…" : "Sessão concluída"}
         subtitle={formatHMS(totalElapsedSeconds)}
-        action={!finishing ? <BackToDashboard onClick={() => navigate({ to: "/historico" })} label="Ver histórico" /> : null}
+        action={
+          !finishing ? (
+            <BackToDashboard onClick={() => navigate({ to: "/historico" })} label="Ver histórico" />
+          ) : null
+        }
       />
     );
   }
@@ -775,14 +856,16 @@ function TreinoPage() {
         </div>
         <h1 className="mt-3 text-4xl font-semibold tracking-tight">Pronto para começar?</h1>
         <p className="mt-3 max-w-sm text-sm text-muted-foreground">
-          {queue.length} blocos nesta sessão. O tempo começa a contar ao tocar em iniciar — você pode fechar o app e voltar depois.
+          {queue.length} blocos nesta sessão. O tempo começa a contar ao tocar em iniciar — você
+          pode fechar o app e voltar depois.
         </p>
 
         {alreadyDoneToday && (
           <div className="mt-6 max-w-sm rounded-2xl border border-yellow-500/30 bg-yellow-500/10 px-5 py-4 text-sm text-yellow-300">
             <div className="font-semibold">Você já treinou hoje</div>
             <div className="mt-1 text-xs text-yellow-300/70">
-              Repetir o mesmo treino no mesmo dia não é recomendado — pode comprometer a recuperação muscular. Mas se tiver certeza, pode continuar.
+              Repetir o mesmo treino no mesmo dia não é recomendado — pode comprometer a recuperação
+              muscular. Mas se tiver certeza, pode continuar.
             </div>
           </div>
         )}
@@ -792,7 +875,11 @@ function TreinoPage() {
           disabled={starting}
           className="mt-8 inline-flex items-center gap-2 rounded-full bg-primary px-8 py-4 text-base font-semibold text-primary-foreground shadow-glow active:scale-95 disabled:opacity-60"
         >
-          {starting ? <Loader2 className="h-5 w-5 animate-spin" /> : <Play className="h-5 w-5 fill-current" />}
+          {starting ? (
+            <Loader2 className="h-5 w-5 animate-spin" />
+          ) : (
+            <Play className="h-5 w-5 fill-current" />
+          )}
           {starting ? "Iniciando…" : alreadyDoneToday ? "Treinar mesmo assim" : "Começar treino"}
         </button>
         <button
@@ -814,7 +901,10 @@ function TreinoPage() {
     current.kind === "strength"
       ? phase === "rest"
       : current.kind === "run" &&
-        (current.phase.kind === "rest" || current.phase.kind === "between" || current.phase.kind === "warmup" || current.phase.kind === "cooldown");
+        (current.phase.kind === "rest" ||
+          current.phase.kind === "between" ||
+          current.phase.kind === "warmup" ||
+          current.phase.kind === "cooldown");
   const skipLabel =
     current.kind === "run"
       ? current.phase.kind === "warmup"
@@ -864,7 +954,9 @@ function TreinoPage() {
             )}
           </div>
         </div>
-        <div className="w-10 flex justify-end"><OfflineBadge /></div>
+        <div className="w-10 flex justify-end">
+          <OfflineBadge />
+        </div>
       </header>
 
       <main className="relative flex flex-1 flex-col items-center justify-center px-5 py-4">
@@ -881,7 +973,14 @@ function TreinoPage() {
             liveReps={liveReps}
             onLoadChange={setLiveLoad}
             onRepsChange={setLiveReps}
-            onSwap={() => current.exerciseId && setSwapOpenFor({ index: current.exerciseIndex, id: current.exerciseId, name: current.name })}
+            onSwap={() =>
+              current.exerciseId &&
+              setSwapOpenFor({
+                index: current.exerciseIndex,
+                id: current.exerciseId,
+                name: current.name,
+              })
+            }
             onReorder={() => setReorderOpen(true)}
             onVideo={() => current.exerciseId && detail.open(current.exerciseId)}
             videoAvailable={!!current.exerciseId}
@@ -890,7 +989,9 @@ function TreinoPage() {
 
         {next && (
           <div className="glass mt-8 w-full max-w-md rounded-2xl px-5 py-3 text-left">
-            <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Próximo</div>
+            <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+              Próximo
+            </div>
             <div className="num mt-0.5 text-sm font-semibold tracking-tight truncate">
               {next.kind === "run"
                 ? `${runPhaseTitle(next.phase)} · ${formatDuration(next.phase.seconds)}`
@@ -948,7 +1049,15 @@ function FullscreenSpinner() {
   );
 }
 
-function CenteredMessage({ title, subtitle, action }: { title: string; subtitle?: string; action?: React.ReactNode }) {
+function CenteredMessage({
+  title,
+  subtitle,
+  action,
+}: {
+  title: string;
+  subtitle?: string;
+  action?: React.ReactNode;
+}) {
   return (
     <div className="flex min-h-screen items-center justify-center bg-background p-6 text-center safe-pad">
       <div>
@@ -961,7 +1070,13 @@ function CenteredMessage({ title, subtitle, action }: { title: string; subtitle?
   );
 }
 
-function BackToDashboard({ onClick, label = "Voltar ao Dashboard" }: { onClick: () => void; label?: string }) {
+function BackToDashboard({
+  onClick,
+  label = "Voltar ao Dashboard",
+}: {
+  onClick: () => void;
+  label?: string;
+}) {
   return (
     <button
       onClick={onClick}
@@ -1024,14 +1139,20 @@ function StrengthView({
       )}
 
       <div className="num mt-6 flex items-center justify-center gap-6 text-sm text-muted-foreground">
-        <div>Set <span className="text-foreground">{current.set}</span> / {current.totalSets}</div>
-        <div>REST <span className="text-foreground">{current.rest}s</span></div>
+        <div>
+          Set <span className="text-foreground">{current.set}</span> / {current.totalSets}
+        </div>
+        <div>
+          REST <span className="text-foreground">{current.rest}s</span>
+        </div>
       </div>
 
       {!countdown && (
         <div className="mt-6 flex items-center justify-center gap-3">
           <label className="flex flex-col items-start text-left">
-            <span className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Carga (kg)</span>
+            <span className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+              Carga (kg)
+            </span>
             <input
               type="number"
               inputMode="decimal"
@@ -1042,7 +1163,9 @@ function StrengthView({
             />
           </label>
           <label className="flex flex-col items-start text-left">
-            <span className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Reps</span>
+            <span className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+              Reps
+            </span>
             <input
               type="number"
               inputMode="numeric"
@@ -1081,7 +1204,6 @@ function StrengthView({
   );
 }
 
-
 function RunPhaseView({
   phase,
   remaining,
@@ -1097,19 +1219,27 @@ function RunPhaseView({
   const isBetweenBlocks = phase.kind === "between";
 
   const Icon =
-    phase.kind === "work" ? Flame :
-    phase.kind === "rest" || phase.kind === "between" ? Timer :
-    phase.kind === "warmup" ? Wind :
-    phase.kind === "cooldown" ? Wind :
-    Footprints;
+    phase.kind === "work"
+      ? Flame
+      : phase.kind === "rest" || phase.kind === "between"
+        ? Timer
+        : phase.kind === "warmup"
+          ? Wind
+          : phase.kind === "cooldown"
+            ? Wind
+            : Footprints;
 
   return (
     <div className="w-full max-w-md text-center">
-      <div className={`inline-flex items-center gap-2 rounded-full border ${isBetweenBlocks ? "border-primary/35 bg-primary/10" : "border-border bg-surface/60"} px-3 py-1 text-[10px] font-medium uppercase tracking-[0.22em] ${accent}`}>
+      <div
+        className={`inline-flex items-center gap-2 rounded-full border ${isBetweenBlocks ? "border-primary/35 bg-primary/10" : "border-border bg-surface/60"} px-3 py-1 text-[10px] font-medium uppercase tracking-[0.22em] ${accent}`}
+      >
         <Icon className="h-3.5 w-3.5" /> {runPhaseTitle(phase)}
       </div>
 
-      <h1 className={`${isBetweenBlocks ? "mt-5 text-3xl sm:text-4xl text-primary" : "mt-4 text-2xl sm:text-3xl"} font-semibold leading-tight tracking-tight lg:text-4xl break-words`}>
+      <h1
+        className={`${isBetweenBlocks ? "mt-5 text-3xl sm:text-4xl text-primary" : "mt-4 text-2xl sm:text-3xl"} font-semibold leading-tight tracking-tight lg:text-4xl break-words`}
+      >
         {phase.label}
       </h1>
       {isBetweenBlocks && phase.nextBlock ? (
@@ -1119,7 +1249,9 @@ function RunPhaseView({
       ) : phase.block && phase.totalBlocks ? (
         <div className="num mt-1 text-xs text-muted-foreground">
           Bloco {phase.block} / {phase.totalBlocks}
-          {phase.interval && phase.totalIntervals ? ` · Tiro ${phase.interval}/${phase.totalIntervals}` : ""}
+          {phase.interval && phase.totalIntervals
+            ? ` · Tiro ${phase.interval}/${phase.totalIntervals}`
+            : ""}
         </div>
       ) : null}
 
@@ -1130,7 +1262,9 @@ function RunPhaseView({
       <div className="num mt-5 space-y-1 text-sm text-muted-foreground">
         <div>{phase.detail}</div>
         {isBetweenBlocks && phase.completedBlock && phase.totalBlocks && (
-          <div className="text-primary">Fim do bloco {phase.completedBlock}/{phase.totalBlocks}</div>
+          <div className="text-primary">
+            Fim do bloco {phase.completedBlock}/{phase.totalBlocks}
+          </div>
         )}
         {paceText && phase.kind === "work" && (
           <div className="text-primary">Pace alvo: {paceText}</div>
@@ -1146,23 +1280,32 @@ function RunPhaseView({
 
 function runPhaseTitle(p: RunPhase): string {
   switch (p.kind) {
-    case "warmup": return "Aquecimento";
-    case "work": return "Tiro";
-    case "rest": return "Recuperação";
-    case "between": return "Descanso entre blocos";
-    case "cooldown": return "Cooldown";
-    case "continuous": return "Corrida contínua";
+    case "warmup":
+      return "Aquecimento";
+    case "work":
+      return "Tiro";
+    case "rest":
+      return "Recuperação";
+    case "between":
+      return "Descanso entre blocos";
+    case "cooldown":
+      return "Cooldown";
+    case "continuous":
+      return "Corrida contínua";
   }
 }
 
 function phaseAccent(k: RunPhase["kind"]): string {
   switch (k) {
-    case "work": return "text-primary";
+    case "work":
+      return "text-primary";
     case "rest":
     case "between":
     case "cooldown":
-    case "warmup": return "text-muted-foreground";
-    default: return "text-foreground";
+    case "warmup":
+      return "text-muted-foreground";
+    default:
+      return "text-foreground";
   }
 }
 

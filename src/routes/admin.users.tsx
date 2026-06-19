@@ -14,6 +14,8 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Loader2, ShieldAlert, Trash2, Flame, Zap, Crown } from "lucide-react";
+import { TierCrown } from "@/components/tier-crown";
+import { TIERS, tierFromPlan } from "@/lib/tiers";
 import { getMyRole } from "@/lib/exercise-media.functions";
 import {
   listAllUsers,
@@ -68,9 +70,7 @@ function AdminUsersPage() {
       <AppShell title="Restrito">
         <div className="flex h-64 flex-col items-center justify-center gap-3 px-6 text-center">
           <ShieldAlert className="h-8 w-8 text-muted-foreground" />
-          <p className="text-sm text-muted-foreground">
-            Esta área é restrita a administradores.
-          </p>
+          <p className="text-sm text-muted-foreground">Esta área é restrita a administradores.</p>
         </div>
       </AppShell>
     );
@@ -92,6 +92,7 @@ function UsersBoard() {
 
   const [target, setTarget] = useState<AdminUserDTO | null>(null);
   const [premiumTarget, setPremiumTarget] = useState<AdminUserDTO | null>(null);
+  const [grantPlan, setGrantPlan] = useState<"plus" | "pro">("pro");
 
   const del = useMutation({
     mutationFn: (id: string) => deleteFn({ data: { targetUserId: id } }),
@@ -104,8 +105,8 @@ function UsersBoard() {
   });
 
   const grant = useMutation({
-    mutationFn: (v: { id: string; days: number | null }) =>
-      grantFn({ data: { targetUserId: v.id, durationDays: v.days } }),
+    mutationFn: (v: { id: string; days: number | null; plan: "plus" | "pro" }) =>
+      grantFn({ data: { targetUserId: v.id, durationDays: v.days, plan: v.plan } }),
     onSuccess: () => {
       toast.success("Premium concedido 👑");
       setPremiumTarget(null);
@@ -147,17 +148,15 @@ function UsersBoard() {
         ) : (
           <ul className="space-y-2">
             {(data ?? []).map((u) => (
-              <li
-                key={u.id}
-                className="rounded-2xl border border-border/60 bg-surface/40 p-3"
-              >
+              <li key={u.id} className="rounded-2xl border border-border/60 bg-surface/40 p-3">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-1.5">
                       <span className="truncate text-[14px] font-semibold">{u.name || "—"}</span>
-                      {u.plan === "premium_ai" && (
-                        <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-amber-400/15 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-amber-400">
-                          <Crown className="h-2.5 w-2.5" /> {formatPremiumUntil(u.premium_until)}
+                      {u.plan !== "free" && (
+                        <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-surface px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-foreground">
+                          <TierCrown tier={tierFromPlan(u.plan)} className="h-2.5 w-2.5" />
+                          {TIERS[tierFromPlan(u.plan)].name} · {formatPremiumUntil(u.premium_until)}
                         </span>
                       )}
                     </div>
@@ -174,16 +173,14 @@ function UsersBoard() {
                         Nv {u.level} · {u.xp_total.toLocaleString("pt-BR")} XP
                       </span>
                       {u.created_at && (
-                        <span>
-                          {new Date(u.created_at).toLocaleDateString("pt-BR")}
-                        </span>
+                        <span>{new Date(u.created_at).toLocaleDateString("pt-BR")}</span>
                       )}
                     </div>
                   </div>
                   <Button
                     variant="ghost"
                     size="sm"
-                    className={`shrink-0 ${u.plan === "premium_ai" ? "text-amber-400 hover:bg-amber-400/10" : "text-muted-foreground hover:bg-surface hover:text-amber-400"}`}
+                    className={`shrink-0 ${u.plan !== "free" ? "text-amber-400 hover:bg-amber-400/10" : "text-muted-foreground hover:bg-surface hover:text-amber-400"}`}
                     onClick={() => setPremiumTarget(u)}
                     title="Gerenciar Premium"
                   >
@@ -225,11 +222,7 @@ function UsersBoard() {
               onClick={() => target && del.mutate(target.id)}
               disabled={del.isPending}
             >
-              {del.isPending ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                "Excluir conta"
-              )}
+              {del.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Excluir conta"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -243,13 +236,13 @@ function UsersBoard() {
               <Crown className="h-5 w-5 text-amber-400" /> Premium
             </DialogTitle>
             <DialogDescription>
-              {premiumTarget?.plan === "premium_ai" ? (
+              {premiumTarget && premiumTarget.plan !== "free" ? (
                 <>
                   <span className="font-semibold text-foreground">
                     {premiumTarget?.name || premiumTarget?.email}
                   </span>{" "}
-                  já é Premium ({formatPremiumUntil(premiumTarget?.premium_until ?? null)}). Escolha uma nova
-                  duração ou remova.
+                  já é Premium ({formatPremiumUntil(premiumTarget?.premium_until ?? null)}). Escolha
+                  uma nova duração ou remova.
                 </>
               ) : (
                 <>
@@ -263,13 +256,38 @@ function UsersBoard() {
             </DialogDescription>
           </DialogHeader>
 
+          {/* Nível do plano */}
+          <div className="flex gap-2 py-1">
+            {(["plus", "pro"] as const).map((p) => (
+              <button
+                key={p}
+                onClick={() => setGrantPlan(p)}
+                className={`flex flex-1 items-center justify-center gap-1.5 rounded-xl border px-3 py-2 text-sm font-semibold transition-colors ${
+                  grantPlan === p
+                    ? "border-primary/50 bg-primary/10 text-foreground"
+                    : "border-border/60 text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <TierCrown tier={p} className="h-4 w-4" /> {TIERS[p].name}
+              </button>
+            ))}
+          </div>
+
+          <p className="px-1 text-[11px] text-muted-foreground">
+            Conceder <span className="font-medium text-foreground">{TIERS[grantPlan].name}</span> —
+            escolha a duração:
+          </p>
+
           <div className="grid grid-cols-2 gap-2 py-1">
             {PREMIUM_DURATIONS.map((d) => (
               <Button
                 key={d.label}
                 variant="outline"
                 disabled={grant.isPending || revoke.isPending}
-                onClick={() => premiumTarget && grant.mutate({ id: premiumTarget.id, days: d.days })}
+                onClick={() =>
+                  premiumTarget &&
+                  grant.mutate({ id: premiumTarget.id, days: d.days, plan: grantPlan })
+                }
                 className="justify-center"
               >
                 {grant.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : d.label}
@@ -278,14 +296,18 @@ function UsersBoard() {
           </div>
 
           <DialogFooter className="sm:justify-between">
-            {premiumTarget?.plan === "premium_ai" ? (
+            {premiumTarget && premiumTarget.plan !== "free" ? (
               <Button
                 variant="ghost"
                 className="text-destructive hover:bg-destructive/10 hover:text-destructive"
                 disabled={grant.isPending || revoke.isPending}
                 onClick={() => premiumTarget && revoke.mutate(premiumTarget.id)}
               >
-                {revoke.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Remover Premium"}
+                {revoke.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  "Remover Premium"
+                )}
               </Button>
             ) : (
               <span />

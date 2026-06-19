@@ -12,9 +12,7 @@ import {
 // Idempotente: se já houver score para a sessão, atualiza.
 export const computeReadinessForSession = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input) =>
-    z.object({ session_id: z.string().uuid() }).parse(input),
-  )
+  .inputValidator((input) => z.object({ session_id: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }): Promise<ReadinessResult> => {
     const { supabase, userId } = context;
 

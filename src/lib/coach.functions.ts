@@ -10,7 +10,13 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 // ============================================================
 
 export type CoachTechnique =
-  | "straight" | "superset" | "rest_pause" | "drop_set" | "tempo" | "cluster" | "myo_reps";
+  | "straight"
+  | "superset"
+  | "rest_pause"
+  | "drop_set"
+  | "tempo"
+  | "cluster"
+  | "myo_reps";
 
 export interface CoachRefinementExercise {
   slot: number;
@@ -49,6 +55,7 @@ export interface CoachDTO {
   avatar_url: string | null;
   is_premium: boolean;
   sort_order: number;
+  domain_slug: string | null; // domínio comercial (null = Pedro/general)
 }
 
 export const listCoaches = createServerFn({ method: "GET" })
@@ -56,11 +63,13 @@ export const listCoaches = createServerFn({ method: "GET" })
   .handler(async ({ context }): Promise<CoachDTO[]> => {
     const { data, error } = await context.supabase
       .from("ai_coaches")
-      .select("id, persona, name, specialty, tone, description, emoji, avatar_url, is_premium, sort_order")
+      .select(
+        "id, persona, name, specialty, tone, description, emoji, avatar_url, is_premium, sort_order, domain_slug",
+      )
       .eq("is_active", true)
       .order("sort_order", { ascending: true });
     if (error || !data) return [];
-    return data as CoachDTO[];
+    return data;
   });
 
 // ============================================================
@@ -203,9 +212,18 @@ export const applyWorkoutChange = createServerFn({ method: "POST" })
         body: { coach_persona: data.coach_persona, operations: data.operations },
       });
       if (error) {
-        return { ok: false, applied: 0, summary: "", error: "Não consegui aplicar a alteração agora." };
+        return {
+          ok: false,
+          applied: 0,
+          summary: "",
+          error: "Não consegui aplicar a alteração agora.",
+        };
       }
-      const r = (res ?? {}) as { applied?: number; summary?: string; failed?: Array<{ action: string; reason: string }> };
+      const r = (res ?? {}) as {
+        applied?: number;
+        summary?: string;
+        failed?: Array<{ action: string; reason: string }>;
+      };
       const applied = r.applied ?? 0;
       return {
         ok: applied > 0,
@@ -214,21 +232,23 @@ export const applyWorkoutChange = createServerFn({ method: "POST" })
         failed: r.failed,
       };
     } catch {
-      return { ok: false, applied: 0, summary: "", error: "Não consegui aplicar a alteração agora." };
+      return {
+        ok: false,
+        applied: 0,
+        summary: "",
+        error: "Não consegui aplicar a alteração agora.",
+      };
     }
   });
 
 export const getCoachRefinement = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input) =>
-    z.object({ training_day_id: z.string().uuid() }).parse(input),
-  )
+  .inputValidator((input) => z.object({ training_day_id: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }): Promise<CoachRefinementResult> => {
     try {
-      const { data: res, error } = await context.supabase.functions.invoke(
-        "coach-refine-session",
-        { body: { training_day_id: data.training_day_id } },
-      );
+      const { data: res, error } = await context.supabase.functions.invoke("coach-refine-session", {
+        body: { training_day_id: data.training_day_id },
+      });
       if (error) return { refined: false, reason: "invoke_error" };
       return (res ?? { refined: false }) as CoachRefinementResult;
     } catch {

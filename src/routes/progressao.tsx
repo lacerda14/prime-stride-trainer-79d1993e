@@ -11,7 +11,10 @@ export const Route = createFileRoute("/progressao")({
   head: () => ({
     meta: [
       { title: "Progressão · PM Hybrid" },
-      { name: "description", content: "Registre carga, reps e RPE — o sistema projeta as próximas semanas." },
+      {
+        name: "description",
+        content: "Registre carga, reps e RPE — o sistema projeta as próximas semanas.",
+      },
     ],
   }),
   component: ProgressaoPage,
@@ -97,9 +100,19 @@ function ProgressaoPage() {
           )}
 
           <div className="num mt-5 grid grid-cols-3 gap-2">
-            <Field label="Carga" suffix="kg" value={base.load} onChange={(v) => setBase({ ...base, load: v })} />
+            <Field
+              label="Carga"
+              suffix="kg"
+              value={base.load}
+              onChange={(v) => setBase({ ...base, load: v })}
+            />
             <Field label="Reps" value={base.reps} onChange={(v) => setBase({ ...base, reps: v })} />
-            <Field label="RPE" value={base.rpe} onChange={(v) => setBase({ ...base, rpe: v })} step={0.5} />
+            <Field
+              label="RPE"
+              value={base.rpe}
+              onChange={(v) => setBase({ ...base, rpe: v })}
+              step={0.5}
+            />
           </div>
         </section>
 
@@ -120,7 +133,9 @@ function ProgressaoPage() {
                   }`}
                 >
                   <div className="flex w-12 flex-col">
-                    <span className="text-sm font-semibold">W{String(r.week).padStart(2, "0")}</span>
+                    <span className="text-sm font-semibold">
+                      W{String(r.week).padStart(2, "0")}
+                    </span>
                     {deload && (
                       <span className="mt-0.5 text-[9px] font-medium uppercase tracking-wider text-primary">
                         Deload
@@ -132,9 +147,13 @@ function ProgressaoPage() {
                     <span className="text-xs text-muted-foreground">kg</span>
                   </div>
                   <div className="flex flex-col items-end text-[11px] text-muted-foreground">
-                    <span>{r.reps} reps · RPE {r.rpe}</span>
+                    <span>
+                      {r.reps} reps · RPE {r.rpe}
+                    </span>
                     <span className={delta > 0 ? "text-primary" : ""}>
-                      {delta > 0 ? "+" : ""}{delta || "—"}{delta !== 0 && " kg"}
+                      {delta > 0 ? "+" : ""}
+                      {delta || "—"}
+                      {delta !== 0 && " kg"}
                     </span>
                   </div>
                 </div>
@@ -147,11 +166,24 @@ function ProgressaoPage() {
   );
 }
 
-function Field({ label, value, onChange, step = 1, suffix }: { label: string; value: number; onChange: (v: number) => void; step?: number; suffix?: string }) {
+function Field({
+  label,
+  value,
+  onChange,
+  step = 1,
+  suffix,
+}: {
+  label: string;
+  value: number;
+  onChange: (v: number) => void;
+  step?: number;
+  suffix?: string;
+}) {
   return (
     <label className="block rounded-xl border border-border bg-surface/60 p-3 focus-within:border-primary/50">
       <div className="text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
-        {label}{suffix && <span className="ml-1 normal-case tracking-normal">({suffix})</span>}
+        {label}
+        {suffix && <span className="ml-1 normal-case tracking-normal">({suffix})</span>}
       </div>
       <input
         type="number"

@@ -232,7 +232,11 @@ export function PREditSheet({ open, onOpenChange, code, current }: Props) {
                 disabled={deleting}
                 className="flex h-12 w-full items-center justify-center gap-2 rounded-2xl border border-border bg-surface/40 text-[13px] font-medium text-muted-foreground active:scale-[0.99]"
               >
-                {deleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                {deleting ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Trash2 className="h-4 w-4" />
+                )}
                 Remover PR
               </button>
             )}

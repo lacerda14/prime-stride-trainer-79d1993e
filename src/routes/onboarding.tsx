@@ -58,11 +58,18 @@ interface GymSetup {
 
 const EMPTY_GYM_SETUP: GymSetup = {
   location: "",
-  full_gym_completeness: "", full_gym_missing: [], full_gym_missing_other: "",
-  condo_equipment: [], condo_other: "",
-  home_equipment: [], home_other: "",
-  box_completeness: "", box_equipment: [], box_other: "",
-  mixed_primary: "", mixed_other_locations: [],
+  full_gym_completeness: "",
+  full_gym_missing: [],
+  full_gym_missing_other: "",
+  condo_equipment: [],
+  condo_other: "",
+  home_equipment: [],
+  home_other: "",
+  box_completeness: "",
+  box_equipment: [],
+  box_other: "",
+  mixed_primary: "",
+  mixed_other_locations: [],
 };
 
 function deriveEquipment(g: GymSetup): string[] {
@@ -70,14 +77,38 @@ function deriveEquipment(g: GymSetup): string[] {
   switch (g.location) {
     case "Academia Completa": {
       if (g.full_gym_completeness === "Algumas máquinas não existem") {
-        ["Rack", "Barra olímpica", "Anilhas", "Halteres", "Banco ajustável",
-         "Leg Press", "Máquina de cabos", "Barra fixa", "Smith", "Hack Squat",
-         "Cadeira Extensora", "Mesa Flexora", "Esteira", "Bicicleta"].forEach((e) => set.add(e));
+        [
+          "Rack",
+          "Barra olímpica",
+          "Anilhas",
+          "Halteres",
+          "Banco ajustável",
+          "Leg Press",
+          "Máquina de cabos",
+          "Barra fixa",
+          "Smith",
+          "Hack Squat",
+          "Cadeira Extensora",
+          "Mesa Flexora",
+          "Esteira",
+          "Bicicleta",
+        ].forEach((e) => set.add(e));
         g.full_gym_missing.forEach((m) => set.delete(m));
       } else {
-        ["Academia completa", "Rack", "Barra olímpica", "Anilhas", "Halteres",
-         "Banco ajustável", "Leg Press", "Máquina de cabos", "Barra fixa",
-         "Smith", "Esteira", "Bicicleta"].forEach((e) => set.add(e));
+        [
+          "Academia completa",
+          "Rack",
+          "Barra olímpica",
+          "Anilhas",
+          "Halteres",
+          "Banco ajustável",
+          "Leg Press",
+          "Máquina de cabos",
+          "Barra fixa",
+          "Smith",
+          "Esteira",
+          "Bicicleta",
+        ].forEach((e) => set.add(e));
       }
       break;
     }
@@ -89,16 +120,36 @@ function deriveEquipment(g: GymSetup): string[] {
       break;
     case "Box de CrossFit":
       if (g.box_completeness === "Sim") {
-        ["Remo", "Bike", "SkiErg", "Barra olímpica", "Anilhas bumper",
-         "Caixa de salto", "Kettlebells", "Dumbbells", "Corda", "Argolas",
-         "Barra fixa", "GHD", "Wall Ball"].forEach((e) => set.add(e));
+        [
+          "Remo",
+          "Bike",
+          "SkiErg",
+          "Barra olímpica",
+          "Anilhas bumper",
+          "Caixa de salto",
+          "Kettlebells",
+          "Dumbbells",
+          "Corda",
+          "Argolas",
+          "Barra fixa",
+          "GHD",
+          "Wall Ball",
+        ].forEach((e) => set.add(e));
       } else {
         g.box_equipment.forEach((e) => set.add(e));
       }
       break;
     case "Misto": {
       const pickFor = (loc: string) => {
-        if (loc === "Academia") ["Rack", "Barra olímpica", "Halteres", "Máquina de cabos", "Leg Press", "Banco ajustável"].forEach((e) => set.add(e));
+        if (loc === "Academia")
+          [
+            "Rack",
+            "Barra olímpica",
+            "Halteres",
+            "Máquina de cabos",
+            "Leg Press",
+            "Banco ajustável",
+          ].forEach((e) => set.add(e));
         if (loc === "Condomínio") g.condo_equipment.forEach((e) => set.add(e));
         if (loc === "Casa") g.home_equipment.forEach((e) => set.add(e));
         if (loc === "Box") g.box_equipment.forEach((e) => set.add(e));
@@ -122,8 +173,10 @@ type Experience = "beginner" | "intermediate" | "advanced";
 interface Data {
   // Perfil
   first_name: string;
-  birth_date: string; sex: Sex | "";
-  height_cm: number | ""; weight_kg: number | "";
+  birth_date: string;
+  sex: Sex | "";
+  height_cm: number | "";
+  weight_kg: number | "";
   // Objetivo
   primary_goal: string;
   secondary_goals: string[];
@@ -210,20 +263,35 @@ function OnboardingPage() {
   const [step, setStep] = useState(0);
   const [saving, setSaving] = useState(false);
   const [d, setD] = useState<Data>({
-    first_name: "", birth_date: "", sex: "",
-    height_cm: "", weight_kg: "",
+    first_name: "",
+    birth_date: "",
+    sex: "",
+    height_cm: "",
+    weight_kg: "",
     primary_goal: "",
     secondary_goals: [],
-    experience_level: "", training_history: "",
-    available_days_list: [], available_minutes: "", preferred_time: "",
-    running_mode: "", running_level: "", running_continuous_minutes: "",
-    running_goals: [], running_preferred_days: [], cardio_preference: "",
+    experience_level: "",
+    training_history: "",
+    available_days_list: [],
+    available_minutes: "",
+    preferred_time: "",
+    running_mode: "",
+    running_level: "",
+    running_continuous_minutes: "",
+    running_goals: [],
+    running_preferred_days: [],
+    cardio_preference: "",
     sports: [],
     medical_conditions: [],
-    current_pain_level: 0, pain_regions: [], past_injuries: [],
-    uncomfortable_movements: [], health_notes: "",
+    current_pain_level: 0,
+    pain_regions: [],
+    past_injuries: [],
+    uncomfortable_movements: [],
+    health_notes: "",
     gym_setup: { ...EMPTY_GYM_SETUP },
-    preferences: [], training_style: "", motivations: [],
+    preferences: [],
+    training_style: "",
+    motivations: [],
   });
 
   useEffect(() => {
@@ -233,7 +301,9 @@ function OnboardingPage() {
   }, [loading, user, navigate]);
 
   useEffect(() => {
-    const force = typeof window !== "undefined" && new URLSearchParams(window.location.search).get("force") === "1";
+    const force =
+      typeof window !== "undefined" &&
+      new URLSearchParams(window.location.search).get("force") === "1";
     if (profileQ.data?.onboarding_completed === true && !force) {
       navigate({ to: "/", replace: true });
     }
@@ -252,17 +322,36 @@ function OnboardingPage() {
 
   const canAdvance = useMemo<boolean>(() => {
     switch (step) {
-      case 0: return true;
-      case 1: return d.first_name.trim() !== "" && d.birth_date !== "" && isAtLeast16(d.birth_date) &&
-        d.sex !== "" && typeof d.height_cm === "number" && typeof d.weight_kg === "number";
-      case 2: return d.primary_goal !== "";
-      case 3: return d.experience_level !== "" && d.training_history !== "" &&
-        d.available_days_list.length > 0 && d.available_minutes !== "";
-      case 4: return isRunningGoal(d.primary_goal) || d.running_mode !== "";
-      case 5: return true; // saúde toda opcional
-      case 6: return d.gym_setup.location !== "";
-      case 7: return true; // preferências opcionais
-      default: return false;
+      case 0:
+        return true;
+      case 1:
+        return (
+          d.first_name.trim() !== "" &&
+          d.birth_date !== "" &&
+          isAtLeast16(d.birth_date) &&
+          d.sex !== "" &&
+          typeof d.height_cm === "number" &&
+          typeof d.weight_kg === "number"
+        );
+      case 2:
+        return d.primary_goal !== "";
+      case 3:
+        return (
+          d.experience_level !== "" &&
+          d.training_history !== "" &&
+          d.available_days_list.length > 0 &&
+          d.available_minutes !== ""
+        );
+      case 4:
+        return isRunningGoal(d.primary_goal) || d.running_mode !== "";
+      case 5:
+        return true; // saúde toda opcional
+      case 6:
+        return d.gym_setup.location !== "";
+      case 7:
+        return true; // preferências opcionais
+      default:
+        return false;
     }
   }, [step, d]);
 
@@ -285,16 +374,19 @@ function OnboardingPage() {
           experience_level: d.experience_level as Experience,
           training_history: d.training_history as never,
           training_location: d.gym_setup.location
-            ? (TRAINING_LOCATION_DB_VALUE[d.gym_setup.location as keyof typeof TRAINING_LOCATION_DB_VALUE] ?? d.gym_setup.location)
+            ? (TRAINING_LOCATION_DB_VALUE[
+                d.gym_setup.location as keyof typeof TRAINING_LOCATION_DB_VALUE
+              ] ?? d.gym_setup.location)
             : null,
           available_days: d.available_days_list.length,
           available_minutes: d.available_minutes as number,
           available_days_list: d.available_days_list,
           preferred_time: d.preferred_time || null,
-          sports: d.sports, sports_frequency: {},
+          sports: d.sports,
+          sports_frequency: {},
           running_mode: (isRunningGoal(d.primary_goal)
             ? inferredRunningMode(d.primary_goal)
-            : (d.running_mode || "desabilitado")) as never,
+            : d.running_mode || "desabilitado") as never,
           running_level: d.running_level || null,
           running_continuous_minutes: d.running_continuous_minutes || null,
           running_goals: d.running_goals,
@@ -351,18 +443,27 @@ function OnboardingPage() {
           available_minutes: 60,
           available_days_list: ["Segunda", "Terça", "Quarta", "Quinta", "Sexta"],
           preferred_time: "Manhã",
-          sports: [], sports_frequency: {},
+          sports: [],
+          sports_frequency: {},
           running_mode: "desabilitado" as never,
-          running_level: null, running_continuous_minutes: null,
-          running_goals: [], running_preferred_days: [],
+          running_level: null,
+          running_continuous_minutes: null,
+          running_goals: [],
+          running_preferred_days: [],
           cardio_preference: null,
-          medical_conditions: [], medications: null, surgeries: [],
+          medical_conditions: [],
+          medications: null,
+          surgeries: [],
           medical_restrictions: null,
-          current_pain_level: 0, pain_regions: [], past_injuries: [],
+          current_pain_level: 0,
+          pain_regions: [],
+          past_injuries: [],
           uncomfortable_movements: [],
           equipment: ["Academia completa"],
           gym_setup: { ...EMPTY_GYM_SETUP, location: "Academia Completa" },
-          preferences: [], training_style: null, motivations: [],
+          preferences: [],
+          training_style: null,
+          motivations: [],
           program_start_date: getLocalToday().local_date,
         },
       });
@@ -381,8 +482,15 @@ function OnboardingPage() {
     }
   };
 
-  const forceView = typeof window !== "undefined" && new URLSearchParams(window.location.search).get("force") === "1";
-  if (loading || !user || profileQ.isPending || (profileQ.data?.onboarding_completed === true && !forceView)) {
+  const forceView =
+    typeof window !== "undefined" &&
+    new URLSearchParams(window.location.search).get("force") === "1";
+  if (
+    loading ||
+    !user ||
+    profileQ.isPending ||
+    (profileQ.data?.onboarding_completed === true && !forceView)
+  ) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
         <Loader2 className="h-6 w-6 animate-spin text-primary" />
@@ -397,9 +505,14 @@ function OnboardingPage() {
     <div className="relative mx-auto flex min-h-screen w-full max-w-[480px] flex-col bg-background">
       {isAdmin && (
         <div className="sticky top-0 z-30 flex items-center justify-between bg-background/95 px-6 pb-2 pt-[max(env(safe-area-inset-top,0px),0.75rem)] backdrop-blur-2xl">
-          <span className="text-[11px] font-medium uppercase tracking-widest text-primary/70">Admin</span>
-          <button onClick={skipOnboarding} disabled={saving}
-            className="rounded-xl border border-primary/40 bg-primary/10 px-4 py-2 text-[12px] font-semibold text-primary active:scale-95 disabled:opacity-50">
+          <span className="text-[11px] font-medium uppercase tracking-widest text-primary/70">
+            Admin
+          </span>
+          <button
+            onClick={skipOnboarding}
+            disabled={saving}
+            className="rounded-xl border border-primary/40 bg-primary/10 px-4 py-2 text-[12px] font-semibold text-primary active:scale-95 disabled:opacity-50"
+          >
             {saving ? <Loader2 className="inline h-3 w-3 animate-spin" /> : "Pular onboarding →"}
           </button>
         </div>
@@ -415,7 +528,10 @@ function OnboardingPage() {
             </span>
           </div>
           <div className="h-[3px] w-full overflow-hidden rounded-full bg-surface">
-            <div className="h-full bg-titanium transition-all duration-700" style={{ width: `${pct}%` }} />
+            <div
+              className="h-full bg-titanium transition-all duration-700"
+              style={{ width: `${pct}%` }}
+            />
           </div>
         </div>
       )}
@@ -434,20 +550,32 @@ function OnboardingPage() {
       {step > 0 && (
         <div className="fixed bottom-0 left-1/2 z-20 w-full max-w-[480px] -translate-x-1/2 border-t border-border/40 bg-background/95 px-6 py-4 pb-[max(env(safe-area-inset-bottom),1rem)] backdrop-blur-2xl">
           <div className="flex items-center gap-3">
-            <button onClick={back}
+            <button
+              onClick={back}
               className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-border bg-surface/50 active:scale-95"
-              aria-label="Voltar">
+              aria-label="Voltar"
+            >
               <ArrowLeft className="h-5 w-5" />
             </button>
             {isLast ? (
-              <button onClick={finish} disabled={saving || !canAdvance}
-                className="flex h-14 flex-1 items-center justify-center gap-2 rounded-2xl bg-titanium text-[15px] font-semibold text-primary-foreground shadow-glow disabled:opacity-40 disabled:shadow-none active:scale-[0.99]">
-                {saving ? <Loader2 className="h-5 w-5 animate-spin" /> : <Check className="h-5 w-5" />}
+              <button
+                onClick={finish}
+                disabled={saving || !canAdvance}
+                className="flex h-14 flex-1 items-center justify-center gap-2 rounded-2xl bg-titanium text-[15px] font-semibold text-primary-foreground shadow-glow disabled:opacity-40 disabled:shadow-none active:scale-[0.99]"
+              >
+                {saving ? (
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                ) : (
+                  <Check className="h-5 w-5" />
+                )}
                 {saving ? "Gerando seu programa..." : "Finalizar e gerar meu programa"}
               </button>
             ) : (
-              <button onClick={next} disabled={!canAdvance}
-                className="flex h-14 flex-1 items-center justify-center gap-2 rounded-2xl bg-titanium text-[15px] font-semibold text-primary-foreground shadow-glow disabled:opacity-40 disabled:shadow-none active:scale-[0.99]">
+              <button
+                onClick={next}
+                disabled={!canAdvance}
+                className="flex h-14 flex-1 items-center justify-center gap-2 rounded-2xl bg-titanium text-[15px] font-semibold text-primary-foreground shadow-glow disabled:opacity-40 disabled:shadow-none active:scale-[0.99]"
+              >
                 Continuar
                 <ArrowRight className="h-4 w-4" />
               </button>
@@ -471,13 +599,17 @@ function Splash({ onStart }: { onStart: () => void }) {
         Avaliação inteligente
       </div>
       <h1 className="mt-4 text-[40px] font-semibold leading-[1.05] tracking-tight text-titanium">
-        Vamos calibrar<br />o seu programa
+        Vamos calibrar
+        <br />o seu programa
       </h1>
       <p className="mt-5 max-w-[340px] text-[15px] leading-relaxed text-muted-foreground">
-        7 telas rápidas e geramos uma periodização única para você — força, corrida e condicionamento em equilíbrio.
+        7 telas rápidas e geramos uma periodização única para você — força, corrida e
+        condicionamento em equilíbrio.
       </p>
-      <button onClick={onStart}
-        className="mt-12 flex h-14 w-full max-w-[280px] items-center justify-center gap-2 rounded-2xl bg-titanium text-[15px] font-semibold text-primary-foreground shadow-glow active:scale-[0.99]">
+      <button
+        onClick={onStart}
+        className="mt-12 flex h-14 w-full max-w-[280px] items-center justify-center gap-2 rounded-2xl bg-titanium text-[15px] font-semibold text-primary-foreground shadow-glow active:scale-[0.99]"
+      >
         Começar avaliação
         <ArrowRight className="h-4 w-4" />
       </button>
@@ -488,7 +620,9 @@ function Splash({ onStart }: { onStart: () => void }) {
 function Hero({ title, hint }: { title: string; hint?: string }) {
   return (
     <div className="animate-fade-in">
-      <h1 className="text-[30px] font-semibold leading-[1.1] tracking-tight text-titanium">{title}</h1>
+      <h1 className="text-[30px] font-semibold leading-[1.1] tracking-tight text-titanium">
+        {title}
+      </h1>
       {hint && <p className="mt-3 text-[14px] leading-relaxed text-muted-foreground">{hint}</p>}
     </div>
   );
@@ -512,7 +646,20 @@ function WhyBox({ children }: { children: React.ReactNode }) {
 // Seletor de data por rolagem (Dia/Mês/Ano) — selects nativos viram picker
 // de rolagem no iOS/Android e dropdown no desktop. Bem mais rápido que navegar
 // num calendário ano a ano. Emite ISO "YYYY-MM-DD".
-const MONTHS_PT = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+const MONTHS_PT = [
+  "Jan",
+  "Fev",
+  "Mar",
+  "Abr",
+  "Mai",
+  "Jun",
+  "Jul",
+  "Ago",
+  "Set",
+  "Out",
+  "Nov",
+  "Dez",
+];
 function DateWheel({ value, onChange }: { value: string; onChange: (iso: string) => void }) {
   const nowYear = new Date().getFullYear();
   const maxYear = nowYear - 13;
@@ -538,20 +685,62 @@ function DateWheel({ value, onChange }: { value: string; onChange: (iso: string)
 
   return (
     <div className="grid grid-cols-3 gap-2">
-      <select aria-label="Dia" className={selCls} value={day || ""}
-        onChange={(e) => { const v = Number(e.target.value); setDay(v); commit(v, month, year); }}>
-        <option value="" disabled>Dia</option>
-        {days.map((n) => <option key={n} value={n}>{n}</option>)}
+      <select
+        aria-label="Dia"
+        className={selCls}
+        value={day || ""}
+        onChange={(e) => {
+          const v = Number(e.target.value);
+          setDay(v);
+          commit(v, month, year);
+        }}
+      >
+        <option value="" disabled>
+          Dia
+        </option>
+        {days.map((n) => (
+          <option key={n} value={n}>
+            {n}
+          </option>
+        ))}
       </select>
-      <select aria-label="Mês" className={selCls} value={month || ""}
-        onChange={(e) => { const v = Number(e.target.value); setMonth(v); commit(day, v, year); }}>
-        <option value="" disabled>Mês</option>
-        {MONTHS_PT.map((mo, i) => <option key={i} value={i + 1}>{mo}</option>)}
+      <select
+        aria-label="Mês"
+        className={selCls}
+        value={month || ""}
+        onChange={(e) => {
+          const v = Number(e.target.value);
+          setMonth(v);
+          commit(day, v, year);
+        }}
+      >
+        <option value="" disabled>
+          Mês
+        </option>
+        {MONTHS_PT.map((mo, i) => (
+          <option key={i} value={i + 1}>
+            {mo}
+          </option>
+        ))}
       </select>
-      <select aria-label="Ano" className={selCls} value={year || ""}
-        onChange={(e) => { const v = Number(e.target.value); setYear(v); commit(day, month, v); }}>
-        <option value="" disabled>Ano</option>
-        {years.map((y) => <option key={y} value={y}>{y}</option>)}
+      <select
+        aria-label="Ano"
+        className={selCls}
+        value={year || ""}
+        onChange={(e) => {
+          const v = Number(e.target.value);
+          setYear(v);
+          commit(day, month, v);
+        }}
+      >
+        <option value="" disabled>
+          Ano
+        </option>
+        {years.map((y) => (
+          <option key={y} value={y}>
+            {y}
+          </option>
+        ))}
       </select>
     </div>
   );
@@ -561,58 +750,128 @@ const inputCls =
   "h-14 w-full rounded-2xl border border-border bg-surface/40 px-5 text-[16px] font-medium tracking-tight outline-none placeholder:text-muted-foreground/50 focus:border-primary/50 focus:bg-surface/60 transition-colors";
 const textareaCls =
   "min-h-[88px] w-full rounded-2xl border border-border bg-surface/40 p-4 text-[15px] font-medium tracking-tight outline-none placeholder:text-muted-foreground/50 focus:border-primary/50 focus:bg-surface/60 transition-colors";
-const labelCls = "text-[11px] font-medium uppercase tracking-[0.2em] text-muted-foreground mb-2 block";
+const labelCls =
+  "text-[11px] font-medium uppercase tracking-[0.2em] text-muted-foreground mb-2 block";
 
-function BigChoice({ active, title, hint, onClick }: { active: boolean; title: string; hint: string; onClick: () => void }) {
+function BigChoice({
+  active,
+  title,
+  hint,
+  onClick,
+}: {
+  active: boolean;
+  title: string;
+  hint: string;
+  onClick: () => void;
+}) {
   return (
-    <button onClick={onClick}
+    <button
+      onClick={onClick}
       className={`w-full rounded-2xl border px-5 py-4 text-left transition-all active:scale-[0.99] ${
-        active ? "border-primary/60 bg-primary/[0.08] shadow-glow" : "border-border bg-surface/40 hover:bg-surface/60"
-      }`}>
+        active
+          ? "border-primary/60 bg-primary/[0.08] shadow-glow"
+          : "border-border bg-surface/40 hover:bg-surface/60"
+      }`}
+    >
       <div className="text-[15.5px] font-semibold tracking-tight">{title}</div>
       <div className="mt-0.5 text-[12.5px] text-muted-foreground">{hint}</div>
     </button>
   );
 }
 
-function RowChoice({ active, children, onClick }: { active: boolean; children: React.ReactNode; onClick: () => void }) {
+function RowChoice({
+  active,
+  children,
+  onClick,
+}: {
+  active: boolean;
+  children: React.ReactNode;
+  onClick: () => void;
+}) {
   return (
-    <button onClick={onClick}
+    <button
+      onClick={onClick}
       className={`w-full rounded-xl border px-4 py-3.5 text-left text-[14px] font-medium transition-all active:scale-[0.99] ${
-        active ? "border-primary/60 bg-primary/[0.08] text-foreground" : "border-border bg-surface/40 text-muted-foreground hover:text-foreground"
-      }`}>
+        active
+          ? "border-primary/60 bg-primary/[0.08] text-foreground"
+          : "border-border bg-surface/40 text-muted-foreground hover:text-foreground"
+      }`}
+    >
       {children}
     </button>
   );
 }
 
-function PillChoice({ active, children, onClick }: { active: boolean; children: React.ReactNode; onClick: () => void }) {
+function PillChoice({
+  active,
+  children,
+  onClick,
+}: {
+  active: boolean;
+  children: React.ReactNode;
+  onClick: () => void;
+}) {
   return (
-    <button onClick={onClick}
+    <button
+      onClick={onClick}
       className={`h-12 rounded-xl border px-3 text-[13px] font-medium transition-all ${
-        active ? "border-primary/60 bg-primary/[0.10] text-foreground" : "border-border bg-surface/40 text-muted-foreground hover:text-foreground"
-      }`}>{children}</button>
+        active
+          ? "border-primary/60 bg-primary/[0.10] text-foreground"
+          : "border-border bg-surface/40 text-muted-foreground hover:text-foreground"
+      }`}
+    >
+      {children}
+    </button>
   );
 }
 
-function Chip({ on, children, onClick }: { on: boolean; children: React.ReactNode; onClick: () => void }) {
+function Chip({
+  on,
+  children,
+  onClick,
+}: {
+  on: boolean;
+  children: React.ReactNode;
+  onClick: () => void;
+}) {
   return (
-    <button onClick={onClick}
+    <button
+      onClick={onClick}
       className={`rounded-full border px-3.5 py-1.5 text-[12.5px] font-medium transition-all ${
-        on ? "border-primary/60 bg-primary/[0.12] text-foreground" : "border-border bg-surface/40 text-muted-foreground hover:text-foreground"
-      }`}>{children}</button>
+        on
+          ? "border-primary/60 bg-primary/[0.12] text-foreground"
+          : "border-border bg-surface/40 text-muted-foreground hover:text-foreground"
+      }`}
+    >
+      {children}
+    </button>
   );
 }
 
-function Multi({ label, items, selected, onToggle, max }: {
-  label: string; items: readonly string[]; selected: string[]; onToggle: (v: string) => void; max?: number;
+function Multi({
+  label,
+  items,
+  selected,
+  onToggle,
+  max,
+}: {
+  label: string;
+  items: readonly string[];
+  selected: string[];
+  onToggle: (v: string) => void;
+  max?: number;
 }) {
   return (
     <div>
-      <label className={labelCls}>{label}{max ? ` · até ${max}` : ""}</label>
+      <label className={labelCls}>
+        {label}
+        {max ? ` · até ${max}` : ""}
+      </label>
       <div className="flex flex-wrap gap-1.5">
         {items.map((v) => (
-          <Chip key={v} on={selected.includes(v)} onClick={() => onToggle(v)}>{v}</Chip>
+          <Chip key={v} on={selected.includes(v)} onClick={() => onToggle(v)}>
+            {v}
+          </Chip>
         ))}
       </div>
     </div>
@@ -634,13 +893,21 @@ function S1({ d, setD }: SP) {
   return (
     <div className="space-y-6">
       <Hero title="Vamos te conhecer" hint="O básico para calibrar a prescrição." />
-      <WhyBox>Idade, sexo, altura e peso calibram o volume, a intensidade e as estimativas de carga e calorias do seu programa.</WhyBox>
+      <WhyBox>
+        Idade, sexo, altura e peso calibram o volume, a intensidade e as estimativas de carga e
+        calorias do seu programa.
+      </WhyBox>
       <div className="animate-fade-in space-y-5">
         <div>
           <label className={labelCls}>Nome</label>
-          <input className={inputCls} value={d.first_name} maxLength={60} autoFocus
+          <input
+            className={inputCls}
+            value={d.first_name}
+            maxLength={60}
+            autoFocus
             placeholder="Como você quer ser chamado"
-            onChange={(e) => setD({ ...d, first_name: e.target.value })} />
+            onChange={(e) => setD({ ...d, first_name: e.target.value })}
+          />
         </div>
         <div>
           <label className={labelCls}>Data de nascimento</label>
@@ -664,15 +931,34 @@ function S1({ d, setD }: SP) {
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className={labelCls}>Altura · cm</label>
-            <input type="number" inputMode="numeric" className={inputCls} placeholder="175"
-              value={d.height_cm} min={100} max={250}
-              onChange={(e) => setD({ ...d, height_cm: e.target.value === "" ? "" : Number(e.target.value) })} />
+            <input
+              type="number"
+              inputMode="numeric"
+              className={inputCls}
+              placeholder="175"
+              value={d.height_cm}
+              min={100}
+              max={250}
+              onChange={(e) =>
+                setD({ ...d, height_cm: e.target.value === "" ? "" : Number(e.target.value) })
+              }
+            />
           </div>
           <div>
             <label className={labelCls}>Peso · kg</label>
-            <input type="number" inputMode="decimal" className={inputCls} placeholder="75"
-              value={d.weight_kg} step="0.1" min={20} max={300}
-              onChange={(e) => setD({ ...d, weight_kg: e.target.value === "" ? "" : Number(e.target.value) })} />
+            <input
+              type="number"
+              inputMode="decimal"
+              className={inputCls}
+              placeholder="75"
+              value={d.weight_kg}
+              step="0.1"
+              min={20}
+              max={300}
+              onChange={(e) =>
+                setD({ ...d, weight_kg: e.target.value === "" ? "" : Number(e.target.value) })
+              }
+            />
           </div>
         </div>
       </div>
@@ -684,20 +970,36 @@ function S1({ d, setD }: SP) {
 function S2({ d, setD }: SP) {
   return (
     <div className="space-y-6">
-      <Hero title="Qual é o seu foco?" hint="Escolha o objetivo principal e, se quiser, até 3 secundários." />
-      <WhyBox>Seu objetivo define os exercícios escolhidos, as progressões de carga e a intensidade de cada sessão.</WhyBox>
+      <Hero
+        title="Qual é o seu foco?"
+        hint="Escolha o objetivo principal e, se quiser, até 3 secundários."
+      />
+      <WhyBox>
+        Seu objetivo define os exercícios escolhidos, as progressões de carga e a intensidade de
+        cada sessão.
+      </WhyBox>
       <div className="animate-fade-in space-y-6">
         <div>
           <label className={labelCls}>Objetivo principal</label>
           <div className="grid gap-2">
             {PRIMARY_GOAL_OPTIONS.map((g) => (
-              <BigChoice key={g.v} active={d.primary_goal === g.v} title={g.label} hint={g.hint}
-                onClick={() => setD({ ...d, primary_goal: g.v })} />
+              <BigChoice
+                key={g.v}
+                active={d.primary_goal === g.v}
+                title={g.label}
+                hint={g.hint}
+                onClick={() => setD({ ...d, primary_goal: g.v })}
+              />
             ))}
           </div>
         </div>
-        <Multi label="Objetivos secundários (opcional)" items={SECONDARY_GOALS} selected={d.secondary_goals} max={3}
-          onToggle={(v) => setD({ ...d, secondary_goals: toggleArr(d.secondary_goals, v, 3) })} />
+        <Multi
+          label="Objetivos secundários (opcional)"
+          items={SECONDARY_GOALS}
+          selected={d.secondary_goals}
+          max={3}
+          onToggle={(v) => setD({ ...d, secondary_goals: toggleArr(d.secondary_goals, v, 3) })}
+        />
       </div>
     </div>
   );
@@ -708,14 +1010,22 @@ function S3({ d, setD }: SP) {
   return (
     <div className="space-y-6">
       <Hero title="Sua rotina de treino" hint="Experiência e quando você consegue treinar." />
-      <WhyBox>Seu nível e sua disponibilidade definem a frequência semanal e o tamanho de cada sessão da sua programação inicial.</WhyBox>
+      <WhyBox>
+        Seu nível e sua disponibilidade definem a frequência semanal e o tamanho de cada sessão da
+        sua programação inicial.
+      </WhyBox>
       <div className="animate-fade-in space-y-6">
         <div>
           <label className={labelCls}>Nível</label>
           <div className="grid grid-cols-3 gap-1.5">
             {EXPERIENCE_OPTIONS.map((o) => (
-              <PillChoice key={o.v} active={d.experience_level === o.v}
-                onClick={() => setD({ ...d, experience_level: o.v })}>{o.label}</PillChoice>
+              <PillChoice
+                key={o.v}
+                active={d.experience_level === o.v}
+                onClick={() => setD({ ...d, experience_level: o.v })}
+              >
+                {o.label}
+              </PillChoice>
             ))}
           </div>
         </div>
@@ -723,25 +1033,42 @@ function S3({ d, setD }: SP) {
           <label className={labelCls}>Há quanto tempo treina</label>
           <div className="grid gap-1.5">
             {TRAINING_HISTORY_OPTIONS.map((o) => (
-              <RowChoice key={o.v} active={d.training_history === o.v}
-                onClick={() => setD({ ...d, training_history: o.v })}>{o.label}</RowChoice>
+              <RowChoice
+                key={o.v}
+                active={d.training_history === o.v}
+                onClick={() => setD({ ...d, training_history: o.v })}
+              >
+                {o.label}
+              </RowChoice>
             ))}
           </div>
         </div>
         <div>
-          <Multi label="Dias que você prefere treinar" items={WEEK_DAYS}
+          <Multi
+            label="Dias que você prefere treinar"
+            items={WEEK_DAYS}
             selected={d.available_days_list}
-            onToggle={(v) => setD({ ...d, available_days_list: toggleArr(d.available_days_list, v) })} />
+            onToggle={(v) =>
+              setD({ ...d, available_days_list: toggleArr(d.available_days_list, v) })
+            }
+          />
           <p className="mt-2 text-[12px] leading-relaxed text-muted-foreground">
-            Usamos esses dias só para montar sua <span className="text-foreground/80">programação inicial</span>. Você pode treinar em qualquer dia e ajustar a agenda depois.
+            Usamos esses dias só para montar sua{" "}
+            <span className="text-foreground/80">programação inicial</span>. Você pode treinar em
+            qualquer dia e ajustar a agenda depois.
           </p>
         </div>
         <div>
           <label className={labelCls}>Tempo por treino</label>
           <div className="grid grid-cols-5 gap-1.5">
             {MINUTES_PER_SESSION.map((n) => (
-              <PillChoice key={n} active={d.available_minutes === n}
-                onClick={() => setD({ ...d, available_minutes: n })}>{n}min</PillChoice>
+              <PillChoice
+                key={n}
+                active={d.available_minutes === n}
+                onClick={() => setD({ ...d, available_minutes: n })}
+              >
+                {n}min
+              </PillChoice>
             ))}
           </div>
         </div>
@@ -755,18 +1082,24 @@ function S3({ d, setD }: SP) {
 function S4({ d, setD }: SP) {
   const goalIsRunning = isRunningGoal(d.primary_goal);
   // Quem tem objetivo de corrida já quer corrida; senão, depende do modo escolhido.
-  const wantsRunning = goalIsRunning || (d.running_mode !== "" && d.running_mode !== "desabilitado");
+  const wantsRunning =
+    goalIsRunning || (d.running_mode !== "" && d.running_mode !== "desabilitado");
   const noCardio = !goalIsRunning && d.running_mode === "desabilitado";
 
   return (
     <div className="space-y-6">
       <Hero
         title={goalIsRunning ? "Sua corrida" : "Cardio e outras atividades"}
-        hint={goalIsRunning
-          ? "A corrida é o foco do seu objetivo — me conta seu ponto de partida."
-          : "Quer corrida/cardio no plano? Se não, é só seguir — dá pra adicionar depois."}
+        hint={
+          goalIsRunning
+            ? "A corrida é o foco do seu objetivo — me conta seu ponto de partida."
+            : "Quer corrida/cardio no plano? Se não, é só seguir — dá pra adicionar depois."
+        }
       />
-      <WhyBox>Usamos isso para personalizar seus treinos aeróbicos — ou deixá-los de fora, se não fizerem parte do seu objetivo.</WhyBox>
+      <WhyBox>
+        Usamos isso para personalizar seus treinos aeróbicos — ou deixá-los de fora, se não fizerem
+        parte do seu objetivo.
+      </WhyBox>
       <div className="animate-fade-in space-y-6">
         {/* Gate de corrida só aparece quando o OBJETIVO não é corrida */}
         {!goalIsRunning && (
@@ -774,8 +1107,13 @@ function S4({ d, setD }: SP) {
             <label className={labelCls}>Quer corrida ou cardio no seu plano?</label>
             <div className="grid gap-2">
               {RUNNING_MODES.map((r) => (
-                <BigChoice key={r.v} active={d.running_mode === r.v} title={r.label} hint={r.hint}
-                  onClick={() => setD({ ...d, running_mode: r.v })} />
+                <BigChoice
+                  key={r.v}
+                  active={d.running_mode === r.v}
+                  title={r.label}
+                  hint={r.hint}
+                  onClick={() => setD({ ...d, running_mode: r.v })}
+                />
               ))}
             </div>
           </div>
@@ -787,8 +1125,13 @@ function S4({ d, setD }: SP) {
               <label className={labelCls}>Seu nível atual de corrida</label>
               <div className="grid grid-cols-2 gap-1.5">
                 {RUNNING_LEVEL.map((o) => (
-                  <PillChoice key={o} active={d.running_level === o}
-                    onClick={() => setD({ ...d, running_level: o })}>{o}</PillChoice>
+                  <PillChoice
+                    key={o}
+                    active={d.running_level === o}
+                    onClick={() => setD({ ...d, running_level: o })}
+                  >
+                    {o}
+                  </PillChoice>
                 ))}
               </div>
             </div>
@@ -796,20 +1139,33 @@ function S4({ d, setD }: SP) {
               <label className={labelCls}>Quanto tempo corre contínuo hoje</label>
               <div className="grid gap-1.5">
                 {RUNNING_CONTINUOUS.map((o) => (
-                  <RowChoice key={o} active={d.running_continuous_minutes === o}
-                    onClick={() => setD({ ...d, running_continuous_minutes: o })}>{o}</RowChoice>
+                  <RowChoice
+                    key={o}
+                    active={d.running_continuous_minutes === o}
+                    onClick={() => setD({ ...d, running_continuous_minutes: o })}
+                  >
+                    {o}
+                  </RowChoice>
                 ))}
               </div>
             </div>
             {/* Objetivos de corrida só pra quem NÃO escolheu uma meta de corrida no passo 2 */}
             {!goalIsRunning && (
-              <Multi label="Objetivos com corrida" items={RUNNING_GOALS_OPTIONS}
+              <Multi
+                label="Objetivos com corrida"
+                items={RUNNING_GOALS_OPTIONS}
                 selected={d.running_goals}
-                onToggle={(v) => setD({ ...d, running_goals: toggleArr(d.running_goals, v) })} />
+                onToggle={(v) => setD({ ...d, running_goals: toggleArr(d.running_goals, v) })}
+              />
             )}
-            <Multi label="Dias preferidos para correr" items={WEEK_DAYS}
+            <Multi
+              label="Dias preferidos para correr"
+              items={WEEK_DAYS}
               selected={d.running_preferred_days}
-              onToggle={(v) => setD({ ...d, running_preferred_days: toggleArr(d.running_preferred_days, v) })} />
+              onToggle={(v) =>
+                setD({ ...d, running_preferred_days: toggleArr(d.running_preferred_days, v) })
+              }
+            />
           </div>
         )}
 
@@ -819,8 +1175,13 @@ function S4({ d, setD }: SP) {
             <label className={labelCls}>Prefere algum cardio além de corrida? (opcional)</label>
             <div className="grid grid-cols-2 gap-1.5">
               {CARDIO_OPTIONS.map((o) => (
-                <PillChoice key={o} active={d.cardio_preference === o}
-                  onClick={() => setD({ ...d, cardio_preference: o })}>{o}</PillChoice>
+                <PillChoice
+                  key={o}
+                  active={d.cardio_preference === o}
+                  onClick={() => setD({ ...d, cardio_preference: o })}
+                >
+                  {o}
+                </PillChoice>
               ))}
             </div>
           </div>
@@ -828,12 +1189,17 @@ function S4({ d, setD }: SP) {
 
         {noCardio && (
           <p className="rounded-2xl border border-border/40 bg-surface/30 px-4 py-3 text-[12.5px] leading-relaxed text-muted-foreground">
-            Sem cardio no plano. Você pode adicionar depois contratando um coach ou pedindo pro Pedro montar.
+            Sem cardio no plano. Você pode adicionar depois contratando um coach ou pedindo pro
+            Pedro montar.
           </p>
         )}
 
-        <Multi label="Outros esportes que pratica (opcional)" items={SPORTS_OPTIONS} selected={d.sports}
-          onToggle={(v) => setD({ ...d, sports: toggleArr(d.sports, v) })} />
+        <Multi
+          label="Outros esportes que pratica (opcional)"
+          items={SPORTS_OPTIONS}
+          selected={d.sports}
+          onToggle={(v) => setD({ ...d, sports: toggleArr(d.sports, v) })}
+        />
       </div>
     </div>
   );
@@ -843,40 +1209,70 @@ function S4({ d, setD }: SP) {
 function S5({ d, setD }: SP) {
   return (
     <div className="space-y-6">
-      <Hero title="Saúde e lesões" hint="Tudo confidencial — usado apenas para adaptar exercícios." />
-      <WhyBox>Lesões, dores e limitações filtram exercícios de risco e ajustam a execução. É sobre a sua segurança — nada aqui é obrigatório.</WhyBox>
+      <Hero
+        title="Saúde e lesões"
+        hint="Tudo confidencial — usado apenas para adaptar exercícios."
+      />
+      <WhyBox>
+        Lesões, dores e limitações filtram exercícios de risco e ajustam a execução. É sobre a sua
+        segurança — nada aqui é obrigatório.
+      </WhyBox>
       <div className="animate-fade-in space-y-6">
-        <Multi label="Diagnósticos médicos" items={MEDICAL_CONDITIONS}
+        <Multi
+          label="Diagnósticos médicos"
+          items={MEDICAL_CONDITIONS}
           selected={d.medical_conditions}
-          onToggle={(v) => setD({ ...d, medical_conditions: toggleArr(d.medical_conditions, v) })} />
+          onToggle={(v) => setD({ ...d, medical_conditions: toggleArr(d.medical_conditions, v) })}
+        />
 
         <div>
           <label className={labelCls}>Dor atual · {d.current_pain_level} / 10</label>
-          <input type="range" min={0} max={10} value={d.current_pain_level}
+          <input
+            type="range"
+            min={0}
+            max={10}
+            value={d.current_pain_level}
             onChange={(e) => setD({ ...d, current_pain_level: Number(e.target.value) })}
-            className="w-full accent-titanium" />
+            className="w-full accent-titanium"
+          />
           <div className="mt-1 flex justify-between text-[10px] uppercase tracking-wider text-muted-foreground">
-            <span>Sem dor</span><span>Dor intensa</span>
+            <span>Sem dor</span>
+            <span>Dor intensa</span>
           </div>
         </div>
 
-        <Multi label="Regiões com dor ou lesão" items={PAIN_REGIONS}
+        <Multi
+          label="Regiões com dor ou lesão"
+          items={PAIN_REGIONS}
           selected={d.pain_regions}
-          onToggle={(v) => setD({ ...d, pain_regions: toggleArr(d.pain_regions, v) })} />
+          onToggle={(v) => setD({ ...d, pain_regions: toggleArr(d.pain_regions, v) })}
+        />
 
-        <Multi label="Lesões anteriores" items={PAST_INJURIES}
+        <Multi
+          label="Lesões anteriores"
+          items={PAST_INJURIES}
           selected={d.past_injuries}
-          onToggle={(v) => setD({ ...d, past_injuries: toggleArr(d.past_injuries, v) })} />
+          onToggle={(v) => setD({ ...d, past_injuries: toggleArr(d.past_injuries, v) })}
+        />
 
-        <Multi label="Movimentos que causam desconforto" items={UNCOMFORTABLE_MOVEMENTS}
+        <Multi
+          label="Movimentos que causam desconforto"
+          items={UNCOMFORTABLE_MOVEMENTS}
           selected={d.uncomfortable_movements}
-          onToggle={(v) => setD({ ...d, uncomfortable_movements: toggleArr(d.uncomfortable_movements, v) })} />
+          onToggle={(v) =>
+            setD({ ...d, uncomfortable_movements: toggleArr(d.uncomfortable_movements, v) })
+          }
+        />
 
         <div>
           <label className={labelCls}>Algo importante a saber? (opcional)</label>
-          <textarea className={textareaCls} value={d.health_notes} maxLength={500}
+          <textarea
+            className={textareaCls}
+            value={d.health_notes}
+            maxLength={500}
             placeholder="Ex: cirurgia de menisco em 2022, uso losartana..."
-            onChange={(e) => setD({ ...d, health_notes: e.target.value })} />
+            onChange={(e) => setD({ ...d, health_notes: e.target.value })}
+          />
         </div>
       </div>
     </div>
@@ -886,8 +1282,7 @@ function S5({ d, setD }: SP) {
 // 6 · Local + equipamentos
 function S6({ d, setD }: SP) {
   const g = d.gym_setup;
-  const setG = (patch: Partial<GymSetup>) =>
-    setD({ ...d, gym_setup: { ...g, ...patch } });
+  const setG = (patch: Partial<GymSetup>) => setD({ ...d, gym_setup: { ...g, ...patch } });
 
   const selectLocation = (loc: string) => {
     setD({ ...d, gym_setup: { ...EMPTY_GYM_SETUP, location: loc } });
@@ -895,13 +1290,21 @@ function S6({ d, setD }: SP) {
 
   return (
     <div className="space-y-6">
-      <Hero title="Onde você treina?" hint="Só vamos prescrever exercícios que você consegue executar." />
-      <WhyBox>Recomendamos apenas exercícios possíveis com o que você tem disponível — academia, casa ou equipamento específico.</WhyBox>
+      <Hero
+        title="Onde você treina?"
+        hint="Só vamos prescrever exercícios que você consegue executar."
+      />
+      <WhyBox>
+        Recomendamos apenas exercícios possíveis com o que você tem disponível — academia, casa ou
+        equipamento específico.
+      </WhyBox>
 
       <div className="animate-fade-in space-y-6">
         <div className="grid gap-2">
           {TRAINING_LOCATION_OPTIONS.map((o) => (
-            <RowChoice key={o} active={g.location === o} onClick={() => selectLocation(o)}>{o}</RowChoice>
+            <RowChoice key={o} active={g.location === o} onClick={() => selectLocation(o)}>
+              {o}
+            </RowChoice>
           ))}
         </div>
 
@@ -911,29 +1314,43 @@ function S6({ d, setD }: SP) {
               <label className={labelCls}>Sua academia tem equipamentos comuns?</label>
               <div className="grid gap-2">
                 {FULL_GYM_COMPLETENESS.map((o) => (
-                  <RowChoice key={o} active={g.full_gym_completeness === o}
-                    onClick={() => setG({ full_gym_completeness: o, full_gym_missing: [] })}>{o}</RowChoice>
+                  <RowChoice
+                    key={o}
+                    active={g.full_gym_completeness === o}
+                    onClick={() => setG({ full_gym_completeness: o, full_gym_missing: [] })}
+                  >
+                    {o}
+                  </RowChoice>
                 ))}
               </div>
             </div>
             {g.full_gym_completeness === "Algumas máquinas não existem" && (
-              <Multi label="Quais NÃO existem?" items={FULL_GYM_MISSING_OPTIONS}
+              <Multi
+                label="Quais NÃO existem?"
+                items={FULL_GYM_MISSING_OPTIONS}
                 selected={g.full_gym_missing}
-                onToggle={(v) => setG({ full_gym_missing: toggleArr(g.full_gym_missing, v) })} />
+                onToggle={(v) => setG({ full_gym_missing: toggleArr(g.full_gym_missing, v) })}
+              />
             )}
           </div>
         )}
 
         {g.location === "Academia de Condomínio / Prédio" && (
-          <Multi label="Equipamentos disponíveis" items={CONDO_GYM_EQUIPMENT}
+          <Multi
+            label="Equipamentos disponíveis"
+            items={CONDO_GYM_EQUIPMENT}
             selected={g.condo_equipment}
-            onToggle={(v) => setG({ condo_equipment: toggleArr(g.condo_equipment, v) })} />
+            onToggle={(v) => setG({ condo_equipment: toggleArr(g.condo_equipment, v) })}
+          />
         )}
 
         {g.location === "Casa" && (
-          <Multi label="Equipamentos que você tem em casa" items={HOME_EQUIPMENT}
+          <Multi
+            label="Equipamentos que você tem em casa"
+            items={HOME_EQUIPMENT}
             selected={g.home_equipment}
-            onToggle={(v) => setG({ home_equipment: toggleArr(g.home_equipment, v) })} />
+            onToggle={(v) => setG({ home_equipment: toggleArr(g.home_equipment, v) })}
+          />
         )}
 
         {g.location === "Box de CrossFit" && (
@@ -942,15 +1359,23 @@ function S6({ d, setD }: SP) {
               <label className={labelCls}>Seu box é completo?</label>
               <div className="grid grid-cols-2 gap-1.5">
                 {BOX_COMPLETENESS.map((o) => (
-                  <PillChoice key={o} active={g.box_completeness === o}
-                    onClick={() => setG({ box_completeness: o, box_equipment: [] })}>{o}</PillChoice>
+                  <PillChoice
+                    key={o}
+                    active={g.box_completeness === o}
+                    onClick={() => setG({ box_completeness: o, box_equipment: [] })}
+                  >
+                    {o}
+                  </PillChoice>
                 ))}
               </div>
             </div>
             {g.box_completeness === "Não" && (
-              <Multi label="Marque o que existe no seu box" items={BOX_EQUIPMENT}
+              <Multi
+                label="Marque o que existe no seu box"
+                items={BOX_EQUIPMENT}
                 selected={g.box_equipment}
-                onToggle={(v) => setG({ box_equipment: toggleArr(g.box_equipment, v) })} />
+                onToggle={(v) => setG({ box_equipment: toggleArr(g.box_equipment, v) })}
+              />
             )}
           </div>
         )}
@@ -961,29 +1386,49 @@ function S6({ d, setD }: SP) {
               <label className={labelCls}>Onde treina com mais frequência?</label>
               <div className="grid grid-cols-2 gap-1.5">
                 {MIXED_PRIMARY_LOCATIONS.map((o) => (
-                  <PillChoice key={o} active={g.mixed_primary === o}
-                    onClick={() => setG({ mixed_primary: o })}>{o}</PillChoice>
+                  <PillChoice
+                    key={o}
+                    active={g.mixed_primary === o}
+                    onClick={() => setG({ mixed_primary: o })}
+                  >
+                    {o}
+                  </PillChoice>
                 ))}
               </div>
             </div>
-            <Multi label="Outros locais que usa" items={MIXED_PRIMARY_LOCATIONS.filter((l) => l !== g.mixed_primary)}
+            <Multi
+              label="Outros locais que usa"
+              items={MIXED_PRIMARY_LOCATIONS.filter((l) => l !== g.mixed_primary)}
               selected={g.mixed_other_locations}
-              onToggle={(v) => setG({ mixed_other_locations: toggleArr(g.mixed_other_locations, v) })} />
+              onToggle={(v) =>
+                setG({ mixed_other_locations: toggleArr(g.mixed_other_locations, v) })
+              }
+            />
 
-            {(g.mixed_primary === "Condomínio" || g.mixed_other_locations.includes("Condomínio")) && (
-              <Multi label="Equipamentos no condomínio" items={CONDO_GYM_EQUIPMENT}
+            {(g.mixed_primary === "Condomínio" ||
+              g.mixed_other_locations.includes("Condomínio")) && (
+              <Multi
+                label="Equipamentos no condomínio"
+                items={CONDO_GYM_EQUIPMENT}
                 selected={g.condo_equipment}
-                onToggle={(v) => setG({ condo_equipment: toggleArr(g.condo_equipment, v) })} />
+                onToggle={(v) => setG({ condo_equipment: toggleArr(g.condo_equipment, v) })}
+              />
             )}
             {(g.mixed_primary === "Casa" || g.mixed_other_locations.includes("Casa")) && (
-              <Multi label="Equipamentos em casa" items={HOME_EQUIPMENT}
+              <Multi
+                label="Equipamentos em casa"
+                items={HOME_EQUIPMENT}
                 selected={g.home_equipment}
-                onToggle={(v) => setG({ home_equipment: toggleArr(g.home_equipment, v) })} />
+                onToggle={(v) => setG({ home_equipment: toggleArr(g.home_equipment, v) })}
+              />
             )}
             {(g.mixed_primary === "Box" || g.mixed_other_locations.includes("Box")) && (
-              <Multi label="Equipamentos no box" items={BOX_EQUIPMENT}
+              <Multi
+                label="Equipamentos no box"
+                items={BOX_EQUIPMENT}
                 selected={g.box_equipment}
-                onToggle={(v) => setG({ box_equipment: toggleArr(g.box_equipment, v) })} />
+                onToggle={(v) => setG({ box_equipment: toggleArr(g.box_equipment, v) })}
+              />
             )}
           </div>
         )}
@@ -997,23 +1442,37 @@ function S7({ d, setD }: SP) {
   return (
     <div className="space-y-6">
       <Hero title="Como você gosta de treinar?" hint="Última etapa — tudo opcional." />
-      <WhyBox>Estilo e motivação são ajustes finos pra deixar o plano com a sua cara. Pode pular — dá pra mudar depois com seu coach.</WhyBox>
+      <WhyBox>
+        Estilo e motivação são ajustes finos pra deixar o plano com a sua cara. Pode pular — dá pra
+        mudar depois com seu coach.
+      </WhyBox>
       <div className="animate-fade-in space-y-6">
-        <Multi label="O que mais gosta" items={PREFERENCES_OPTIONS}
+        <Multi
+          label="O que mais gosta"
+          items={PREFERENCES_OPTIONS}
           selected={d.preferences}
-          onToggle={(v) => setD({ ...d, preferences: toggleArr(d.preferences, v) })} />
+          onToggle={(v) => setD({ ...d, preferences: toggleArr(d.preferences, v) })}
+        />
         <div>
           <label className={labelCls}>Estilo de treino preferido</label>
           <div className="grid grid-cols-3 gap-1.5">
             {TRAINING_STYLES.map((o) => (
-              <PillChoice key={o} active={d.training_style === o}
-                onClick={() => setD({ ...d, training_style: o })}>{o}</PillChoice>
+              <PillChoice
+                key={o}
+                active={d.training_style === o}
+                onClick={() => setD({ ...d, training_style: o })}
+              >
+                {o}
+              </PillChoice>
             ))}
           </div>
         </div>
-        <Multi label="O que mais te motiva" items={MOTIVATIONS_OPTIONS}
+        <Multi
+          label="O que mais te motiva"
+          items={MOTIVATIONS_OPTIONS}
           selected={d.motivations}
-          onToggle={(v) => setD({ ...d, motivations: toggleArr(d.motivations, v) })} />
+          onToggle={(v) => setD({ ...d, motivations: toggleArr(d.motivations, v) })}
+        />
       </div>
     </div>
   );

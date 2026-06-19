@@ -9,14 +9,7 @@ import {
 } from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  LifeBuoy,
-  MessageCircle,
-  Lock,
-  Send,
-  Mail,
-  Sparkles,
-} from "lucide-react";
+import { LifeBuoy, MessageCircle, Lock, Send, Mail, Sparkles } from "lucide-react";
 
 export const Route = createFileRoute("/suporte")({
   head: () => ({
@@ -76,9 +69,7 @@ function SuportePage() {
               <LifeBuoy className="h-6 w-6 text-primary" />
             </div>
             <div>
-              <h2 className="text-lg font-semibold tracking-tight">
-                Como podemos ajudar?
-              </h2>
+              <h2 className="text-lg font-semibold tracking-tight">Como podemos ajudar?</h2>
               <p className="mt-1 text-[13px] text-muted-foreground leading-relaxed">
                 Encontre respostas rápidas abaixo ou fale com nosso time pelo chat.
               </p>
@@ -92,9 +83,7 @@ function SuportePage() {
             <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
               Perguntas frequentes
             </p>
-            <span className="text-[10px] text-muted-foreground">
-              {FAQS.length} tópicos
-            </span>
+            <span className="text-[10px] text-muted-foreground">{FAQS.length} tópicos</span>
           </div>
 
           <div className="overflow-hidden rounded-2xl border border-border/60 bg-surface/50">
@@ -136,8 +125,8 @@ function SuportePage() {
                   <Sparkles className="h-4 w-4" />
                 </div>
                 <div className="max-w-[80%] rounded-2xl rounded-tl-sm border border-border/60 bg-surface-elevated/60 px-3.5 py-2.5 text-[12.5px] leading-relaxed">
-                  Oi! Em breve você poderá conversar comigo aqui para tirar dúvidas
-                  sobre seu treino, performance e assinatura.
+                  Oi! Em breve você poderá conversar comigo aqui para tirar dúvidas sobre seu
+                  treino, performance e assinatura.
                 </div>
               </div>
             </div>
@@ -162,8 +151,7 @@ function SuportePage() {
                 </Button>
               </div>
               <p className="mt-2 text-center text-[10.5px] text-muted-foreground">
-                Estamos preparando o agente de IA do PM Hybrid. Aguarde novidades em
-                breve.
+                Estamos preparando o agente de IA do PM Hybrid. Aguarde novidades em breve.
               </p>
             </div>
           </div>

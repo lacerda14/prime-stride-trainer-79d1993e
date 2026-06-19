@@ -2,11 +2,10 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { levelFromXp, XP_REWARDS } from "@/lib/gamification";
+import { serverError } from "@/lib/server-errors";
 
 // NOTE: As funções de week_plan foram removidas — o Motor de Personalização
 // gera a distribuição semanal automaticamente. Ver src/lib/engine/* (Fase C).
-
-
 
 // ============================================================
 // Helper: server-side dia em ISO (UTC) — usuário usa a data local no front,
@@ -49,7 +48,6 @@ export const recordWorkoutComplete = createServerFn({ method: "POST" })
     const { supabase, userId } = context;
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
-
     // 1) cria sessão concluída
     const { data: session, error: sErr } = await supabase
       .from("workout_sessions")
@@ -62,7 +60,7 @@ export const recordWorkoutComplete = createServerFn({ method: "POST" })
       })
       .select("id")
       .single();
-    if (sErr) throw new Error(sErr.message);
+    if (sErr) serverError("Não foi possível concluir a operação. Tente novamente.", sErr);
 
     // 2) registra XP
     const xpGain = XP_REWARDS.workout;
@@ -79,7 +77,7 @@ export const recordWorkoutComplete = createServerFn({ method: "POST" })
       .select("xp_total, streak_current, streak_longest, streak_last_date")
       .eq("id", userId)
       .single();
-    if (pErr) throw new Error(pErr.message);
+    if (pErr) serverError("Não foi possível concluir a operação. Tente novamente.", pErr);
 
     const newXp = (profile.xp_total ?? 0) + xpGain;
     const oldLevel = levelFromXp(profile.xp_total ?? 0);

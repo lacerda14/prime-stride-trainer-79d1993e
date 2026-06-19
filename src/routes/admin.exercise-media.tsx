@@ -8,7 +8,18 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Loader2, Search, Check, X, Star, PlayCircle, Plus, Pencil, ShieldAlert, Zap } from "lucide-react";
+import {
+  Loader2,
+  Search,
+  Check,
+  X,
+  Star,
+  PlayCircle,
+  Plus,
+  Pencil,
+  ShieldAlert,
+  Zap,
+} from "lucide-react";
 import {
   getMyRole,
   listExercisesWithStatus,
@@ -67,7 +78,10 @@ function CuratorBoard() {
   const qc = useQueryClient();
   const fetchList = useServerFn(listExercisesWithStatus);
   const searchFn = useServerFn(searchVideosForExercise);
-  const { data, isLoading } = useQuery({ queryKey: ["admin-exercises"], queryFn: () => fetchList() });
+  const { data, isLoading } = useQuery({
+    queryKey: ["admin-exercises"],
+    queryFn: () => fetchList(),
+  });
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [filter, setFilter] = useState<"missing" | "all">("missing");
@@ -84,7 +98,10 @@ function CuratorBoard() {
   const selected = (data ?? []).find((e) => e.id === selectedId) ?? null;
 
   const search1 = useMutation({
-    mutationFn: (exercise_id: string) => searchFn({ data: { exercise_id, max_results: 5, auto_approve: true, auto_approve_min_score: 0 } }),
+    mutationFn: (exercise_id: string) =>
+      searchFn({
+        data: { exercise_id, max_results: 5, auto_approve: true, auto_approve_min_score: 0 },
+      }),
     onSuccess: (r) => {
       if (r.error) {
         toast.error(r.error.message);
@@ -111,7 +128,6 @@ function CuratorBoard() {
     },
     onError: (e: Error) => toast.error(e.message),
   });
-
 
   const missingCount = (data ?? []).filter((e) => !e.has_primary).length;
 
@@ -146,7 +162,12 @@ function CuratorBoard() {
             onClick={() => setTab("queue")}
             className={`flex-1 rounded-full px-3 py-2 text-xs font-semibold transition ${tab === "queue" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}
           >
-            Fila {pendingCount > 0 && <span className="ml-1 rounded-full bg-background/20 px-1.5 text-[10px]">{pendingCount}</span>}
+            Fila{" "}
+            {pendingCount > 0 && (
+              <span className="ml-1 rounded-full bg-background/20 px-1.5 text-[10px]">
+                {pendingCount}
+              </span>
+            )}
           </button>
         </div>
 
@@ -166,11 +187,19 @@ function CuratorBoard() {
                 Todos
               </button>
             </div>
-            <Input placeholder="Buscar exercício..." value={search} onChange={(e) => setSearch(e.target.value)} className="h-10" />
+            <Input
+              placeholder="Buscar exercício..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="h-10"
+            />
 
             <div className="space-y-2 rounded-2xl border border-border/60 bg-surface/40 p-3">
               <p className="text-[11px] leading-relaxed text-muted-foreground">
-                <span className="font-semibold text-foreground">{missingCount}</span> exercício(s) sem vídeo primário. O agente busca em <span className="font-semibold text-foreground">PT-BR</span> (canais brasileiros priorizados) e auto-aprova candidatos com score ≥ 70.
+                <span className="font-semibold text-foreground">{missingCount}</span> exercício(s)
+                sem vídeo primário. O agente busca em{" "}
+                <span className="font-semibold text-foreground">PT-BR</span> (canais brasileiros
+                priorizados) e auto-aprova candidatos com score ≥ 70.
               </p>
               <div className="flex flex-wrap gap-2">
                 <Button
@@ -179,7 +208,11 @@ function CuratorBoard() {
                   disabled={bulkSearch.isPending || missingCount === 0}
                   className="h-8"
                 >
-                  {bulkSearch.isPending ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Zap className="mr-1.5 h-3.5 w-3.5" />}
+                  {bulkSearch.isPending ? (
+                    <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Zap className="mr-1.5 h-3.5 w-3.5" />
+                  )}
                   Buscar 10 (auto-aprovar)
                 </Button>
                 <Button
@@ -198,7 +231,9 @@ function CuratorBoard() {
             </div>
 
             {isLoading ? (
-              <div className="flex h-32 items-center justify-center"><Loader2 className="h-4 w-4 animate-spin text-muted-foreground" /></div>
+              <div className="flex h-32 items-center justify-center">
+                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+              </div>
             ) : (
               <ul className="space-y-2">
                 {exercises.map((e) => (
@@ -221,12 +256,19 @@ function CuratorBoard() {
               qc.invalidateQueries({ queryKey: ["pending-queue"] });
               qc.invalidateQueries({ queryKey: ["admin-exercises"] });
             }}
-            onOpenExercise={(id) => { setTab("exercises"); setSelectedId(id); }}
+            onOpenExercise={(id) => {
+              setTab("exercises");
+              setSelectedId(id);
+            }}
           />
         )}
       </div>
 
-      <ExerciseDrawer exerciseId={selected?.id ?? null} exerciseName={selected?.name ?? ""} onClose={() => setSelectedId(null)} />
+      <ExerciseDrawer
+        exerciseId={selected?.id ?? null}
+        exerciseName={selected?.name ?? ""}
+        onClose={() => setSelectedId(null)}
+      />
     </AppShell>
   );
 }
@@ -250,7 +292,8 @@ function PendingQueue({
   const toggle = (id: string) =>
     setSelected((s) => {
       const n = new Set(s);
-      if (n.has(id)) n.delete(id); else n.add(id);
+      if (n.has(id)) n.delete(id);
+      else n.add(id);
       return n;
     });
 
@@ -268,7 +311,9 @@ function PendingQueue({
         await approve({ data: { media_id: id, set_primary } });
         if (set_primary) primaryGiven.add(item.exercise_id);
         ok++;
-      } catch (e) { console.error(e); }
+      } catch (e) {
+        console.error(e);
+      }
     }
     setBusy(false);
     setSelected(new Set());
@@ -277,14 +322,20 @@ function PendingQueue({
   };
 
   if (isLoading) {
-    return <div className="flex h-32 items-center justify-center"><Loader2 className="h-4 w-4 animate-spin text-muted-foreground" /></div>;
+    return (
+      <div className="flex h-32 items-center justify-center">
+        <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+      </div>
+    );
   }
   if (items.length === 0) {
     return (
       <div className="rounded-2xl border border-dashed border-border/60 p-6 text-center">
         <Check className="mx-auto h-6 w-6 text-primary" />
         <p className="mt-2 text-sm font-semibold">Fila vazia</p>
-        <p className="mt-1 text-[11px] text-muted-foreground">Nenhum candidato pendente. Rode o agente para buscar mais.</p>
+        <p className="mt-1 text-[11px] text-muted-foreground">
+          Nenhum candidato pendente. Rode o agente para buscar mais.
+        </p>
       </div>
     );
   }
@@ -296,12 +347,25 @@ function PendingQueue({
           {selected.size > 0 ? `${selected.size} de ${items.length}` : `${items.length} pendentes`}
         </span>
         <div className="ml-auto flex gap-2">
-          <Button size="sm" variant="outline" disabled={busy || selected.size === 0} onClick={() => runBatch(Array.from(selected))}>
-            {busy ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <Check className="mr-1 h-3.5 w-3.5" />}
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={busy || selected.size === 0}
+            onClick={() => runBatch(Array.from(selected))}
+          >
+            {busy ? (
+              <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Check className="mr-1 h-3.5 w-3.5" />
+            )}
             Aprovar selecionados
           </Button>
           <Button size="sm" disabled={busy} onClick={() => runBatch(items.map((i) => i.media.id))}>
-            {busy ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <Check className="mr-1 h-3.5 w-3.5" />}
+            {busy ? (
+              <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Check className="mr-1 h-3.5 w-3.5" />
+            )}
             Aprovar todos
           </Button>
         </div>
@@ -313,7 +377,9 @@ function PendingQueue({
             onClick={() => onOpenExercise(it.exercise_id)}
             className="flex w-full items-center justify-between px-1 text-left"
           >
-            <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">{it.exercise_name}</span>
+            <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+              {it.exercise_name}
+            </span>
             <span className="text-[10px] text-muted-foreground/70">abrir</span>
           </button>
           <CandidateCard
@@ -321,12 +387,22 @@ function PendingQueue({
             selected={selected.has(it.media.id)}
             onToggleSelect={() => toggle(it.media.id)}
             onApprove={async (set_primary) => {
-              try { await approve({ data: { media_id: it.media.id, set_primary } }); toast.success("Aprovado"); onChanged(); }
-              catch (e) { toast.error((e as Error).message); }
+              try {
+                await approve({ data: { media_id: it.media.id, set_primary } });
+                toast.success("Aprovado");
+                onChanged();
+              } catch (e) {
+                toast.error((e as Error).message);
+              }
             }}
             onReject={async () => {
-              try { await reject({ data: { media_id: it.media.id } }); toast.success("Removido"); onChanged(); }
-              catch (e) { toast.error((e as Error).message); }
+              try {
+                await reject({ data: { media_id: it.media.id } });
+                toast.success("Removido");
+                onChanged();
+              } catch (e) {
+                toast.error((e as Error).message);
+              }
             }}
             onSetPrimary={() => {}}
           />
@@ -336,26 +412,56 @@ function PendingQueue({
   );
 }
 
-function ExerciseRow({ row, onPick, onSearch, searching }: { row: ExerciseRowDTO; onPick: () => void; onSearch: () => void; searching: boolean }) {
+function ExerciseRow({
+  row,
+  onPick,
+  onSearch,
+  searching,
+}: {
+  row: ExerciseRowDTO;
+  onPick: () => void;
+  onSearch: () => void;
+  searching: boolean;
+}) {
   return (
     <li className="flex items-center gap-2 rounded-2xl border border-border/60 bg-surface/40 p-3">
       <button onClick={onPick} className="min-w-0 flex-1 text-left">
         <div className="truncate text-sm font-semibold">{row.name}</div>
         <div className="mt-0.5 text-[11px] text-muted-foreground">
-          {row.has_primary ? <span className="text-primary">✓ Vídeo primário</span>
-            : row.approved_count > 0 ? `${row.approved_count} aprovado(s) · sem primário`
-            : row.total_candidates > 0 ? `${row.total_candidates} candidato(s) pendente(s)`
-            : <span className="text-muted-foreground/70">sem candidatos</span>}
+          {row.has_primary ? (
+            <span className="text-primary">✓ Vídeo primário</span>
+          ) : row.approved_count > 0 ? (
+            `${row.approved_count} aprovado(s) · sem primário`
+          ) : row.total_candidates > 0 ? (
+            `${row.total_candidates} candidato(s) pendente(s)`
+          ) : (
+            <span className="text-muted-foreground/70">sem candidatos</span>
+          )}
         </div>
       </button>
-      <Button onClick={onSearch} size="sm" variant="ghost" disabled={searching} className="h-8 w-8 p-0" aria-label="Buscar candidatos">
+      <Button
+        onClick={onSearch}
+        size="sm"
+        variant="ghost"
+        disabled={searching}
+        className="h-8 w-8 p-0"
+        aria-label="Buscar candidatos"
+      >
         {searching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
       </Button>
     </li>
   );
 }
 
-function ExerciseDrawer({ exerciseId, exerciseName, onClose }: { exerciseId: string | null; exerciseName: string; onClose: () => void }) {
+function ExerciseDrawer({
+  exerciseId,
+  exerciseName,
+  onClose,
+}: {
+  exerciseId: string | null;
+  exerciseName: string;
+  onClose: () => void;
+}) {
   const open = exerciseId !== null;
   const qc = useQueryClient();
   const fetchCands = useServerFn(listCandidates);
@@ -377,16 +483,21 @@ function ExerciseDrawer({ exerciseId, exerciseName, onClose }: { exerciseId: str
   const [bulkBusy, setBulkBusy] = useState(false);
 
   // reset selection ao trocar de exercício
-  useMemo(() => { setSelected(new Set()); }, [exerciseId]);
+  useMemo(() => {
+    setSelected(new Set());
+  }, [exerciseId]);
 
   const candidates = data ?? [];
-  const approvableIds = candidates.filter((c) => !c.is_approved && c.embed_allowed).map((c) => c.id);
+  const approvableIds = candidates
+    .filter((c) => !c.is_approved && c.embed_allowed)
+    .map((c) => c.id);
   const hasPrimary = candidates.some((c) => c.is_primary);
 
   const toggle = (id: string) =>
     setSelected((s) => {
       const n = new Set(s);
-      if (n.has(id)) n.delete(id); else n.add(id);
+      if (n.has(id)) n.delete(id);
+      else n.add(id);
       return n;
     });
 
@@ -414,12 +525,16 @@ function ExerciseDrawer({ exerciseId, exerciseName, onClose }: { exerciseId: str
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
       <DialogContent className="max-w-[440px] max-h-[90vh] overflow-y-auto bg-background border-border/60">
-        <DialogHeader><DialogTitle className="text-base font-semibold">{exerciseName}</DialogTitle></DialogHeader>
+        <DialogHeader>
+          <DialogTitle className="text-base font-semibold">{exerciseName}</DialogTitle>
+        </DialogHeader>
         <div className="space-y-3">
           {approvableIds.length > 0 && (
             <div className="sticky top-0 z-10 flex flex-wrap items-center gap-2 rounded-2xl border border-border/60 bg-surface/80 p-2 backdrop-blur">
               <span className="text-[11px] text-muted-foreground">
-                {selected.size > 0 ? `${selected.size} selecionado(s)` : `${approvableIds.length} para revisar`}
+                {selected.size > 0
+                  ? `${selected.size} selecionado(s)`
+                  : `${approvableIds.length} para revisar`}
               </span>
               <div className="ml-auto flex gap-2">
                 <Button
@@ -428,15 +543,19 @@ function ExerciseDrawer({ exerciseId, exerciseName, onClose }: { exerciseId: str
                   disabled={bulkBusy || selected.size === 0}
                   onClick={() => runBatch(Array.from(selected))}
                 >
-                  {bulkBusy ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <Check className="mr-1 h-3.5 w-3.5" />}
+                  {bulkBusy ? (
+                    <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Check className="mr-1 h-3.5 w-3.5" />
+                  )}
                   Aprovar selecionados
                 </Button>
-                <Button
-                  size="sm"
-                  disabled={bulkBusy}
-                  onClick={() => runBatch(approvableIds)}
-                >
-                  {bulkBusy ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <Check className="mr-1 h-3.5 w-3.5" />}
+                <Button size="sm" disabled={bulkBusy} onClick={() => runBatch(approvableIds)}>
+                  {bulkBusy ? (
+                    <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Check className="mr-1 h-3.5 w-3.5" />
+                  )}
                   Aprovar todos
                 </Button>
               </div>
@@ -444,9 +563,13 @@ function ExerciseDrawer({ exerciseId, exerciseName, onClose }: { exerciseId: str
           )}
 
           {isLoading ? (
-            <div className="flex h-32 items-center justify-center"><Loader2 className="h-4 w-4 animate-spin text-muted-foreground" /></div>
+            <div className="flex h-32 items-center justify-center">
+              <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+            </div>
           ) : candidates.length === 0 ? (
-            <p className="rounded-xl border border-dashed border-border/60 p-4 text-center text-xs text-muted-foreground">Nenhum candidato ainda. Use a busca do agente.</p>
+            <p className="rounded-xl border border-dashed border-border/60 p-4 text-center text-xs text-muted-foreground">
+              Nenhum candidato ainda. Use a busca do agente.
+            </p>
           ) : (
             candidates.map((c) => (
               <CandidateCard
@@ -455,35 +578,61 @@ function ExerciseDrawer({ exerciseId, exerciseName, onClose }: { exerciseId: str
                 selected={selected.has(c.id)}
                 onToggleSelect={() => toggle(c.id)}
                 onApprove={async (set_primary) => {
-                  try { await approve({ data: { media_id: c.id, set_primary } }); toast.success("Aprovado"); invalidate(); }
-                  catch (e) { toast.error((e as Error).message); }
+                  try {
+                    await approve({ data: { media_id: c.id, set_primary } });
+                    toast.success("Aprovado");
+                    invalidate();
+                  } catch (e) {
+                    toast.error((e as Error).message);
+                  }
                 }}
                 onReject={async () => {
-                  try { await reject({ data: { media_id: c.id } }); toast.success("Removido"); invalidate(); }
-                  catch (e) { toast.error((e as Error).message); }
+                  try {
+                    await reject({ data: { media_id: c.id } });
+                    toast.success("Removido");
+                    invalidate();
+                  } catch (e) {
+                    toast.error((e as Error).message);
+                  }
                 }}
                 onSetPrimary={async () => {
-                  try { await setPrimary({ data: { media_id: c.id } }); toast.success("Definido como primário"); invalidate(); }
-                  catch (e) { toast.error((e as Error).message); }
+                  try {
+                    await setPrimary({ data: { media_id: c.id } });
+                    toast.success("Definido como primário");
+                    invalidate();
+                  } catch (e) {
+                    toast.error((e as Error).message);
+                  }
                 }}
               />
             ))
           )}
 
           <div className="space-y-2 rounded-2xl border border-border/60 bg-surface/40 p-3">
-            <div className="text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">Adicionar manualmente</div>
-            <Input placeholder="https://youtube.com/watch?v=..." value={manualUrl} onChange={(e) => setManualUrl(e.target.value)} className="h-9" />
+            <div className="text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
+              Adicionar manualmente
+            </div>
+            <Input
+              placeholder="https://youtube.com/watch?v=..."
+              value={manualUrl}
+              onChange={(e) => setManualUrl(e.target.value)}
+              className="h-9"
+            />
             <Button
               size="sm"
               className="w-full"
               disabled={!manualUrl.trim() || !exerciseId}
               onClick={async () => {
                 try {
-                  await addManual({ data: { exercise_id: exerciseId!, url: manualUrl.trim(), set_primary: true } });
+                  await addManual({
+                    data: { exercise_id: exerciseId!, url: manualUrl.trim(), set_primary: true },
+                  });
                   toast.success("Adicionado como primário");
                   setManualUrl("");
                   invalidate();
-                } catch (e) { toast.error((e as Error).message); }
+                } catch (e) {
+                  toast.error((e as Error).message);
+                }
               }}
             >
               <Plus className="mr-2 h-4 w-4" /> Adicionar e marcar como primário
@@ -512,7 +661,21 @@ function qualityLabel(score?: number | null): { label: string; tone: string } {
   return { label: "Fraco", tone: "bg-destructive/15 text-destructive" };
 }
 
-function CandidateCard({ c, onApprove, onReject, onSetPrimary, selected, onToggleSelect }: { c: ExerciseMediaDTO; onApprove: (p: boolean) => void; onReject: () => void; onSetPrimary: () => void; selected?: boolean; onToggleSelect?: () => void }) {
+function CandidateCard({
+  c,
+  onApprove,
+  onReject,
+  onSetPrimary,
+  selected,
+  onToggleSelect,
+}: {
+  c: ExerciseMediaDTO;
+  onApprove: (p: boolean) => void;
+  onReject: () => void;
+  onSetPrimary: () => void;
+  selected?: boolean;
+  onToggleSelect?: () => void;
+}) {
   const [playing, setPlaying] = useState(false);
   const selectable = !c.is_approved && c.embed_allowed && !!onToggleSelect;
   const duration = formatDuration(c.duration_seconds);
@@ -520,7 +683,9 @@ function CandidateCard({ c, onApprove, onReject, onSetPrimary, selected, onToggl
   const canEmbed = c.embed_allowed && !!c.embed_url;
 
   return (
-    <div className={`space-y-2 rounded-2xl border p-3 transition ${selected ? "border-primary bg-primary/5" : "border-border/60 bg-surface/40"}`}>
+    <div
+      className={`space-y-2 rounded-2xl border p-3 transition ${selected ? "border-primary bg-primary/5" : "border-border/60 bg-surface/40"}`}
+    >
       <div className="flex items-start gap-2">
         {selectable && (
           <input
@@ -533,7 +698,9 @@ function CandidateCard({ c, onApprove, onReject, onSetPrimary, selected, onToggl
         )}
         <div className="min-w-0 flex-1">
           <div className="line-clamp-2 text-xs font-semibold leading-snug">{c.title}</div>
-          <div className="mt-0.5 text-[11px] text-muted-foreground truncate">{c.channel_name ?? c.source}</div>
+          <div className="mt-0.5 text-[11px] text-muted-foreground truncate">
+            {c.channel_name ?? c.source}
+          </div>
         </div>
       </div>
 
@@ -549,7 +716,11 @@ function CandidateCard({ c, onApprove, onReject, onSetPrimary, selected, onToggl
           ) : (
             <button onClick={() => setPlaying(true)} className="group relative h-full w-full">
               {c.thumbnail_url && (
-                <img src={c.thumbnail_url} alt="" className="h-full w-full object-cover opacity-90 transition group-hover:opacity-100" />
+                <img
+                  src={c.thumbnail_url}
+                  alt=""
+                  className="h-full w-full object-cover opacity-90 transition group-hover:opacity-100"
+                />
               )}
               <div className="absolute inset-0 flex items-center justify-center">
                 <div className="flex h-12 w-12 items-center justify-center rounded-full bg-black/70 backdrop-blur transition group-hover:scale-110">
@@ -579,29 +750,46 @@ function CandidateCard({ c, onApprove, onReject, onSetPrimary, selected, onToggl
             {duration}
           </span>
         )}
-        {c.is_approved && <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">aprovado</span>}
-        {c.is_primary && <span className="rounded-full bg-primary px-2 py-0.5 text-[10px] font-semibold text-primary-foreground">primário</span>}
+        {c.is_approved && (
+          <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">
+            aprovado
+          </span>
+        )}
+        {c.is_primary && (
+          <span className="rounded-full bg-primary px-2 py-0.5 text-[10px] font-semibold text-primary-foreground">
+            primário
+          </span>
+        )}
       </div>
 
       {c.reason_for_recommendation && (
-        <p className="text-[11px] leading-relaxed text-muted-foreground">{c.reason_for_recommendation}</p>
+        <p className="text-[11px] leading-relaxed text-muted-foreground">
+          {c.reason_for_recommendation}
+        </p>
       )}
 
       <div className="flex flex-wrap gap-2">
         {!c.is_approved ? (
           <>
-            <Button size="sm" onClick={() => onApprove(false)} className="flex-1"><Check className="mr-1 h-3.5 w-3.5" /> Aprovar</Button>
-            <Button size="sm" onClick={() => onApprove(true)} className="flex-1"><Star className="mr-1 h-3.5 w-3.5" /> Aprovar + primário</Button>
+            <Button size="sm" onClick={() => onApprove(false)} className="flex-1">
+              <Check className="mr-1 h-3.5 w-3.5" /> Aprovar
+            </Button>
+            <Button size="sm" onClick={() => onApprove(true)} className="flex-1">
+              <Star className="mr-1 h-3.5 w-3.5" /> Aprovar + primário
+            </Button>
           </>
         ) : !c.is_primary ? (
-          <Button size="sm" variant="outline" onClick={onSetPrimary} className="flex-1"><Star className="mr-1 h-3.5 w-3.5" /> Marcar como primário</Button>
+          <Button size="sm" variant="outline" onClick={onSetPrimary} className="flex-1">
+            <Star className="mr-1 h-3.5 w-3.5" /> Marcar como primário
+          </Button>
         ) : null}
-        <Button size="sm" variant="ghost" onClick={onReject} className="text-destructive"><X className="h-3.5 w-3.5" /></Button>
+        <Button size="sm" variant="ghost" onClick={onReject} className="text-destructive">
+          <X className="h-3.5 w-3.5" />
+        </Button>
       </div>
     </div>
   );
 }
-
 
 function CuesEditor({ exerciseId, onSaved }: { exerciseId: string; onSaved: () => void }) {
   const [open, setOpen] = useState(false);
@@ -611,18 +799,45 @@ function CuesEditor({ exerciseId, onSaved }: { exerciseId: string; onSaved: () =
   return (
     <div className="rounded-2xl border border-border/60 bg-surface/40 p-3">
       {!open ? (
-        <Button size="sm" variant="ghost" onClick={() => setOpen(true)} className="w-full"><Pencil className="mr-2 h-3.5 w-3.5" /> Editar instruções e erros comuns</Button>
+        <Button size="sm" variant="ghost" onClick={() => setOpen(true)} className="w-full">
+          <Pencil className="mr-2 h-3.5 w-3.5" /> Editar instruções e erros comuns
+        </Button>
       ) : (
         <div className="space-y-2">
-          <Textarea placeholder="Execução passo a passo..." value={instructions} onChange={(e) => setInstructions(e.target.value)} rows={4} />
-          <Textarea placeholder="Erros comuns..." value={mistakes} onChange={(e) => setMistakes(e.target.value)} rows={3} />
-          <Button size="sm" className="w-full"
+          <Textarea
+            placeholder="Execução passo a passo..."
+            value={instructions}
+            onChange={(e) => setInstructions(e.target.value)}
+            rows={4}
+          />
+          <Textarea
+            placeholder="Erros comuns..."
+            value={mistakes}
+            onChange={(e) => setMistakes(e.target.value)}
+            rows={3}
+          />
+          <Button
+            size="sm"
+            className="w-full"
             onClick={async () => {
               try {
-                await update({ data: { exercise_id: exerciseId, instructions: instructions || undefined, common_mistakes: mistakes || undefined } });
-                toast.success("Salvo"); setOpen(false); onSaved();
-              } catch (e) { toast.error((e as Error).message); }
-            }}>Salvar</Button>
+                await update({
+                  data: {
+                    exercise_id: exerciseId,
+                    instructions: instructions || undefined,
+                    common_mistakes: mistakes || undefined,
+                  },
+                });
+                toast.success("Salvo");
+                setOpen(false);
+                onSaved();
+              } catch (e) {
+                toast.error((e as Error).message);
+              }
+            }}
+          >
+            Salvar
+          </Button>
         </div>
       )}
     </div>

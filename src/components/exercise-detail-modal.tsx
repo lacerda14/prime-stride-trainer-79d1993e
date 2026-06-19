@@ -58,7 +58,9 @@ export function ExerciseDetailModal({ exerciseId, open, onOpenChange }: Props) {
           <div>
             {/* Video (sem botão sobreposto) */}
             <div className="relative aspect-video w-full bg-surface-elevated">
-              {data.primary_media && data.primary_media.embed_allowed && data.primary_media.embed_url ? (
+              {data.primary_media &&
+              data.primary_media.embed_allowed &&
+              data.primary_media.embed_url ? (
                 data.primary_media.media_type === "uploaded_video" ? (
                   <video
                     src={data.primary_media.embed_url}

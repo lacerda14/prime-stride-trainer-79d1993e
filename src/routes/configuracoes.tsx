@@ -1,6 +1,19 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { AppShell } from "@/components/app-shell";
-import { Watch, Bell, User, Database, Smartphone, RotateCcw, Loader2, Activity, Heart, ChevronRight, X, Check } from "lucide-react";
+import {
+  Watch,
+  Bell,
+  User,
+  Database,
+  Smartphone,
+  RotateCcw,
+  Loader2,
+  Activity,
+  Heart,
+  ChevronRight,
+  X,
+  Check,
+} from "lucide-react";
 import { useState, useEffect } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { useQueryClient, useQuery, useMutation } from "@tanstack/react-query";
@@ -52,7 +65,11 @@ function ConfigPage() {
         </Section>
 
         <Section icon={Activity} title="Treino">
-          <Row label="Plano" value="Adaptativo" hint="Evolui a cada semana com seus treinos, recuperação e evolução" />
+          <Row
+            label="Plano"
+            value="Adaptativo"
+            hint="Evolui a cada semana com seus treinos, recuperação e evolução"
+          />
           <Row label="Sincronização" value="Local" hint="Em breve: sincronização em nuvem" />
         </Section>
 
@@ -68,8 +85,14 @@ function ConfigPage() {
         </Section>
 
         <Section icon={Database} title="Dados">
-          <Row label="Exportar dados" value={<ChevronRight className="h-4 w-4 text-muted-foreground" />} />
-          <Row label="Política de privacidade" value={<ChevronRight className="h-4 w-4 text-muted-foreground" />} />
+          <Row
+            label="Exportar dados"
+            value={<ChevronRight className="h-4 w-4 text-muted-foreground" />}
+          />
+          <Row
+            label="Política de privacidade"
+            value={<ChevronRight className="h-4 w-4 text-muted-foreground" />}
+          />
         </Section>
 
         <DevSection />
@@ -80,7 +103,10 @@ function ConfigPage() {
 
 function PerfilLink() {
   return (
-    <Link to="/perfil" className="glass flex items-center justify-between rounded-3xl p-5 active:scale-[0.99] transition-transform">
+    <Link
+      to="/perfil"
+      className="glass flex items-center justify-between rounded-3xl p-5 active:scale-[0.99] transition-transform"
+    >
       <div className="flex items-center gap-3">
         <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-titanium">
           <User className="h-5 w-5 text-primary-foreground" />
@@ -111,20 +137,29 @@ const HEALTH_METRICS: Array<{ key: string; label: string }> = [
 
 function readHealthSync(): HealthSync | null {
   if (typeof window === "undefined") return null;
-  try { const v = localStorage.getItem(HEALTH_SYNC_KEY); return v ? JSON.parse(v) as HealthSync : null; }
-  catch { return null; }
+  try {
+    const v = localStorage.getItem(HEALTH_SYNC_KEY);
+    return v ? (JSON.parse(v) as HealthSync) : null;
+  } catch {
+    return null;
+  }
 }
 function readHealthErr(): HealthErr | null {
   if (typeof window === "undefined") return null;
-  try { const v = localStorage.getItem(HEALTH_ERR_KEY); return v ? JSON.parse(v) as HealthErr : null; }
-  catch { return null; }
+  try {
+    const v = localStorage.getItem(HEALTH_ERR_KEY);
+    return v ? (JSON.parse(v) as HealthErr) : null;
+  } catch {
+    return null;
+  }
 }
 function relTime(ts: number): string {
   const diff = Date.now() - ts;
   const min = Math.round(diff / 60000);
   if (min < 1) return "agora";
   if (min < 60) return `há ${min} min`;
-  const today = new Date(); const d = new Date(ts);
+  const today = new Date();
+  const d = new Date(ts);
   const hhmm = d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
   if (d.toDateString() === today.toDateString()) return `hoje às ${hhmm}`;
   return d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" }) + ` às ${hhmm}`;
@@ -145,11 +180,19 @@ function DeviceHealthRow() {
       const { synced, present } = await syncDailyHealthMetrics(14);
       if (synced > 0) {
         const rec: HealthSync = { ts: Date.now(), count: synced, present };
-        try { localStorage.setItem(HEALTH_SYNC_KEY, JSON.stringify(rec)); localStorage.removeItem(HEALTH_ERR_KEY); } catch { /* ignore */ }
+        try {
+          localStorage.setItem(HEALTH_SYNC_KEY, JSON.stringify(rec));
+          localStorage.removeItem(HEALTH_ERR_KEY);
+        } catch {
+          /* ignore */
+        }
         setLastSync(rec);
-        toast.success(`Sincronizado · ${synced} dia${synced > 1 ? "s" : ""} importado${synced > 1 ? "s" : ""}`, {
-          description: "Sono, FC, passos e treinos atualizados.",
-        });
+        toast.success(
+          `Sincronizado · ${synced} dia${synced > 1 ? "s" : ""} importado${synced > 1 ? "s" : ""}`,
+          {
+            description: "Sono, FC, passos e treinos atualizados.",
+          },
+        );
       } else {
         toast.message("Conectado, mas sem dados novos", {
           description: `Verifique se o ${label} tem permissão de leitura (sono, FC, passos) em Ajustes do telefone.`,
@@ -157,7 +200,11 @@ function DeviceHealthRow() {
       }
     } catch (e) {
       const msg = e instanceof Error ? e.message : "erro desconhecido";
-      try { localStorage.setItem(HEALTH_ERR_KEY, JSON.stringify({ ts: Date.now(), msg })); } catch { /* ignore */ }
+      try {
+        localStorage.setItem(HEALTH_ERR_KEY, JSON.stringify({ ts: Date.now(), msg }));
+      } catch {
+        /* ignore */
+      }
       toast.error("Não foi possível sincronizar", {
         description: `Verifique sua conexão e as permissões do ${label}. Toque para tentar de novo.`,
       });
@@ -196,30 +243,63 @@ function DeviceHealthRow() {
             {syncing ? "Sincronizando…" : lastSync ? "Atualizar" : "Sincronizar"}
           </button>
         ) : (
-          <button disabled className="shrink-0 rounded-full border border-border bg-surface/60 px-3 py-1 text-[10.5px] font-medium uppercase tracking-[0.14em] text-muted-foreground/70">
+          <button
+            disabled
+            className="shrink-0 rounded-full border border-border bg-surface/60 px-3 py-1 text-[10.5px] font-medium uppercase tracking-[0.14em] text-muted-foreground/70"
+          >
             Em breve
           </button>
         )}
       </div>
       {showDiag && (
-        <HealthDiagnosticsModal label={label} lastSync={lastSync} syncing={syncing} onSync={sync} onClose={() => setShowDiag(false)} />
+        <HealthDiagnosticsModal
+          label={label}
+          lastSync={lastSync}
+          syncing={syncing}
+          onSync={sync}
+          onClose={() => setShowDiag(false)}
+        />
       )}
     </>
   );
 }
 
 // Diagnóstico da integração de saúde (status, última sync, categorias, erro).
-function HealthDiagnosticsModal({ label, lastSync, syncing, onSync, onClose }: {
-  label: string; lastSync: HealthSync | null; syncing: boolean; onSync: () => void; onClose: () => void;
+function HealthDiagnosticsModal({
+  label,
+  lastSync,
+  syncing,
+  onSync,
+  onClose,
+}: {
+  label: string;
+  lastSync: HealthSync | null;
+  syncing: boolean;
+  onSync: () => void;
+  onClose: () => void;
 }) {
   const err = readHealthErr();
   const present = new Set(lastSync?.present ?? []);
-  const status = lastSync ? "Conectado" : err ? "Erro na última tentativa" : "Pronto para sincronizar";
-  const statusColor = lastSync ? "text-primary" : err ? "text-destructive" : "text-muted-foreground";
+  const status = lastSync
+    ? "Conectado"
+    : err
+      ? "Erro na última tentativa"
+      : "Pronto para sincronizar";
+  const statusColor = lastSync
+    ? "text-primary"
+    : err
+      ? "text-destructive"
+      : "text-muted-foreground";
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm sm:items-center" onClick={onClose}>
-      <div className="w-full max-w-[440px] rounded-t-3xl border border-border/60 bg-background p-6 pb-[max(env(safe-area-inset-bottom),1.5rem)] sm:rounded-3xl" onClick={(e) => e.stopPropagation()}>
+    <div
+      className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm sm:items-center"
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-[440px] rounded-t-3xl border border-border/60 bg-background p-6 pb-[max(env(safe-area-inset-bottom),1.5rem)] sm:rounded-3xl"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-2.5">
             <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary/10">
@@ -230,34 +310,50 @@ function HealthDiagnosticsModal({ label, lastSync, syncing, onSync, onClose }: {
               <div className={`text-[11.5px] font-medium ${statusColor}`}>{status}</div>
             </div>
           </div>
-          <button onClick={onClose} className="flex h-8 w-8 items-center justify-center rounded-full hover:bg-surface">
+          <button
+            onClick={onClose}
+            className="flex h-8 w-8 items-center justify-center rounded-full hover:bg-surface"
+          >
             <X className="h-4 w-4" />
           </button>
         </div>
 
         <div className="mt-5 space-y-2 text-[13px]">
-          <div className="flex justify-between"><span className="text-muted-foreground">Última sincronização</span><span className="font-medium">{lastSync ? relTime(lastSync.ts) : "—"}</span></div>
-          <div className="flex justify-between"><span className="text-muted-foreground">Dias importados</span><span className="font-medium">{lastSync?.count ?? 0}</span></div>
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Última sincronização</span>
+            <span className="font-medium">{lastSync ? relTime(lastSync.ts) : "—"}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Dias importados</span>
+            <span className="font-medium">{lastSync?.count ?? 0}</span>
+          </div>
         </div>
 
         <div className="mt-5">
-          <div className="mb-2 text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground">Dados encontrados</div>
+          <div className="mb-2 text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
+            Dados encontrados
+          </div>
           <div className="space-y-1.5">
             {HEALTH_METRICS.map((m) => {
               const ok = present.has(m.key);
               return (
                 <div key={m.key} className="flex items-center justify-between text-[13.5px]">
                   <span>{m.label}</span>
-                  {ok
-                    ? <span className="flex items-center gap-1 text-primary"><Check className="h-3.5 w-3.5" /> Recebendo</span>
-                    : <span className="text-muted-foreground/70">{lastSync ? "Sem dados" : "—"}</span>}
+                  {ok ? (
+                    <span className="flex items-center gap-1 text-primary">
+                      <Check className="h-3.5 w-3.5" /> Recebendo
+                    </span>
+                  ) : (
+                    <span className="text-muted-foreground/70">{lastSync ? "Sem dados" : "—"}</span>
+                  )}
                 </div>
               );
             })}
           </div>
           {lastSync && (
             <p className="mt-2.5 text-[11.5px] leading-relaxed text-muted-foreground">
-              "Sem dados" pode ser falta de permissão de leitura ou ausência de registros. Ajuste em Ajustes do telefone → {label}.
+              "Sem dados" pode ser falta de permissão de leitura ou ausência de registros. Ajuste em
+              Ajustes do telefone → {label}.
             </p>
           )}
         </div>
@@ -273,7 +369,15 @@ function HealthDiagnosticsModal({ label, lastSync, syncing, onSync, onClose }: {
           disabled={syncing}
           className="mt-6 flex w-full items-center justify-center gap-2 rounded-2xl bg-primary py-3.5 text-[14px] font-semibold text-primary-foreground shadow-glow active:scale-[0.99] disabled:opacity-60"
         >
-          {syncing ? <><Loader2 className="h-4 w-4 animate-spin" /> Sincronizando…</> : <><RotateCcw className="h-4 w-4" /> Sincronizar agora</>}
+          {syncing ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin" /> Sincronizando…
+            </>
+          ) : (
+            <>
+              <RotateCcw className="h-4 w-4" /> Sincronizar agora
+            </>
+          )}
         </button>
       </div>
     </div>
@@ -303,10 +407,7 @@ function AppleWatchRow() {
     };
   }, []);
 
-  const label =
-    state === "loading" ? "..." :
-    state === "ready" ? "Conectado" :
-    "Em breve";
+  const label = state === "loading" ? "..." : state === "ready" ? "Conectado" : "Em breve";
 
   const desc =
     state === "ready"
@@ -330,7 +431,9 @@ function AppleWatchRow() {
         <div className="text-[14px] font-medium tracking-tight">Apple Watch</div>
         <div className="mt-0.5 text-[11.5px] text-muted-foreground">{desc}</div>
       </div>
-      <span className={`rounded-full border px-3 py-1 text-[10.5px] font-medium uppercase tracking-[0.14em] ${badgeClass}`}>
+      <span
+        className={`rounded-full border px-3 py-1 text-[10.5px] font-medium uppercase tracking-[0.14em] ${badgeClass}`}
+      >
         {label}
       </span>
     </>
@@ -339,7 +442,10 @@ function AppleWatchRow() {
   return (
     <>
       {comingSoon ? (
-        <button onClick={() => setShowModal(true)} className="flex w-full items-center justify-between py-3.5 text-left active:opacity-70">
+        <button
+          onClick={() => setShowModal(true)}
+          className="flex w-full items-center justify-between py-3.5 text-left active:opacity-70"
+        >
           {content}
         </button>
       ) : (
@@ -354,7 +460,11 @@ const WATCH_INTEREST_KEY = "pm_watch_interest";
 function WatchRoadmapModal({ onClose }: { onClose: () => void }) {
   const [notified, setNotified] = useState(() => {
     if (typeof window === "undefined") return false;
-    try { return localStorage.getItem(WATCH_INTEREST_KEY) === "1"; } catch { return false; }
+    try {
+      return localStorage.getItem(WATCH_INTEREST_KEY) === "1";
+    } catch {
+      return false;
+    }
   });
   const features = [
     "Iniciar treinos pelo relógio",
@@ -364,12 +474,21 @@ function WatchRoadmapModal({ onClose }: { onClose: () => void }) {
     "Integração completa com o Apple Saúde",
   ];
   const notify = () => {
-    try { localStorage.setItem(WATCH_INTEREST_KEY, "1"); } catch { /* ignore */ }
+    try {
+      localStorage.setItem(WATCH_INTEREST_KEY, "1");
+    } catch {
+      /* ignore */
+    }
     setNotified(true);
-    toast.success("Avisaremos você", { description: "Você recebe um aviso assim que o Apple Watch estiver disponível." });
+    toast.success("Avisaremos você", {
+      description: "Você recebe um aviso assim que o Apple Watch estiver disponível.",
+    });
   };
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm sm:items-center" onClick={onClose}>
+    <div
+      className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm sm:items-center"
+      onClick={onClose}
+    >
       <div
         className="w-full max-w-[440px] rounded-t-3xl border border-border/60 bg-background p-6 pb-[max(env(safe-area-inset-bottom),1.5rem)] sm:rounded-3xl"
         onClick={(e) => e.stopPropagation()}
@@ -384,11 +503,16 @@ function WatchRoadmapModal({ onClose }: { onClose: () => void }) {
               <div className="text-[11.5px] text-muted-foreground">Em desenvolvimento</div>
             </div>
           </div>
-          <button onClick={onClose} className="flex h-8 w-8 items-center justify-center rounded-full hover:bg-surface">
+          <button
+            onClick={onClose}
+            className="flex h-8 w-8 items-center justify-center rounded-full hover:bg-surface"
+          >
             <X className="h-4 w-4" />
           </button>
         </div>
-        <p className="mt-4 text-[13px] leading-relaxed text-muted-foreground">Estamos desenvolvendo suporte para:</p>
+        <p className="mt-4 text-[13px] leading-relaxed text-muted-foreground">
+          Estamos desenvolvendo suporte para:
+        </p>
         <div className="mt-3 space-y-2">
           {features.map((f) => (
             <div key={f} className="flex items-center gap-2.5 text-[13.5px]">
@@ -404,7 +528,15 @@ function WatchRoadmapModal({ onClose }: { onClose: () => void }) {
           disabled={notified}
           className="mt-6 flex w-full items-center justify-center gap-2 rounded-2xl bg-primary py-3.5 text-[14px] font-semibold text-primary-foreground shadow-glow active:scale-[0.99] disabled:opacity-60"
         >
-          {notified ? <><Check className="h-4 w-4" /> Você será avisado</> : <><Bell className="h-4 w-4" /> Avise-me quando disponível</>}
+          {notified ? (
+            <>
+              <Check className="h-4 w-4" /> Você será avisado
+            </>
+          ) : (
+            <>
+              <Bell className="h-4 w-4" /> Avise-me quando disponível
+            </>
+          )}
         </button>
       </div>
     </div>
@@ -435,18 +567,22 @@ function GarminRow() {
     } else if (g === "erro") {
       toast.error(`Falha ao conectar o Garmin${p.get("motivo") ? ` (${p.get("motivo")})` : ""}.`);
     }
-    p.delete("garmin"); p.delete("motivo");
+    p.delete("garmin");
+    p.delete("motivo");
     const qs = p.toString();
     window.history.replaceState({}, "", window.location.pathname + (qs ? `?${qs}` : ""));
   }, [qc]);
 
   const connectMut = useMutation({
-    mutationFn: () => start({ data: { redirect_to: `${window.location.origin}/configuracoes?garmin=ok` } }),
+    mutationFn: () =>
+      start({ data: { redirect_to: `${window.location.origin}/configuracoes?garmin=ok` } }),
     onSuccess: (res) => {
       if (res.ok && res.url) {
         window.location.href = res.url; // vai pro consent do Garmin
       } else if (res.code === "garmin_not_configured") {
-        toast.message("Garmin em breve", { description: "A integração está sendo liberada. Volte logo." });
+        toast.message("Garmin em breve", {
+          description: "A integração está sendo liberada. Volte logo.",
+        });
       } else {
         toast.error(res.error ?? "Não consegui iniciar a conexão com o Garmin.");
       }
@@ -503,7 +639,10 @@ function IntegrationRow({ name, desc, status }: { name: string; desc: string; st
         <div className="text-[14px] font-medium tracking-tight">{name}</div>
         <div className="mt-0.5 text-[11.5px] text-muted-foreground">{desc}</div>
       </div>
-      <button disabled className="rounded-full border border-border bg-surface/60 px-3 py-1 text-[10.5px] font-medium uppercase tracking-[0.14em] text-muted-foreground/70">
+      <button
+        disabled
+        className="rounded-full border border-border bg-surface/60 px-3 py-1 text-[10.5px] font-medium uppercase tracking-[0.14em] text-muted-foreground/70"
+      >
         {status}
       </button>
     </div>
@@ -542,8 +681,11 @@ function DevSection() {
           <div className="text-[11px] text-muted-foreground">Ferramentas de teste.</div>
         </div>
       </div>
-      <button onClick={handleReset} disabled={loading}
-        className="inline-flex items-center gap-2 rounded-xl border border-border bg-surface/60 px-4 py-2.5 text-[12.5px] font-medium disabled:opacity-60">
+      <button
+        onClick={handleReset}
+        disabled={loading}
+        className="inline-flex items-center gap-2 rounded-xl border border-border bg-surface/60 px-4 py-2.5 text-[12.5px] font-medium disabled:opacity-60"
+      >
         {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4" />}
         Reset Onboarding
       </button>
@@ -551,7 +693,17 @@ function DevSection() {
   );
 }
 
-function Section({ icon: Icon, title, description, children }: { icon: React.ComponentType<{ className?: string }>; title: string; description?: string; children: React.ReactNode }) {
+function Section({
+  icon: Icon,
+  title,
+  description,
+  children,
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  title: string;
+  description?: string;
+  children: React.ReactNode;
+}) {
   return (
     <section className="glass animate-fade-in rounded-3xl p-5">
       <div className="flex items-start gap-2.5 pb-2">
@@ -560,7 +712,9 @@ function Section({ icon: Icon, title, description, children }: { icon: React.Com
         </div>
         <div>
           <div className="text-[14px] font-semibold tracking-tight">{title}</div>
-          {description && <div className="mt-0.5 text-[11.5px] text-muted-foreground">{description}</div>}
+          {description && (
+            <div className="mt-0.5 text-[11.5px] text-muted-foreground">{description}</div>
+          )}
         </div>
       </div>
       <div className="divide-y divide-border/40">{children}</div>

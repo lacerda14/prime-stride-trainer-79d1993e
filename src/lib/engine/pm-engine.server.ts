@@ -19,6 +19,7 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { applyCoachLayer, getCoachPackByPersona } from "./coach-layer.server";
+import { serverError } from "@/lib/server-errors";
 
 // ============================================================
 // Tipos de entrada
@@ -85,14 +86,18 @@ export interface UserProfileInput {
 // disponível para o usuário (ex.: sem Leg Press, sem barra olímpica, sem rack).
 // ============================================================
 function normEquip(s: string): string {
-  return s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+  return s
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim();
 }
 
 export interface EquipmentAvailability {
-  barbell: boolean;     // barra olímpica utilizável (com rack ou smith)
+  barbell: boolean; // barra olímpica utilizável (com rack ou smith)
   dumbbell: boolean;
   cable: boolean;
-  machine: boolean;     // alguma máquina disponível
+  machine: boolean; // alguma máquina disponível
   sled: boolean;
   rack: boolean;
   pullUpBar: boolean;
@@ -108,14 +113,23 @@ export function resolveEquipmentAvailability(userEquipment?: string[]): Equipmen
   // Compat: sem dados de equipamento => assume academia completa.
   if (!userEquipment || userEquipment.length === 0) {
     return {
-      barbell: true, dumbbell: true, cable: true, machine: true, sled: false,
-      rack: true, pullUpBar: true, bench: true, legPress: true, hackSquat: true,
-      smith: true, legCurl: true, legExtension: true,
+      barbell: true,
+      dumbbell: true,
+      cable: true,
+      machine: true,
+      sled: false,
+      rack: true,
+      pullUpBar: true,
+      bench: true,
+      legPress: true,
+      hackSquat: true,
+      smith: true,
+      legCurl: true,
+      legExtension: true,
     };
   }
   const items = userEquipment.map(normEquip);
-  const has = (...terms: string[]) =>
-    items.some((it) => terms.some((t) => it.includes(t)));
+  const has = (...terms: string[]) => items.some((it) => terms.some((t) => it.includes(t)));
 
   const fullGym = has("academia completa");
   const rack = fullGym || has("rack");
@@ -130,14 +144,31 @@ export function resolveEquipmentAvailability(userEquipment?: string[]): Equipmen
   const legExtension = fullGym || has("cadeira extensora", "leg extension");
   const legCurl = fullGym || has("mesa flexora", "hamstring curl", "leg curl");
   const sled = has("treno", "sled");
-  const anyMachine = fullGym || legPress || hackSquat || smith ||
-    legExtension || legCurl || cable || has("maquina", "machine", "pec deck");
+  const anyMachine =
+    fullGym ||
+    legPress ||
+    hackSquat ||
+    smith ||
+    legExtension ||
+    legCurl ||
+    cable ||
+    has("maquina", "machine", "pec deck");
 
   return {
     // barra olímpica só é "usável" se houver rack ou smith p/ agachamento seguro.
     barbell: barbellItem && (rack || smith),
-    dumbbell, cable, machine: anyMachine, sled,
-    rack, pullUpBar, bench, legPress, hackSquat, smith, legCurl, legExtension,
+    dumbbell,
+    cable,
+    machine: anyMachine,
+    sled,
+    rack,
+    pullUpBar,
+    bench,
+    legPress,
+    hackSquat,
+    smith,
+    legCurl,
+    legExtension,
   };
 }
 
@@ -172,13 +203,20 @@ export function filterPoolByEquipment(
     const gate = EQUIPMENT_CODE_GATES[e.code];
     if (gate && !gate(avail)) return false;
     switch (e.equipment) {
-      case "barbell": return avail.barbell;
-      case "dumbbell": return avail.dumbbell;
-      case "cable": return avail.cable;
-      case "machine": return avail.machine;
-      case "sled": return avail.sled;
-      case "bodyweight": return true;
-      default: return true;
+      case "barbell":
+        return avail.barbell;
+      case "dumbbell":
+        return avail.dumbbell;
+      case "cable":
+        return avail.cable;
+      case "machine":
+        return avail.machine;
+      case "sled":
+        return avail.sled;
+      case "bodyweight":
+        return true;
+      default:
+        return true;
     }
   });
 }
@@ -192,7 +230,10 @@ function norm(s: string): string {
   return s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
 }
 
-export function filterPoolByInjuries(pool: ExerciseRow[], profile: UserProfileInput): ExerciseRow[] {
+export function filterPoolByInjuries(
+  pool: ExerciseRow[],
+  profile: UserProfileInput,
+): ExerciseRow[] {
   const pains = (profile.pain_regions ?? []).map(norm);
   const past = (profile.past_injuries ?? []).map(norm);
   const uncomf = (profile.uncomfortable_movements ?? []).map(norm);
@@ -208,19 +249,37 @@ export function filterPoolByInjuries(pool: ExerciseRow[], profile: UserProfileIn
   // Joelho / LCA / menisco → fora saltos, agachamento livre e padrões de joelho.
   if (hit("joelho", "lca", "menisco", "patela")) {
     banCat.add("plyometric");
-    banPattern.add("squat"); banPattern.add("lunge");
+    banPattern.add("squat");
+    banPattern.add("lunge");
     banCodeKw.push("squat", "lunge", "agachamento", "afundo", "jump", "salto", "box");
   }
   // Lombar / hérnia → fora hinge (terra/bom dia), remadas livres pesadas, saltos.
   if (hit("lombar", "hernia", "disco", "coluna")) {
     banCat.add("plyometric");
     banPattern.add("hinge");
-    banCodeKw.push("deadlift", "terra", "good_morning", "bom_dia", "bent_over", "barbell_row", "stiff");
+    banCodeKw.push(
+      "deadlift",
+      "terra",
+      "good_morning",
+      "bom_dia",
+      "bent_over",
+      "barbell_row",
+      "stiff",
+    );
   }
   // Ombro / manguito → fora desenvolvimento acima da cabeça e instáveis de ombro.
   if (hit("ombro", "manguito", "rotador")) {
     banPattern.add("raise");
-    banCodeKw.push("overhead", "military", "desenvolvimento", "arnold", "snatch", "jerk", "behind_neck", "upright");
+    banCodeKw.push(
+      "overhead",
+      "military",
+      "desenvolvimento",
+      "arnold",
+      "snatch",
+      "jerk",
+      "behind_neck",
+      "upright",
+    );
   }
   // Cotovelo / tendinite → reduz isolamento pesado de tríceps/bíceps.
   if (hit("cotovelo", "tendinite", "epicond")) {
@@ -241,11 +300,23 @@ export function filterPoolByInjuries(pool: ExerciseRow[], profile: UserProfileIn
     banCodeKw.push("jump", "salto", "box", "sprint");
   }
   // Movimentos desconfortáveis explícitos do onboarding.
-  if (hit("acima da cabeca", "overhead")) { banCodeKw.push("overhead", "military", "desenvolvimento", "arnold"); }
-  if (hit("salto")) { banCat.add("plyometric"); banCodeKw.push("jump", "box"); }
-  if (hit("agachamento")) { banPattern.add("squat"); banCodeKw.push("squat", "agachamento"); }
-  if (hit("puxada")) { banCodeKw.push("pulldown", "pull_up", "puxada", "barra_fixa"); }
-  if (hit("empurrada")) { banPattern.add("push"); }
+  if (hit("acima da cabeca", "overhead")) {
+    banCodeKw.push("overhead", "military", "desenvolvimento", "arnold");
+  }
+  if (hit("salto")) {
+    banCat.add("plyometric");
+    banCodeKw.push("jump", "box");
+  }
+  if (hit("agachamento")) {
+    banPattern.add("squat");
+    banCodeKw.push("squat", "agachamento");
+  }
+  if (hit("puxada")) {
+    banCodeKw.push("pulldown", "pull_up", "puxada", "barra_fixa");
+  }
+  if (hit("empurrada")) {
+    banPattern.add("push");
+  }
 
   return pool.filter((e) => {
     if (banCat.has(e.category)) return false;
@@ -386,10 +457,38 @@ export function mesoForWeek(week: number): MesoDef {
 // intensidade) é mantida, mas os NOMES/objetivos refletem a meta do aluno —
 // os labels base eram todos do programa híbrido/5K do Pedro.
 const GOAL_PHASE_LABELS: Record<Goal, string[]> = {
-  hypertrophy: ["Adaptação anatômica", "Acúmulo de volume", "Hipertrofia I", "Hipertrofia II", "Intensificação", "Realização / deload"],
-  fat_loss:    ["Base metabólica", "Condicionamento", "Densidade I", "Densidade II", "Definição", "Manutenção"],
-  endurance:   ["Base aeróbica", "Volume aeróbico", "Limiar I", "Limiar II", "VO2 / ritmo", "Pico / taper"],
-  hybrid:      ["Adaptação estrutural", "Base metabólica", "Hipertrofia híbrida", "Força + intensidade", "Força + eficiência", "Pico de performance"],
+  hypertrophy: [
+    "Adaptação anatômica",
+    "Acúmulo de volume",
+    "Hipertrofia I",
+    "Hipertrofia II",
+    "Intensificação",
+    "Realização / deload",
+  ],
+  fat_loss: [
+    "Base metabólica",
+    "Condicionamento",
+    "Densidade I",
+    "Densidade II",
+    "Definição",
+    "Manutenção",
+  ],
+  endurance: [
+    "Base aeróbica",
+    "Volume aeróbico",
+    "Limiar I",
+    "Limiar II",
+    "VO2 / ritmo",
+    "Pico / taper",
+  ],
+  hybrid: [
+    "Adaptação estrutural",
+    "Base metabólica",
+    "Hipertrofia híbrida",
+    "Força + intensidade",
+    "Força + eficiência",
+    "Pico de performance",
+  ],
 };
 export function mesosForGoal(goal: Goal): MesoDef[] {
   const labels = GOAL_PHASE_LABELS[goal] ?? GOAL_PHASE_LABELS.hybrid;
@@ -397,7 +496,7 @@ export function mesosForGoal(goal: Goal): MesoDef[] {
     ...m,
     name: labels[i] ?? m.name,
     macro_name: labels[i] ?? m.macro_name,
-    objective: m.objective,           // descrição da fase (genérica) — mantida
+    objective: m.objective, // descrição da fase (genérica) — mantida
     macro_objective: labels[i] ?? m.macro_objective,
   }));
 }
@@ -470,7 +569,10 @@ function assertRunProtocol(p: RunProtocolDef, week: number): RunProtocolDef {
   if ((p.blocks ?? 0) > 1 && !p.between_blocks_rest_seconds) {
     throw new Error(`Semana ${week}: descanso entre blocos obrigatório ausente.`);
   }
-  if ((p.blocks ?? 0) > 0 && (!p.intervals_per_block || !p.work_duration_seconds || !p.rest_duration_seconds)) {
+  if (
+    (p.blocks ?? 0) > 0 &&
+    (!p.intervals_per_block || !p.work_duration_seconds || !p.rest_duration_seconds)
+  ) {
     throw new Error(`Semana ${week}: protocolo intervalado incompleto.`);
   }
   return p;
@@ -698,8 +800,19 @@ function thursdayProtocol(week: number, goal: Goal): RunProtocolDef {
 // Exercise pool — categorias por dia A/B
 // ============================================================
 type Category =
-  | "biceps" | "triceps" | "chest" | "lats" | "back" | "trap" | "shoulder"
-  | "rotator_cuff" | "posterior_chain" | "anterior_chain" | "calf" | "core" | "plyometric";
+  | "biceps"
+  | "triceps"
+  | "chest"
+  | "lats"
+  | "back"
+  | "trap"
+  | "shoulder"
+  | "rotator_cuff"
+  | "posterior_chain"
+  | "anterior_chain"
+  | "calf"
+  | "core"
+  | "plyometric";
 
 interface ExerciseRow {
   id: string;
@@ -716,93 +829,15 @@ interface ExerciseRow {
   lower_body_pattern?: string | null;
 }
 
-/**
- * Sequência de categorias por slot (A = pull+post, B = push+ant).
- * Volume cai removendo isolações tardias.
- */
-const A_FULL_SEQ: Category[] = [
-  "biceps",          // 1
-  "lats",            // 2
-  "back",            // 3
-  "trap",            // 4
-  "rotator_cuff",    // 5  (semanas 1-10)
-  "posterior_chain", // 6
-  "posterior_chain", // 7
-  "posterior_chain", // 8
-  "posterior_chain", // 9
-  "calf",            // 10 (2-3x/semana)
-  "core",            // 11
-  "core",            // 12
-];
-const B_FULL_SEQ: Category[] = [
-  "chest",          // 1
-  "chest",          // 2
-  "shoulder",       // 3
-  "triceps",        // 4
-  "rotator_cuff",   // 5
-  "anterior_chain", // 6
-  "anterior_chain", // 7
-  "anterior_chain", // 8
-  "anterior_chain", // 9
-  "calf",           // 10
-  "core",           // 11
-  "core",           // 12
-];
-
-/** retorna a sequência de categorias adaptada ao volume da semana */
-function categorySequence(week: number, type: "A" | "B"): Category[] {
-  const full = type === "A" ? A_FULL_SEQ : B_FULL_SEQ;
-  const volume = fbVolumeForWeek(week);
-  if (volume === 12) return full;
-  // 10: remove um acessório inferior + um acessório superior, mantém core
-  if (volume === 10) {
-    const trimmed = [...full];
-    // remove slot 9 (posterior/anterior extra) e slot 4 (trap/triceps acessório)
-    trimmed.splice(8, 1); // remove índice 8
-    trimmed.splice(3, 1); // remove índice 3
-    return trimmed;
-  }
-  // 8: remove mais 2 (slot 7 e slot 2)
-  const trimmed = [...full];
-  trimmed.splice(8, 1);
-  trimmed.splice(6, 1);
-  trimmed.splice(3, 1);
-  trimmed.splice(1, 1);
-  return trimmed;
-}
-
-/** Categorias do dia de corrida (run_upper) — bisets pós-corrida + 2 core */
-function runUpperSequence(type: "A" | "B"): Category[] {
-  // 4 bisets (8 exercícios) + 2 core
-  if (type === "A") {
-    // dia tradicional Quinta na planilha: dorsais/bíceps/trap (pull bisets)
-    return [
-      "lats", "lats",
-      "back", "back",
-      "biceps", "biceps",
-      "trap", "trap",
-      "core", "core",
-    ];
-  }
-  // B: peito/ombro/tríceps (push bisets)
-  return [
-    "chest", "chest",
-    "chest", "chest",
-    "shoulder", "shoulder",
-    "triceps", "triceps",
-    "core", "core",
-  ];
-}
-
 // ============================================================
 // Seleção de exercício respeitando regras
 // ============================================================
 interface PickContext {
   week: number;
   experience: Experience;
-  usedInWeek: Set<string>;           // ids já usados na semana (não-core)
-  usedInDay: Set<string>;            // ids no dia
-  mesoUsage: Map<string, number>;    // count por exercise id no mesociclo (Regra de Ouro ≤2)
+  usedInWeek: Set<string>; // ids já usados na semana (não-core)
+  usedInDay: Set<string>; // ids no dia
+  mesoUsage: Map<string, number>; // count por exercise id no mesociclo (Regra de Ouro ≤2)
   rotationOffset: number;
 }
 
@@ -812,11 +847,7 @@ function isAllowedForLevel(ex: ExerciseRow, lvl: Experience): boolean {
   return ex.allowed_advanced;
 }
 
-function filterPool(
-  pool: ExerciseRow[],
-  category: Category,
-  ctx: PickContext,
-): ExerciseRow[] {
+function filterPool(pool: ExerciseRow[], category: Category, ctx: PickContext): ExerciseRow[] {
   return pool.filter((e) => {
     if (e.category !== category) return false;
     // Proteção semântica: alguns exercícios podem estar catalogados em uma
@@ -859,15 +890,24 @@ function pickExercise(
 // A metodologia (categorias, volume, progressão, métodos) vem destas regras
 // + do pool. A IA é só personalização. SEM estrutura fixa por usuário.
 // ============================================================
-interface DayBlueprint { label: string; categories: Category[] }
+interface DayBlueprint {
+  label: string;
+  categories: Category[];
+}
 
 // Blocos musculares reutilizáveis (ordem ~ execução: composto → isolado).
 const BLK = {
-  push:  ["chest", "chest", "shoulder", "triceps"] as Category[],
-  pull:  ["back", "lats", "biceps", "trap"] as Category[],
-  legs:  ["anterior_chain", "posterior_chain", "anterior_chain", "calf"] as Category[],
+  push: ["chest", "chest", "shoulder", "triceps"] as Category[],
+  pull: ["back", "lats", "biceps", "trap"] as Category[],
+  legs: ["anterior_chain", "posterior_chain", "anterior_chain", "calf"] as Category[],
   upper: ["chest", "back", "shoulder", "lats", "triceps", "biceps"] as Category[],
-  lower: ["anterior_chain", "posterior_chain", "anterior_chain", "posterior_chain", "calf"] as Category[],
+  lower: [
+    "anterior_chain",
+    "posterior_chain",
+    "anterior_chain",
+    "posterior_chain",
+    "calf",
+  ] as Category[],
   fullA: ["anterior_chain", "back", "chest", "posterior_chain", "biceps"] as Category[],
   fullB: ["posterior_chain", "chest", "back", "shoulder", "triceps"] as Category[],
   fullC: ["anterior_chain", "lats", "shoulder", "posterior_chain", "calf"] as Category[],
@@ -893,7 +933,8 @@ function strengthSplit(goal: Goal, level: Experience, nDays: number): DayBluepri
   if (goal === "fat_loss") {
     const rot = [BLK.fullA, BLK.fullB, BLK.fullC];
     return Array.from({ length: nDays }, (_, i) => ({
-      label: `Full Body ${String.fromCharCode(65 + (i % 3))}`, categories: rot[i % 3],
+      label: `Full Body ${String.fromCharCode(65 + (i % 3))}`,
+      categories: rot[i % 3],
     }));
   }
   switch (nDays) {
@@ -904,11 +945,12 @@ function strengthSplit(goal: Goal, level: Experience, nDays: number): DayBluepri
         categories: i % 2 === 0 ? BLK.fullA : BLK.fullB,
       }));
     case 3:
-      if (adv) return [
-        { label: "Push", categories: BLK.push },
-        { label: "Pull", categories: BLK.pull },
-        { label: "Pernas", categories: BLK.legs },
-      ];
+      if (adv)
+        return [
+          { label: "Push", categories: BLK.push },
+          { label: "Pull", categories: BLK.pull },
+          { label: "Pernas", categories: BLK.legs },
+        ];
       return [
         { label: "Full Body A", categories: BLK.fullA },
         { label: "Full Body B", categories: BLK.fullB },
@@ -942,7 +984,13 @@ function strengthSplit(goal: Goal, level: Experience, nDays: number): DayBluepri
 }
 
 /** Esquema de séries/reps/descanso/método por objetivo + nível + mesociclo. */
-interface Scheme { sets: number; reps: string; rest: number; rpe: number; method: "straight" | "biset" | "triset"; }
+interface Scheme {
+  sets: number;
+  reps: string;
+  rest: number;
+  rpe: number;
+  method: "straight" | "biset" | "triset";
+}
 function schemeFor(goal: Goal, level: Experience, week: number): Scheme {
   const meso = mesoForWeek(week);
   // método: gating por nível (iniciante nunca usa avançado)
@@ -951,15 +999,26 @@ function schemeFor(goal: Goal, level: Experience, week: number): Scheme {
   if (level === "advanced") method = week >= 17 ? "triset" : "biset";
 
   if (goal === "fat_loss") {
-    return { sets: 3, reps: "12-20", rest: 35, rpe: meso.rpe_target,
-             method: level === "beginner" ? "straight" : "biset" };
+    return {
+      sets: 3,
+      reps: "12-20",
+      rest: 35,
+      rpe: meso.rpe_target,
+      method: level === "beginner" ? "straight" : "biset",
+    };
   }
   if (goal === "hypertrophy") {
     const reps = week <= 8 ? "10-15" : week <= 24 ? "8-12" : "6-10";
     return { sets: level === "beginner" ? 3 : 4, reps, rest: 75, rpe: meso.rpe_target, method };
   }
   if (goal === "endurance") {
-    return { sets: 3, reps: "12-15", rest: 45, rpe: Math.min(meso.rpe_target, 7.5), method: "straight" };
+    return {
+      sets: 3,
+      reps: "12-15",
+      rest: 45,
+      rpe: Math.min(meso.rpe_target, 7.5),
+      method: "straight",
+    };
   }
   // hybrid → progressão de volume→intensidade da metodologia base
   const reps = meso.prescription.includes("x") ? meso.prescription.split("x")[1] : "8-12";
@@ -980,7 +1039,10 @@ function runDaysCount(mode: RunningMode | null | undefined, goal: Goal, nDays: n
 function seedNum(s?: string): number {
   if (!s) return 0;
   let h = 2166136261;
-  for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); }
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
   return h >>> 0;
 }
 
@@ -1027,7 +1089,9 @@ const PT_DAY_NAMES = ["", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sá
  *  - Se o usuário NÃO quer corrida → todos os dias são Full Body.
  *  - Se quer corrida → alterna FB / Run a partir do 1º dia (FB, Run, FB, Run, ...).
  *    Com 3 dias, fica FB, Run, FB (1 corrida); com 5 dias, FB,Run,FB,Run,FB. */
-export function activeDays(profile: UserProfileInput): { num: number; name: string; kind: "fb" | "run" }[] {
+export function activeDays(
+  profile: UserProfileInput,
+): { num: number; name: string; kind: "fb" | "run" }[] {
   let nums = (profile.selected_days ?? []).filter((n) => Number.isInteger(n) && n >= 1 && n <= 7);
   nums = [...new Set(nums)].sort((a, b) => a - b);
   if (nums.length === 0) {
@@ -1040,7 +1104,10 @@ export function activeDays(profile: UserProfileInput): { num: number; name: stri
   const runPositions = new Set<number>();
   if (nRun > 0) {
     const step = nums.length / nRun;
-    for (let i = 0; i < nRun; i++) runPositions.add(Math.min(nums.length - 1, Math.round(i * step) + (nRun < nums.length ? 1 : 0)));
+    for (let i = 0; i < nRun; i++)
+      runPositions.add(
+        Math.min(nums.length - 1, Math.round(i * step) + (nRun < nums.length ? 1 : 0)),
+      );
   }
   return nums.map((num, idx) => ({
     num,
@@ -1052,21 +1119,34 @@ export function activeDays(profile: UserProfileInput): { num: number; name: stri
 // Validação permissiva: garante apenas que os dias selecionados existem e que
 // dias de corrida têm protocolo. A ESTRUTURA (split/ênfase) agora é dinâmica
 // por objetivo/frequência/nível — não há mais um único padrão "correto".
-function validateWeekDistribution(week: GeneratedWeek, expected: { num: number; kind: "fb" | "run" }[]): void {
+function validateWeekDistribution(
+  week: GeneratedWeek,
+  expected: { num: number; kind: "fb" | "run" }[],
+): void {
   const dayByNumber = new Map(week.days.map((day) => [day.day_number, day]));
   for (const exp of expected) {
     const day = dayByNumber.get(exp.num);
-    if (!day) throw new Error(`Distribuição inválida na semana ${week.week_number}: dia ${exp.num} ausente.`);
+    if (!day)
+      throw new Error(
+        `Distribuição inválida na semana ${week.week_number}: dia ${exp.num} ausente.`,
+      );
     if (exp.kind === "run" && !day.running) {
-      throw new Error(`Distribuição inválida na semana ${week.week_number}: dia ${exp.num} deveria ter corrida.`);
+      throw new Error(
+        `Distribuição inválida na semana ${week.week_number}: dia ${exp.num} deveria ter corrida.`,
+      );
     }
     if ((day.exercises?.length ?? 0) === 0 && !day.running) {
-      throw new Error(`Distribuição inválida na semana ${week.week_number}: dia ${exp.num} sem exercícios.`);
+      throw new Error(
+        `Distribuição inválida na semana ${week.week_number}: dia ${exp.num} sem exercícios.`,
+      );
     }
   }
 }
 
-function validatePlanDistribution(plan: GenerationResult, expected: { num: number; kind: "fb" | "run" }[]): void {
+function validatePlanDistribution(
+  plan: GenerationResult,
+  expected: { num: number; kind: "fb" | "run" }[],
+): void {
   for (const week of plan.weeks) validateWeekDistribution(week, expected);
 }
 
@@ -1082,7 +1162,10 @@ export interface GenerationResult {
  * Gera o plano completo de 48 semanas para um perfil.
  * Não escreve no banco — apenas retorna o objeto.
  */
-export function generatePlan(profile: UserProfileInput, exercisePool: ExerciseRow[]): GenerationResult {
+export function generatePlan(
+  profile: UserProfileInput,
+  exercisePool: ExerciseRow[],
+): GenerationResult {
   const vref = calcReferenceVelocity(profile);
   const days = activeDays(profile);
   // 1) filtra por equipamento, 2) exclui exercícios incompatíveis com lesões.
@@ -1108,7 +1191,10 @@ export function generatePlan(profile: UserProfileInput, exercisePool: ExerciseRo
 
   for (let w = 1; w <= 48; w++) {
     const meso = goalMesos.find((m) => w >= m.start_week && w <= m.end_week)!;
-    if (meso.code !== currentMeso) { currentMeso = meso.code; mesoUsage = new Map(); }
+    if (meso.code !== currentMeso) {
+      currentMeso = meso.code;
+      mesoUsage = new Map();
+    }
     const scheme = schemeFor(profile.goal, profile.experience_level, w);
     const usedInWeek = new Set<string>();
     const dayPlans: GeneratedDay[] = [];
@@ -1127,20 +1213,33 @@ export function generatePlan(profile: UserProfileInput, exercisePool: ExerciseRo
         if (cats.length > mainCount) cats = cats.slice(0, mainCount);
         let k = 0;
         while (cats.length < mainCount && bp.categories.length > 0) {
-          cats.push(bp.categories[k % bp.categories.length]); k += 1;
+          cats.push(bp.categories[k % bp.categories.length]);
+          k += 1;
         }
         const dayCats: Category[] = [...cats, "core", "core"];
 
         const groupSize = scheme.method === "triset" ? 3 : scheme.method === "biset" ? 2 : 1;
-        let slot = 1, pairCounter = 0, inGroup = 0, curPair: number | null = null;
+        let slot = 1,
+          pairCounter = 0,
+          inGroup = 0,
+          curPair: number | null = null;
         for (const rawCat of dayCats) {
           let category = rawCat;
           if (category === "calf" && calfCount >= 3) category = "core";
           const isCore = category === "core";
-          const ex = pickExercise(pool, category, {
-            week: w, experience: profile.experience_level,
-            usedInDay, usedInWeek, mesoUsage, rotationOffset: globalOffset++,
-          }, isCore);
+          const ex = pickExercise(
+            pool,
+            category,
+            {
+              week: w,
+              experience: profile.experience_level,
+              usedInDay,
+              usedInWeek,
+              mesoUsage,
+              rotationOffset: globalOffset++,
+            },
+            isCore,
+          );
           if (!ex) continue;
           if (category === "calf") calfCount += 1;
           if (!isCore) usedInWeek.add(ex.id);
@@ -1149,12 +1248,16 @@ export function generatePlan(profile: UserProfileInput, exercisePool: ExerciseRo
 
           let pair_slot: number | null = null;
           if (!isCore && groupSize > 1) {
-            if (inGroup === 0) { pairCounter += 1; curPair = pairCounter; }
+            if (inGroup === 0) {
+              pairCounter += 1;
+              curPair = pairCounter;
+            }
             pair_slot = curPair;
             inGroup = (inGroup + 1) % groupSize;
           }
           exercises.push({
-            slot, pair_slot,
+            slot,
+            pair_slot,
             exercise_id: ex.id,
             sets: isCore ? 3 : scheme.sets,
             reps: isCore ? "12-15" : scheme.reps,
@@ -1167,7 +1270,8 @@ export function generatePlan(profile: UserProfileInput, exercisePool: ExerciseRo
         }
 
         dayPlans.push({
-          day_number: d.num, day_name: d.name,
+          day_number: d.num,
+          day_name: d.name,
           session_type: "full_body",
           emphasis: strengthIdx % 2 === 1 ? "fb_pull_posterior" : "fb_push_anterior",
           objective: `${bp.label} · ${meso.objective}${scheme.method !== "straight" ? ` · ${scheme.method === "triset" ? "Trisets" : "Bisets"}` : ""}`,
@@ -1177,29 +1281,52 @@ export function generatePlan(profile: UserProfileInput, exercisePool: ExerciseRo
       } else {
         // Dia de corrida: protocolo selecionado por objetivo + acessório curto opcional.
         const runIndex = days.filter((x) => x.kind === "run" && x.num <= d.num).length - 1;
-        const running = runIndex % 2 === 0 ? tuesdayProtocol(w, profile.goal) : thursdayProtocol(w, profile.goal);
-        const accessory = (profile.available_minutes ?? 60) >= 45 && profile.running_mode !== "principal";
+        const running =
+          runIndex % 2 === 0 ? tuesdayProtocol(w, profile.goal) : thursdayProtocol(w, profile.goal);
+        const accessory =
+          (profile.available_minutes ?? 60) >= 45 && profile.running_mode !== "principal";
         let slot = 1;
         if (accessory) {
-          const seq: Category[] = runIndex % 2 === 0
-            ? ["chest", "shoulder", "triceps", "core"]
-            : ["back", "lats", "biceps", "core"];
+          const seq: Category[] =
+            runIndex % 2 === 0
+              ? ["chest", "shoulder", "triceps", "core"]
+              : ["back", "lats", "biceps", "core"];
           for (const category of seq) {
             const isCore = category === "core";
-            const ex = pickExercise(pool, category, {
-              week: w, experience: profile.experience_level,
-              usedInDay, usedInWeek, mesoUsage, rotationOffset: globalOffset++,
-            }, isCore);
+            const ex = pickExercise(
+              pool,
+              category,
+              {
+                week: w,
+                experience: profile.experience_level,
+                usedInDay,
+                usedInWeek,
+                mesoUsage,
+                rotationOffset: globalOffset++,
+              },
+              isCore,
+            );
             if (!ex) continue;
             if (!isCore) usedInWeek.add(ex.id);
             usedInDay.add(ex.id);
             mesoUsage.set(ex.id, (mesoUsage.get(ex.id) ?? 0) + 1);
-            exercises.push({ slot, pair_slot: null, exercise_id: ex.id, sets: 3, reps: isCore ? "12" : "10-12", rpe_target: scheme.rpe, rest_seconds: 45, notes: null, is_core: isCore });
+            exercises.push({
+              slot,
+              pair_slot: null,
+              exercise_id: ex.id,
+              sets: 3,
+              reps: isCore ? "12" : "10-12",
+              rpe_target: scheme.rpe,
+              rest_seconds: 45,
+              notes: null,
+              is_core: isCore,
+            });
             slot += 1;
           }
         }
         dayPlans.push({
-          day_number: d.num, day_name: d.name,
+          day_number: d.num,
+          day_name: d.name,
           session_type: "run_upper",
           emphasis: runIndex % 2 === 0 ? "run_push" : "run_pull",
           objective: `Corrida ${running.protocol_type.toUpperCase()}${accessory ? " + acessório superior" : ""}`,
@@ -1211,10 +1338,15 @@ export function generatePlan(profile: UserProfileInput, exercisePool: ExerciseRo
     }
 
     const generatedWeek: GeneratedWeek = {
-      week_number: w, week_type: w % 2 === 1 ? "A" : "B",
-      mesocycle_code: meso.code, days: dayPlans,
+      week_number: w,
+      week_type: w % 2 === 1 ? "A" : "B",
+      mesocycle_code: meso.code,
+      days: dayPlans,
     };
-    validateWeekDistribution(generatedWeek, days.map((d) => ({ num: d.num, kind: d.kind })));
+    validateWeekDistribution(
+      generatedWeek,
+      days.map((d) => ({ num: d.num, kind: d.kind })),
+    );
     weeks.push(generatedWeek);
   }
 
@@ -1236,7 +1368,6 @@ export async function persistProgram(
   // aplica o Methodology Pack dele SOBRE o plano do motor. Opt-in: sem coach
   // primário, o programa é o motor puro (retrocompatível). Choke point único —
   // cobre todas as rotas de geração de uma vez.
-  let engineTag = "v2.0";
   try {
     const { data: uac } = await supabase
       .from("user_ai_coaches")
@@ -1249,7 +1380,6 @@ export async function persistProgram(
     if (pack) {
       const r = applyCoachLayer(plan, pack, profile);
       plan = r.plan;
-      engineTag = `v2.0+coach:${pack.persona}`;
       console.info("[coach-layer]", JSON.stringify(r.audit));
     }
   } catch (e) {
@@ -1258,16 +1388,17 @@ export async function persistProgram(
   }
 
   // Guardrail: a estrutura (dias/corrida) tem que continuar válida após o coach.
-  validatePlanDistribution(plan, activeDays(profile).map((d) => ({ num: d.num, kind: d.kind })));
+  validatePlanDistribution(
+    plan,
+    activeDays(profile).map((d) => ({ num: d.num, kind: d.kind })),
+  );
 
-  // arquivar programas anteriores
-  await supabase
-    .from("training_programs")
-    .update({ archived_at: new Date().toISOString() })
-    .eq("user_id", userId)
-    .is("archived_at", null);
-
-  // criar programa
+  // Persistência transacional (#10): cria o novo programa como DRAFT
+  // (archived_at = agora → ainda NÃO ativo). NÃO arquivamos o antigo aqui.
+  // Inserimos todos os filhos e só então ativamos atomicamente (RPC
+  // activate_program). Se a montagem falhar no meio, apagamos o draft (cascade)
+  // e o programa ANTIGO segue ativo — o usuário nunca fica sem programa.
+  const draftIso = new Date().toISOString();
   const { data: prog, error: pErr } = await supabase
     .from("training_programs")
     .insert({
@@ -1280,148 +1411,164 @@ export async function persistProgram(
       active_week: 1,
       active_day: 1,
       generated_from_engine: "v1.0",
+      archived_at: draftIso, // draft até a ativação atômica no fim
     })
     .select("id")
     .single();
-  if (pErr) throw new Error(pErr.message);
+  if (pErr) serverError("Não foi possível concluir a operação. Tente novamente.", pErr);
   const programId = prog.id as string;
 
-  // macrociclos (4) — agrupados por macro_code
-  const macroMap = new Map<string, MesoDef[]>();
-  for (const m of plan.mesos) {
-    const arr = macroMap.get(m.macro_code) ?? [];
-    arr.push(m);
-    macroMap.set(m.macro_code, arr);
-  }
-  const macroIdByCode = new Map<string, string>();
-  let macroOrder = 0;
-  for (const [code, mesos] of macroMap) {
-    macroOrder += 1;
-    const startWeek = Math.min(...mesos.map((m) => m.start_week));
-    const endWeek = Math.max(...mesos.map((m) => m.end_week));
-    const { data: macro, error } = await supabase
-      .from("macrocycles")
-      .insert({
-        program_id: programId,
-        name: mesos[0].macro_name,
-        sort_order: macroOrder,
-        start_week: startWeek,
-        end_week: endWeek,
-        objective: mesos[0].macro_objective,
-        dominant_method: mesos[0].macro_method,
-      })
-      .select("id")
-      .single();
-    if (error) throw new Error(error.message);
-    macroIdByCode.set(code, macro.id);
-  }
+  // A partir daqui qualquer falha apaga o draft e preserva o programa antigo.
+  try {
+    // macrociclos (4) — agrupados por macro_code
+    const macroMap = new Map<string, MesoDef[]>();
+    for (const m of plan.mesos) {
+      const arr = macroMap.get(m.macro_code) ?? [];
+      arr.push(m);
+      macroMap.set(m.macro_code, arr);
+    }
+    const macroIdByCode = new Map<string, string>();
+    let macroOrder = 0;
+    for (const [code, mesos] of macroMap) {
+      macroOrder += 1;
+      const startWeek = Math.min(...mesos.map((m) => m.start_week));
+      const endWeek = Math.max(...mesos.map((m) => m.end_week));
+      const { data: macro, error } = await supabase
+        .from("macrocycles")
+        .insert({
+          program_id: programId,
+          name: mesos[0].macro_name,
+          sort_order: macroOrder,
+          start_week: startWeek,
+          end_week: endWeek,
+          objective: mesos[0].macro_objective,
+          dominant_method: mesos[0].macro_method,
+        })
+        .select("id")
+        .single();
+      if (error) serverError("Não foi possível concluir a operação. Tente novamente.", error);
+      macroIdByCode.set(code, macro.id);
+    }
 
-  // mesociclos (6)
-  const mesoIdByCode = new Map<string, string>();
-  let mesoOrder = 0;
-  for (const m of plan.mesos) {
-    mesoOrder += 1;
-    const { data: meso, error } = await supabase
-      .from("mesocycles")
-      .insert({
-        macrocycle_id: macroIdByCode.get(m.macro_code)!,
-        name: m.name,
-        sort_order: mesoOrder,
-        start_week: m.start_week,
-        end_week: m.end_week,
-        objective: m.objective,
-        method: m.method,
-      })
-      .select("id")
-      .single();
-    if (error) throw new Error(error.message);
-    mesoIdByCode.set(m.code, meso.id);
-  }
+    // mesociclos (6)
+    const mesoIdByCode = new Map<string, string>();
+    let mesoOrder = 0;
+    for (const m of plan.mesos) {
+      mesoOrder += 1;
+      const { data: meso, error } = await supabase
+        .from("mesocycles")
+        .insert({
+          macrocycle_id: macroIdByCode.get(m.macro_code)!,
+          name: m.name,
+          sort_order: mesoOrder,
+          start_week: m.start_week,
+          end_week: m.end_week,
+          objective: m.objective,
+          method: m.method,
+        })
+        .select("id")
+        .single();
+      if (error) serverError("Não foi possível concluir a operação. Tente novamente.", error);
+      mesoIdByCode.set(m.code, meso.id);
+    }
 
-  // ------------------------------------------------------------
-  // Bulk insert — gera UUIDs client-side e insere em lote para evitar
-  // ~600 round-trips sequenciais (causa de 504 upstream timeout).
-  // ------------------------------------------------------------
-  const weekRows = plan.weeks.map((w) => ({
-    id: crypto.randomUUID(),
-    program_id: programId,
-    mesocycle_id: mesoIdByCode.get(w.mesocycle_code)!,
-    week_number: w.week_number,
-    week_type: w.week_type,
-  }));
-  {
-    const { error } = await supabase.from("weeks").insert(weekRows);
-    if (error) throw new Error(`weeks: ${error.message}`);
-  }
-  const weekIdByNumber = new Map<number, string>();
-  weekRows.forEach((r) => weekIdByNumber.set(r.week_number, r.id));
+    // ------------------------------------------------------------
+    // Bulk insert — gera UUIDs client-side e insere em lote para evitar
+    // ~600 round-trips sequenciais (causa de 504 upstream timeout).
+    // ------------------------------------------------------------
+    const weekRows = plan.weeks.map((w) => ({
+      id: crypto.randomUUID(),
+      program_id: programId,
+      mesocycle_id: mesoIdByCode.get(w.mesocycle_code)!,
+      week_number: w.week_number,
+      week_type: w.week_type,
+    }));
+    {
+      const { error } = await supabase.from("weeks").insert(weekRows);
+      if (error) throw new Error(`weeks: ${error.message}`);
+    }
+    const weekIdByNumber = new Map<number, string>();
+    weekRows.forEach((r) => weekIdByNumber.set(r.week_number, r.id));
 
-  const dayRows: any[] = [];
-  const sessionExerciseRows: any[] = [];
-  const runningRows: any[] = [];
+    const dayRows: any[] = [];
+    const sessionExerciseRows: any[] = [];
+    const runningRows: any[] = [];
 
-  for (const w of plan.weeks) {
-    const weekId = weekIdByNumber.get(w.week_number)!;
-    for (const d of w.days) {
-      const dayId = crypto.randomUUID();
-      dayRows.push({
-        id: dayId,
-        week_id: weekId,
-        day_number: d.day_number,
-        day_name: d.day_name,
-        session_type: d.session_type,
-        objective: d.objective,
-        duration_minutes: d.duration_minutes,
-      });
-      for (const e of d.exercises) {
-        sessionExerciseRows.push({
-          training_day_id: dayId,
-          exercise_id: e.exercise_id,
-          slot: e.slot,
-          pair_slot: e.pair_slot,
-          sets: e.sets,
-          reps: e.reps,
-          rpe_target: e.rpe_target,
-          rest_seconds: e.rest_seconds,
-          notes: e.notes,
+    for (const w of plan.weeks) {
+      const weekId = weekIdByNumber.get(w.week_number)!;
+      for (const d of w.days) {
+        const dayId = crypto.randomUUID();
+        dayRows.push({
+          id: dayId,
+          week_id: weekId,
+          day_number: d.day_number,
+          day_name: d.day_name,
+          session_type: d.session_type,
+          objective: d.objective,
+          duration_minutes: d.duration_minutes,
         });
-      }
-      if (d.running) {
-        runningRows.push({
-          training_day_id: dayId,
-          protocol_type: d.running.protocol_type,
-          protocol_name: d.running.protocol_name,
-          goal: d.running.goal,
-          total_duration_minutes: d.running.total_duration_minutes,
-          warmup_minutes: d.running.warmup_minutes,
-          cooldown_minutes: d.running.cooldown_minutes,
-          blocks: d.running.blocks,
-          intervals: d.running.intervals_per_block, // legado
-          intervals_per_block: d.running.intervals_per_block,
-          work_duration_seconds: d.running.work_duration_seconds,
-          rest_duration_seconds: d.running.rest_duration_seconds,
-          between_blocks_rest_seconds: d.running.between_blocks_rest_seconds,
-          target_pace_min: d.running.target_pace_min,
-          target_pace_max: d.running.target_pace_max,
-          pace_min: d.running.target_pace_min, // legado
-          pace_max: d.running.target_pace_max, // legado
-          notes: d.running.notes,
-        });
+        for (const e of d.exercises) {
+          sessionExerciseRows.push({
+            training_day_id: dayId,
+            exercise_id: e.exercise_id,
+            slot: e.slot,
+            pair_slot: e.pair_slot,
+            sets: e.sets,
+            reps: e.reps,
+            rpe_target: e.rpe_target,
+            rest_seconds: e.rest_seconds,
+            notes: e.notes,
+          });
+        }
+        if (d.running) {
+          runningRows.push({
+            training_day_id: dayId,
+            protocol_type: d.running.protocol_type,
+            protocol_name: d.running.protocol_name,
+            goal: d.running.goal,
+            total_duration_minutes: d.running.total_duration_minutes,
+            warmup_minutes: d.running.warmup_minutes,
+            cooldown_minutes: d.running.cooldown_minutes,
+            blocks: d.running.blocks,
+            intervals: d.running.intervals_per_block, // legado
+            intervals_per_block: d.running.intervals_per_block,
+            work_duration_seconds: d.running.work_duration_seconds,
+            rest_duration_seconds: d.running.rest_duration_seconds,
+            between_blocks_rest_seconds: d.running.between_blocks_rest_seconds,
+            target_pace_min: d.running.target_pace_min,
+            target_pace_max: d.running.target_pace_max,
+            pace_min: d.running.target_pace_min, // legado
+            pace_max: d.running.target_pace_max, // legado
+            notes: d.running.notes,
+          });
+        }
       }
     }
+
+    const insertChunks = async (table: string, rows: any[], size = 500) => {
+      for (let i = 0; i < rows.length; i += size) {
+        const slice = rows.slice(i, i + size);
+        const { error } = await supabase.from(table).insert(slice);
+        if (error) throw new Error(`${table}: ${error.message}`);
+      }
+    };
+
+    await insertChunks("training_days", dayRows);
+    await insertChunks("session_exercises", sessionExerciseRows);
+    await insertChunks("running_protocols", runningRows);
+  } catch (e) {
+    // Falha na montagem → remove o draft (cascade apaga macro/meso/weeks/days/
+    // exercises) e mantém o programa ANTIGO ativo. Propaga o erro.
+    await supabase.from("training_programs").delete().eq("id", programId);
+    throw e;
   }
 
-  const insertChunks = async (table: string, rows: any[], size = 500) => {
-    for (let i = 0; i < rows.length; i += size) {
-      const slice = rows.slice(i, i + size);
-      const { error } = await supabase.from(table).insert(slice);
-      if (error) throw new Error(`${table}: ${error.message}`);
-    }
-  };
-
-  await insertChunks("training_days", dayRows);
-  await insertChunks("session_exercises", sessionExerciseRows);
-  await insertChunks("running_protocols", runningRows);
+  // Ativação ATÔMICA: arquiva os antigos + ativa o novo numa transação (RPC).
+  const { error: actErr } = await supabase.rpc("activate_program", { p_program_id: programId });
+  if (actErr) {
+    await supabase.from("training_programs").delete().eq("id", programId);
+    throw new Error(`activate_program: ${actErr.message}`);
+  }
 
   return { program_id: programId };
 }
@@ -1432,7 +1579,9 @@ export async function persistProgram(
 export async function loadExercisePool(supabase: DB): Promise<ExerciseRow[]> {
   const { data, error } = await supabase
     .from("exercise_pool")
-    .select("id, code, name, category, equipment, allowed_beginner, allowed_intermediate, allowed_advanced, banned_weeks_1_to_12, movement_pattern, shoulder_safe, lower_body_pattern");
-  if (error) throw new Error(error.message);
+    .select(
+      "id, code, name, category, equipment, allowed_beginner, allowed_intermediate, allowed_advanced, banned_weeks_1_to_12, movement_pattern, shoulder_safe, lower_body_pattern",
+    );
+  if (error) serverError("Não foi possível concluir a operação. Tente novamente.", error);
   return (data ?? []) as ExerciseRow[];
 }

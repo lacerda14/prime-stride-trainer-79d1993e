@@ -18,10 +18,10 @@ export interface CalorieInput {
 /** MET para corrida pela velocidade (km/h) — Compendium of Physical Activities (aprox.) */
 function metForRun(kmh: number): number {
   if (kmh <= 0) return 3.5;
-  if (kmh < 6) return 6.0;          // jog leve
-  if (kmh < 8) return 8.3;          // ~7,5 min/km
-  if (kmh < 9.7) return 9.8;        // ~6:30 min/km
-  if (kmh < 11.3) return 11.0;      // ~5:30 min/km
+  if (kmh < 6) return 6.0; // jog leve
+  if (kmh < 8) return 8.3; // ~7,5 min/km
+  if (kmh < 9.7) return 9.8; // ~6:30 min/km
+  if (kmh < 11.3) return 11.0; // ~5:30 min/km
   if (kmh < 12.9) return 11.8;
   if (kmh < 14.5) return 12.8;
   return 14.5;
@@ -30,9 +30,9 @@ function metForRun(kmh: number): number {
 /** MET musculação por esforço percebido */
 function metForStrength(effort?: number | null): number {
   if (!effort) return 4.5;
-  if (effort >= 8) return 6.0;       // intenso
-  if (effort >= 5) return 5.0;       // moderado
-  return 3.5;                        // leve
+  if (effort >= 8) return 6.0; // intenso
+  if (effort >= 5) return 5.0; // moderado
+  return 3.5; // leve
 }
 
 export function estimateCalories(input: CalorieInput): number {

@@ -3,11 +3,13 @@ import { useState } from "react";
 import { AppShell } from "@/components/app-shell";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
+import { getRunningSessions, type RunningSessionListItem } from "@/lib/program.queries";
 import {
-  getRunningSessions,
-  type RunningSessionListItem,
-} from "@/lib/program.queries";
-import { formatRunSeconds, paceRange, runningInstructions, runningTypeLabel } from "@/lib/format-running";
+  formatRunSeconds,
+  paceRange,
+  runningInstructions,
+  runningTypeLabel,
+} from "@/lib/format-running";
 import { useAuth } from "@/hooks/use-auth";
 import { ChevronDown, Footprints, Timer, Gauge, Loader2 } from "lucide-react";
 
@@ -15,7 +17,10 @@ export const Route = createFileRoute("/corrida")({
   head: () => ({
     meta: [
       { title: "Corrida · PM Hybrid" },
-      { name: "description", content: "Sessões de corrida programadas com pace, velocidade e descanso." },
+      {
+        name: "description",
+        content: "Sessões de corrida programadas com pace, velocidade e descanso.",
+      },
     ],
   }),
   component: CorridaPage,
@@ -87,13 +92,18 @@ function protocolSummary(row: RunningSessionListItem): string {
   const intervals = p.intervals_per_block ?? p.intervals;
   const pace = paceRange(p);
   if (p.blocks && intervals && p.work_duration_seconds) {
-    const rest = p.rest_duration_seconds ? ` · ${formatRunSeconds(p.rest_duration_seconds)} descanso` : "";
-    const between = p.blocks > 1
-      ? ` · Entre blocos: ${p.between_blocks_rest_seconds ? formatRunSeconds(p.between_blocks_rest_seconds) : "obrigatório"}`
+    const rest = p.rest_duration_seconds
+      ? ` · ${formatRunSeconds(p.rest_duration_seconds)} descanso`
       : "";
+    const between =
+      p.blocks > 1
+        ? ` · Entre blocos: ${p.between_blocks_rest_seconds ? formatRunSeconds(p.between_blocks_rest_seconds) : "obrigatório"}`
+        : "";
     return `${p.blocks}×${intervals} tiros · ${formatRunSeconds(p.work_duration_seconds)} corrida${rest}${between}${pace ? ` · Pace ${pace}` : ""}`;
   }
-  return p.total_duration_minutes ? `${p.total_duration_minutes} min contínuos${pace ? ` · Pace ${pace}` : ""}` : row.protocol.protocol_type;
+  return p.total_duration_minutes
+    ? `${p.total_duration_minutes} min contínuos${pace ? ` · Pace ${pace}` : ""}`
+    : row.protocol.protocol_type;
 }
 
 function RunCard({ row }: { row: RunningSessionListItem }) {
@@ -130,12 +140,11 @@ function RunCard({ row }: { row: RunningSessionListItem }) {
       >
         <div className="overflow-hidden">
           <div className="space-y-2 border-t border-border px-5 pb-5 pt-4">
-            {row.objective && (
-              <div className="text-xs text-muted-foreground">{row.objective}</div>
-            )}
+            {row.objective && <div className="text-xs text-muted-foreground">{row.objective}</div>}
             {row.protocol.blocks && row.protocol.blocks > 1 && (
               <div className="num rounded-xl border border-primary/30 bg-primary/10 px-4 py-3 text-sm text-primary">
-                🔸 Descanso entre blocos: {betweenRest ? formatRunSeconds(betweenRest) : "OBRIGATÓRIO — não configurado"}
+                🔸 Descanso entre blocos:{" "}
+                {betweenRest ? formatRunSeconds(betweenRest) : "OBRIGATÓRIO — não configurado"}
               </div>
             )}
             {lines.map((line, i) => (

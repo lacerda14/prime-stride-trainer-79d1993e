@@ -6,7 +6,17 @@ import { useEffect, useState } from "react";
 import { getProfile, updateProfile } from "@/lib/profile.functions";
 import { SPORTS_OPTIONS, PREFERENCES_OPTIONS, MOTIVATIONS_OPTIONS } from "@/lib/onboarding-options";
 import { toast } from "sonner";
-import { Loader2, Save, User, Target, Calendar, Heart, Shield, ChevronRight, Trophy } from "lucide-react";
+import {
+  Loader2,
+  Save,
+  User,
+  Target,
+  Calendar,
+  Heart,
+  Shield,
+  ChevronRight,
+  Trophy,
+} from "lucide-react";
 import { useIsAdmin } from "@/hooks/use-is-admin";
 
 export const Route = createFileRoute("/perfil")({
@@ -43,11 +53,15 @@ function PerfilPage() {
   });
 
   const [form, setForm] = useState({
-    name: "", weight_kg: "" as number | "", height_cm: "" as number | "",
+    name: "",
+    weight_kg: "" as number | "",
+    height_cm: "" as number | "",
     goal: "" as Goal | "",
     available_days: "" as 3 | 4 | 5 | "",
     available_minutes: "" as 30 | 45 | 60 | 90 | "",
-    sports: [] as string[], preferences: [] as string[], motivations: [] as string[],
+    sports: [] as string[],
+    preferences: [] as string[],
+    motivations: [] as string[],
   });
   const [saving, setSaving] = useState(false);
   const [regen, setRegen] = useState(false);
@@ -106,7 +120,9 @@ function PerfilPage() {
   if (isLoading) {
     return (
       <AppShell eyebrow="Perfil" title="Carregando">
-        <div className="flex items-center justify-center py-20"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
+        <div className="flex items-center justify-center py-20">
+          <Loader2 className="h-6 w-6 animate-spin text-primary" />
+        </div>
       </AppShell>
     );
   }
@@ -124,7 +140,9 @@ function PerfilPage() {
             </div>
             <div>
               <div className="text-[15px] font-semibold tracking-tight">PRs & Performance</div>
-              <div className="text-[12px] text-muted-foreground">Seus recordes de força e corrida</div>
+              <div className="text-[12px] text-muted-foreground">
+                Seus recordes de força e corrida
+              </div>
             </div>
           </div>
           <ChevronRight className="h-4 w-4 text-muted-foreground" />
@@ -132,17 +150,40 @@ function PerfilPage() {
 
         <Card icon={User} title="Dados pessoais">
           <Field label="Nome">
-            <input className={inputCls} value={form.name} maxLength={80}
-              onChange={(e) => setForm({ ...form, name: e.target.value })} />
+            <input
+              className={inputCls}
+              value={form.name}
+              maxLength={80}
+              onChange={(e) => setForm({ ...form, name: e.target.value })}
+            />
           </Field>
           <div className="grid grid-cols-2 gap-3">
             <Field label="Peso · kg">
-              <input type="number" step="0.1" className={inputCls} value={form.weight_kg}
-                onChange={(e) => setForm({ ...form, weight_kg: e.target.value === "" ? "" : Number(e.target.value) })} />
+              <input
+                type="number"
+                step="0.1"
+                className={inputCls}
+                value={form.weight_kg}
+                onChange={(e) =>
+                  setForm({
+                    ...form,
+                    weight_kg: e.target.value === "" ? "" : Number(e.target.value),
+                  })
+                }
+              />
             </Field>
             <Field label="Altura · cm">
-              <input type="number" className={inputCls} value={form.height_cm}
-                onChange={(e) => setForm({ ...form, height_cm: e.target.value === "" ? "" : Number(e.target.value) })} />
+              <input
+                type="number"
+                className={inputCls}
+                value={form.height_cm}
+                onChange={(e) =>
+                  setForm({
+                    ...form,
+                    height_cm: e.target.value === "" ? "" : Number(e.target.value),
+                  })
+                }
+              />
             </Field>
           </div>
         </Card>
@@ -150,7 +191,14 @@ function PerfilPage() {
         <Card icon={Target} title="Objetivo">
           <div className="grid gap-1.5">
             {GOAL_OPTIONS.map((g) => (
-              <Row key={g.v} active={form.goal === g.v} onClick={() => { setForm({ ...form, goal: g.v }); setRegen(true); }}>
+              <Row
+                key={g.v}
+                active={form.goal === g.v}
+                onClick={() => {
+                  setForm({ ...form, goal: g.v });
+                  setRegen(true);
+                }}
+              >
                 {g.label}
               </Row>
             ))}
@@ -161,25 +209,53 @@ function PerfilPage() {
           <Field label="Dias por semana">
             <div className="grid grid-cols-3 gap-1.5">
               {([3, 4, 5] as const).map((n) => (
-                <Pill key={n} active={form.available_days === n}
-                  onClick={() => { setForm({ ...form, available_days: n }); setRegen(true); }}>{n} dias</Pill>
+                <Pill
+                  key={n}
+                  active={form.available_days === n}
+                  onClick={() => {
+                    setForm({ ...form, available_days: n });
+                    setRegen(true);
+                  }}
+                >
+                  {n} dias
+                </Pill>
               ))}
             </div>
           </Field>
           <Field label="Tempo por treino">
             <div className="grid grid-cols-4 gap-1.5">
               {([30, 45, 60, 90] as const).map((n) => (
-                <Pill key={n} active={form.available_minutes === n}
-                  onClick={() => setForm({ ...form, available_minutes: n })}>{n}min</Pill>
+                <Pill
+                  key={n}
+                  active={form.available_minutes === n}
+                  onClick={() => setForm({ ...form, available_minutes: n })}
+                >
+                  {n}min
+                </Pill>
               ))}
             </div>
           </Field>
         </Card>
 
         <Card icon={Heart} title="Personalização">
-          <Multi label="Esportes" items={SPORTS} selected={form.sports} onToggle={(v) => toggle("sports", v)} />
-          <Multi label="Preferências" items={PREFERENCES} selected={form.preferences} onToggle={(v) => toggle("preferences", v)} />
-          <Multi label="Motivação" items={MOTIVATIONS} selected={form.motivations} onToggle={(v) => toggle("motivations", v)} />
+          <Multi
+            label="Esportes"
+            items={SPORTS}
+            selected={form.sports}
+            onToggle={(v) => toggle("sports", v)}
+          />
+          <Multi
+            label="Preferências"
+            items={PREFERENCES}
+            selected={form.preferences}
+            onToggle={(v) => toggle("preferences", v)}
+          />
+          <Multi
+            label="Motivação"
+            items={MOTIVATIONS}
+            selected={form.motivations}
+            onToggle={(v) => toggle("motivations", v)}
+          />
         </Card>
 
         {isAdmin && (
@@ -201,16 +277,17 @@ function PerfilPage() {
           </Card>
         )}
 
-
-
         {regen && (
           <div className="rounded-2xl border border-primary/40 bg-primary/[0.06] p-4 text-[13px] text-foreground">
             Você mudou o objetivo ou a agenda — seu programa será regenerado ao salvar.
           </div>
         )}
 
-        <button onClick={onSave} disabled={saving}
-          className="flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-titanium text-[15px] font-semibold text-primary-foreground shadow-glow disabled:opacity-60 active:scale-[0.99]">
+        <button
+          onClick={onSave}
+          disabled={saving}
+          className="flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-titanium text-[15px] font-semibold text-primary-foreground shadow-glow disabled:opacity-60 active:scale-[0.99]"
+        >
           {saving ? <Loader2 className="h-5 w-5 animate-spin" /> : <Save className="h-5 w-5" />}
           {saving ? "Salvando..." : "Salvar alterações"}
         </button>
@@ -219,13 +296,24 @@ function PerfilPage() {
   );
 }
 
-const inputCls = "h-12 w-full rounded-xl border border-border bg-surface/40 px-4 text-[15px] font-medium outline-none focus:border-primary/50 transition-colors";
+const inputCls =
+  "h-12 w-full rounded-xl border border-border bg-surface/40 px-4 text-[15px] font-medium outline-none focus:border-primary/50 transition-colors";
 
-function Card({ icon: Icon, title, children }: { icon: React.ComponentType<{ className?: string }>; title: string; children: React.ReactNode }) {
+function Card({
+  icon: Icon,
+  title,
+  children,
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  title: string;
+  children: React.ReactNode;
+}) {
   return (
     <section className="glass animate-fade-in rounded-3xl p-5 space-y-4">
       <div className="flex items-center gap-2.5">
-        <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary/10"><Icon className="h-4 w-4 text-primary" /></div>
+        <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary/10">
+          <Icon className="h-4 w-4 text-primary" />
+        </div>
         <div className="text-[15px] font-semibold tracking-tight">{title}</div>
       </div>
       <div className="space-y-4">{children}</div>
@@ -236,42 +324,91 @@ function Card({ icon: Icon, title, children }: { icon: React.ComponentType<{ cla
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
-      <div className="mb-2 text-[10px] font-medium uppercase tracking-[0.22em] text-muted-foreground">{label}</div>
+      <div className="mb-2 text-[10px] font-medium uppercase tracking-[0.22em] text-muted-foreground">
+        {label}
+      </div>
       {children}
     </div>
   );
 }
 
-function Row({ active, children, onClick }: { active: boolean; children: React.ReactNode; onClick: () => void }) {
+function Row({
+  active,
+  children,
+  onClick,
+}: {
+  active: boolean;
+  children: React.ReactNode;
+  onClick: () => void;
+}) {
   return (
-    <button onClick={onClick}
+    <button
+      onClick={onClick}
       className={`w-full rounded-xl border px-4 py-3 text-left text-[14px] font-medium transition-all active:scale-[0.99] ${
-        active ? "border-primary/60 bg-primary/[0.10] text-foreground" : "border-border bg-surface/40 text-muted-foreground"
-      }`}>{children}</button>
+        active
+          ? "border-primary/60 bg-primary/[0.10] text-foreground"
+          : "border-border bg-surface/40 text-muted-foreground"
+      }`}
+    >
+      {children}
+    </button>
   );
 }
 
-function Pill({ active, children, onClick }: { active: boolean; children: React.ReactNode; onClick: () => void }) {
+function Pill({
+  active,
+  children,
+  onClick,
+}: {
+  active: boolean;
+  children: React.ReactNode;
+  onClick: () => void;
+}) {
   return (
-    <button onClick={onClick}
+    <button
+      onClick={onClick}
       className={`h-11 rounded-xl border text-[13px] font-medium transition-all ${
-        active ? "border-primary/60 bg-primary/[0.10] text-foreground" : "border-border bg-surface/40 text-muted-foreground"
-      }`}>{children}</button>
+        active
+          ? "border-primary/60 bg-primary/[0.10] text-foreground"
+          : "border-border bg-surface/40 text-muted-foreground"
+      }`}
+    >
+      {children}
+    </button>
   );
 }
 
-function Multi({ label, items, selected, onToggle }: { label: string; items: string[]; selected: string[]; onToggle: (v: string) => void }) {
+function Multi({
+  label,
+  items,
+  selected,
+  onToggle,
+}: {
+  label: string;
+  items: string[];
+  selected: string[];
+  onToggle: (v: string) => void;
+}) {
   return (
     <div>
-      <div className="mb-2 text-[10px] font-medium uppercase tracking-[0.22em] text-muted-foreground">{label}</div>
+      <div className="mb-2 text-[10px] font-medium uppercase tracking-[0.22em] text-muted-foreground">
+        {label}
+      </div>
       <div className="flex flex-wrap gap-1.5">
         {items.map((v) => {
           const on = selected.includes(v);
           return (
-            <button key={v} onClick={() => onToggle(v)}
+            <button
+              key={v}
+              onClick={() => onToggle(v)}
               className={`rounded-full border px-3.5 py-1.5 text-[12.5px] font-medium transition-all ${
-                on ? "border-primary/60 bg-primary/[0.12] text-foreground" : "border-border bg-surface/40 text-muted-foreground"
-              }`}>{v}</button>
+                on
+                  ? "border-primary/60 bg-primary/[0.12] text-foreground"
+                  : "border-border bg-surface/40 text-muted-foreground"
+              }`}
+            >
+              {v}
+            </button>
           );
         })}
       </div>

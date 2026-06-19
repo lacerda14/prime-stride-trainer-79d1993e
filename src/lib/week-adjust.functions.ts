@@ -43,12 +43,10 @@ export const skipNextWorkout = createServerFn({ method: "POST" })
         .eq("week_id", (wk as { id: string }).id)
         .order("day_number", { ascending: true });
 
-      const next = (days ?? []).find(
-        (d) => {
-          const r = d as { session_type: string; completed_at: string | null };
-          return r.completed_at == null && r.session_type !== "rest";
-        },
-      ) as { id: string; day_name: string | null } | undefined;
+      const next = (days ?? []).find((d) => {
+        const r = d as { session_type: string; completed_at: string | null };
+        return r.completed_at == null && r.session_type !== "rest";
+      }) as { id: string; day_name: string | null } | undefined;
       if (!next) return { ok: false, error: "Nenhum treino pendente para pular." };
 
       const { error } = await context.supabase

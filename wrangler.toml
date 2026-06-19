@@ -1,0 +1,13 @@
+name = "pm-hybrid"
+main = ".output/server/index.mjs"
+compatibility_date = "2024-09-23"
+compatibility_flags = ["nodejs_compat"]
+no_bundle = true
+
+[[rules]]
+type = "ESModule"
+globs = ["**/*.mjs", "**/*.js"]
+
+[assets]
+directory = ".output/public"
+binding = "ASSETS"

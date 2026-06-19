@@ -6,13 +6,28 @@ import { supabase } from "@/integrations/supabase/client";
 interface HealthKitPlugin {
   isAvailable(): Promise<{ available: boolean }>;
   requestAuthorization(): Promise<{ granted: boolean }>;
-  readHeartRate(opts: { start: string; end: string }): Promise<{ samples: Array<{ bpm: number; date: string }> }>;
+  readHeartRate(opts: {
+    start: string;
+    end: string;
+  }): Promise<{ samples: Array<{ bpm: number; date: string }> }>;
   readRestingHeartRate(): Promise<{ bpm?: number; date?: string }>;
   readBodyMass(): Promise<{ kg?: number; date?: string }>;
   readWorkouts(opts: { limit?: number }): Promise<{
-    workouts: Array<{ uuid: string; activityType: number; start: string; end: string; durationSec: number; calories: number }>;
+    workouts: Array<{
+      uuid: string;
+      activityType: number;
+      start: string;
+      end: string;
+      durationSec: number;
+      calories: number;
+    }>;
   }>;
-  writeWorkout(opts: { start: string; end: string; activityType?: number; calories?: number }): Promise<{ saved: boolean; uuid: string }>;
+  writeWorkout(opts: {
+    start: string;
+    end: string;
+    activityType?: number;
+    calories?: number;
+  }): Promise<{ saved: boolean; uuid: string }>;
   readDailyMetrics(opts: { days?: number }): Promise<{ metrics: DailyHealthMetric[] }>;
 }
 
@@ -64,10 +79,17 @@ export interface SessionHealthMetrics {
 
 // Lê FC (média/máx/mín) e calorias de um treino do Apple Watch para a janela [start,end].
 // Calorias vêm do HKWorkout do relógio que cruze a janela (se houver).
-export async function readSessionHealth(startIso: string, endIso: string): Promise<SessionHealthMetrics | null> {
+export async function readSessionHealth(
+  startIso: string,
+  endIso: string,
+): Promise<SessionHealthMetrics | null> {
   if (!healthAvailable()) return null;
   const empty: SessionHealthMetrics = {
-    avgHeartRate: null, maxHeartRate: null, minHeartRate: null, calories: null, sampleCount: 0,
+    avgHeartRate: null,
+    maxHeartRate: null,
+    minHeartRate: null,
+    calories: null,
+    sampleCount: 0,
   };
   try {
     const start = new Date(startIso).getTime();
@@ -88,7 +110,9 @@ export async function readSessionHealth(startIso: string, endIso: string): Promi
           sampleCount: bpms.length,
         };
       }
-    } catch { /* sem permissão / sem dados */ }
+    } catch {
+      /* sem permissão / sem dados */
+    }
 
     // Calorias — procura um HKWorkout do relógio que cruze a janela do treino
     let calories: number | null = null;
@@ -101,7 +125,9 @@ export async function readSessionHealth(startIso: string, endIso: string): Promi
       });
       const cal = overlapping.reduce((a, w) => a + (w.calories || 0), 0);
       if (cal > 0) calories = Math.round(cal);
-    } catch { /* sem permissão / sem dados */ }
+    } catch {
+      /* sem permissão / sem dados */
+    }
 
     return { ...hr, calories };
   } catch {
@@ -113,8 +139,8 @@ export async function readSessionHealth(startIso: string, endIso: string): Promi
 // Traz, de quebra, o que o Garmin Connect sincroniza com o Apple Saúde — sem a
 // API do Garmin. Cada dia vira um upsert em daily_health_metrics → recuperação.
 export interface HealthSyncResult {
-  synced: number;        // dias gravados no backend
-  present: string[];     // categorias com dados (ex.: ["steps","sleep_duration_min"])
+  synced: number; // dias gravados no backend
+  present: string[]; // categorias com dados (ex.: ["steps","sleep_duration_min"])
 }
 
 export async function syncDailyHealthMetrics(days = 7): Promise<HealthSyncResult> {

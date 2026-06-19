@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { serverError } from "@/lib/server-errors";
 
 async function ensureAdmin(supabase: any, userId: string) {
   const { data, error } = await supabase
@@ -9,7 +10,7 @@ async function ensureAdmin(supabase: any, userId: string) {
     .eq("user_id", userId)
     .eq("role", "admin")
     .maybeSingle();
-  if (error) throw new Error(error.message);
+  if (error) serverError("Não foi possível concluir a operação. Tente novamente.", error);
   if (!data) throw new Error("Forbidden: admin only");
 }
 
@@ -28,7 +29,7 @@ export interface KnowledgeDoc {
 export const listKnowledgeDocs = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: { search?: string }) =>
-    z.object({ search: z.string().optional() }).parse(input ?? {})
+    z.object({ search: z.string().optional() }).parse(input ?? {}),
   )
   .handler(async ({ data, context }): Promise<KnowledgeDoc[]> => {
     const { supabase, userId } = context;
@@ -42,19 +43,20 @@ export const listKnowledgeDocs = createServerFn({ method: "GET" })
       .limit(100);
     if (data.search) q = q.ilike("title", `%${data.search}%`);
     const { data: rows, error } = await q;
-    if (error) throw new Error(error.message);
+    if (error) serverError("Não foi possível concluir a operação. Tente novamente.", error);
     return (rows ?? []) as KnowledgeDoc[];
   });
 
 export const deleteKnowledgeDoc = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: { id: string }) =>
-    z.object({ id: z.string().uuid() }).parse(input)
-  )
+  .inputValidator((input: { id: string }) => z.object({ id: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
     await ensureAdmin(supabase, userId);
-    const { error } = await (supabase as any).from("knowledge_documents").delete().eq("id", data.id);
-    if (error) throw new Error(error.message);
+    const { error } = await (supabase as any)
+      .from("knowledge_documents")
+      .delete()
+      .eq("id", data.id);
+    if (error) serverError("Não foi possível concluir a operação. Tente novamente.", error);
     return { ok: true };
   });

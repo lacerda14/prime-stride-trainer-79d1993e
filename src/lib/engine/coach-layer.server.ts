@@ -68,8 +68,7 @@ const PACKS: Record<string, CoachMethodologyPack> = {
     rpeBias: 0.5,
     preferStraightSets: true, // mains pesados em séries retas, sem superset
     mainsTopN: 2,
-    mainNoteTemplate:
-      "Alex: carga pesada, técnica impecável e descanso completo entre as séries.",
+    mainNoteTemplate: "Alex: carga pesada, técnica impecável e descanso completo entre as séries.",
     knowledgeTags: ["forca", "hipertrofia", "powerlifting", "periodizacao", "musculacao"],
     methodologySummary:
       "Força e hipertrofia via compostos pesados, séries retas, progressão de carga e periodização linear/ondulatória. Prioriza intensidade e recuperação completa sobre densidade.",

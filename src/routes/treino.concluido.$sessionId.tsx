@@ -20,7 +20,12 @@ import {
 import { getCompletedSession, saveWorkoutLogs, type SetLogDTO } from "@/lib/workout-logs.functions";
 import { getWeekDetail } from "@/lib/program.queries";
 import { estimateCalories } from "@/lib/calories";
-import { healthAvailable, requestHealthAuth, readSessionHealth, type SessionHealthMetrics } from "@/lib/healthkit";
+import {
+  healthAvailable,
+  requestHealthAuth,
+  readSessionHealth,
+  type SessionHealthMetrics,
+} from "@/lib/healthkit";
 import { Heart, HeartPulse } from "lucide-react";
 import { toast } from "sonner";
 
@@ -63,12 +68,6 @@ function formatHMS(totalSeconds: number): string {
   return `${m}:${sec.toString().padStart(2, "0")}`;
 }
 
-function formatClock(iso: string | null): string {
-  if (!iso) return "—";
-  const d = new Date(iso);
-  return d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
-}
-
 interface SetRow {
   exercise_index: number;
   exercise_name: string;
@@ -80,7 +79,6 @@ interface SetRow {
   actual_rpe: string;
   notes: string;
 }
-
 
 // ============================================================
 // Página
@@ -96,7 +94,11 @@ function ConcluidoPage() {
   // Volta pra home do app. Limpa pointer-events antes (caso algum modal Radix
   // tenha deixado o body travado) e, se a navegação SPA não acontecer, força hard.
   const goHome = useCallback(() => {
-    try { document.body.style.removeProperty("pointer-events"); } catch { /* noop */ }
+    try {
+      document.body.style.removeProperty("pointer-events");
+    } catch {
+      /* noop */
+    }
     navigate({ to: "/" });
     setTimeout(() => {
       if (typeof window !== "undefined" && window.location.pathname.startsWith("/treino")) {
@@ -140,13 +142,27 @@ function ConcluidoPage() {
   const [runEffort, setRunEffort] = useState("");
   const [runNotes, setRunNotes] = useState("");
   const [generalEffort, setGeneralEffort] = useState("");
-  const [sessionFeedback, setSessionFeedback] = useState<"" | "muito_leve" | "leve" | "ideal" | "pesado" | "muito_pesado">("");
-  const [durationFeedback, setDurationFeedback] = useState<"" | "too_short" | "ok" | "too_long">("");
+  const [sessionFeedback, setSessionFeedback] = useState<
+    "" | "muito_leve" | "leve" | "ideal" | "pesado" | "muito_pesado"
+  >("");
+  const [durationFeedback, setDurationFeedback] = useState<"" | "too_short" | "ok" | "too_long">(
+    "",
+  );
   const [generalNotes, setGeneralNotes] = useState("");
   const [saving, setSaving] = useState(false);
   const [savedOnce, setSavedOnce] = useState(false);
-  const [newPRs, setNewPRs] = useState<Array<{ label: string; value: number; estimated_1rm: number | null; improvement_pct: number | null }>>([]);
-  const [readiness, setReadiness] = useState<{ score: number; decision: { message: string } } | null>(null);
+  const [newPRs, setNewPRs] = useState<
+    Array<{
+      label: string;
+      value: number;
+      estimated_1rm: number | null;
+      improvement_pct: number | null;
+    }>
+  >([]);
+  const [readiness, setReadiness] = useState<{
+    score: number;
+    decision: { message: string };
+  } | null>(null);
   const [notesOpen, setNotesOpen] = useState(false);
   const [setsOpen, setSetsOpen] = useState(false);
   const [repeatOpen, setRepeatOpen] = useState(false);
@@ -184,7 +200,9 @@ function ConcluidoPage() {
     // running log preencher
     const r = completedQ.data.running_log;
     if (r) {
-      setRunDuration(r.total_duration_seconds ? String(Math.round(r.total_duration_seconds / 60)) : "");
+      setRunDuration(
+        r.total_duration_seconds ? String(Math.round(r.total_duration_seconds / 60)) : "",
+      );
       setRunDistance(r.distance_km != null ? String(r.distance_km) : "");
       setRunAvgSpeed(r.average_speed_kmh != null ? String(r.average_speed_kmh) : "");
       setRunMaxSpeed(r.max_speed_kmh != null ? String(r.max_speed_kmh) : "");
@@ -194,11 +212,21 @@ function ConcluidoPage() {
     const sum = completedQ.data.session.completed_summary ?? null;
     if (sum?.perceived_effort != null) setGeneralEffort(String(sum.perceived_effort));
     if (sum?.general_notes) setGeneralNotes(sum.general_notes);
-    if (sum?.duration_feedback === "too_short" || sum?.duration_feedback === "ok" || sum?.duration_feedback === "too_long") {
+    if (
+      sum?.duration_feedback === "too_short" ||
+      sum?.duration_feedback === "ok" ||
+      sum?.duration_feedback === "too_long"
+    ) {
       setDurationFeedback(sum.duration_feedback);
     }
     const sf = (sum as { session_feedback?: string } | null)?.session_feedback;
-    if (sf === "muito_leve" || sf === "leve" || sf === "ideal" || sf === "pesado" || sf === "muito_pesado") {
+    if (
+      sf === "muito_leve" ||
+      sf === "leve" ||
+      sf === "ideal" ||
+      sf === "pesado" ||
+      sf === "muito_pesado"
+    ) {
       setSessionFeedback(sf);
     }
   }, [planned, completedQ.data]);
@@ -222,7 +250,15 @@ function ConcluidoPage() {
       avg_speed_kmh: avgSpeed,
       running_seconds: runSec,
     });
-  }, [completedQ.data, planned?.running, runDuration, runAvgSpeed, runEffort, generalEffort, setRows.length]);
+  }, [
+    completedQ.data,
+    planned?.running,
+    runDuration,
+    runAvgSpeed,
+    runEffort,
+    generalEffort,
+    setRows.length,
+  ]);
 
   // Apple Watch / HealthKit: puxa FC (média/máx) e calorias reais da janela do treino.
   useEffect(() => {
@@ -239,7 +275,9 @@ function ConcluidoPage() {
       const m = await readSessionHealth(startIso, endIso);
       if (!cancel && m) setHealth(m);
     })();
-    return () => { cancel = true; };
+    return () => {
+      cancel = true;
+    };
   }, [completedQ.data]);
 
   // ----------------------------------------------------------
@@ -250,7 +288,13 @@ function ConcluidoPage() {
     setSaving(true);
     try {
       const payloadSets = setRows
-        .filter((r) => r.actual_reps !== "" || r.actual_load_kg !== "" || r.actual_rpe !== "" || r.notes !== "")
+        .filter(
+          (r) =>
+            r.actual_reps !== "" ||
+            r.actual_load_kg !== "" ||
+            r.actual_rpe !== "" ||
+            r.notes !== "",
+        )
         .map((r) => ({
           exercise_index: r.exercise_index,
           exercise_name: r.exercise_name,
@@ -287,9 +331,20 @@ function ConcluidoPage() {
         },
       });
       setSavedOnce(true);
-      const prs = (res as { newPRs?: Array<{ label: string; value: number; estimated_1rm: number | null; improvement_pct: number | null }> })?.newPRs ?? [];
+      const prs =
+        (
+          res as {
+            newPRs?: Array<{
+              label: string;
+              value: number;
+              estimated_1rm: number | null;
+              improvement_pct: number | null;
+            }>;
+          }
+        )?.newPRs ?? [];
       setNewPRs(prs);
-      const r = (res as { readiness?: { score: number; decision: { message: string } } | null })?.readiness;
+      const r = (res as { readiness?: { score: number; decision: { message: string } } | null })
+        ?.readiness;
       if (r) setReadiness(r);
       if (prs.length > 0) {
         toast.success(`🏆 ${prs.length} novo${prs.length > 1 ? "s" : ""} PR!`);
@@ -353,7 +408,6 @@ function ConcluidoPage() {
   }
 
   const sess = completedQ.data.session;
-  const prof = completedQ.data.profile;
   const completedSets = setRows.length;
 
   // Volume total calculado dos logs
@@ -368,7 +422,11 @@ function ConcluidoPage() {
     const map = new Map<string, { name: string; sets: SetRow[]; plannedReps: string | null }>();
     for (const row of setRows) {
       if (!map.has(row.exercise_name)) {
-        map.set(row.exercise_name, { name: row.exercise_name, sets: [], plannedReps: row.planned_reps });
+        map.set(row.exercise_name, {
+          name: row.exercise_name,
+          sets: [],
+          plannedReps: row.planned_reps,
+        });
       }
       map.get(row.exercise_name)!.sets.push(row);
     }
@@ -381,7 +439,6 @@ function ConcluidoPage() {
   return (
     <div className="min-h-screen bg-background pb-40 safe-pad">
       <div className="mx-auto w-full max-w-[480px] px-4 pt-10">
-
         {/* ── 1. Header de celebração ── */}
         <div className="flex flex-col items-center text-center animate-fade-in">
           {/* Ícone com glow */}
@@ -396,9 +453,7 @@ function ConcluidoPage() {
           </h1>
           <p className="mt-1.5 text-sm text-muted-foreground">
             {sess.day_key}
-            {sess.week_number != null && (
-              <> · Semana {String(sess.week_number).padStart(2, "0")}</>
-            )}
+            {sess.week_number != null && <> · Semana {String(sess.week_number).padStart(2, "0")}</>}
           </p>
         </div>
 
@@ -408,12 +463,17 @@ function ConcluidoPage() {
             <div className="flex items-center gap-2">
               <Trophy className="h-5 w-5 text-primary" />
               <div className="text-[13px] font-semibold tracking-tight">
-                {newPRs.length === 1 ? "Novo Personal Record!" : `${newPRs.length} novos Personal Records!`}
+                {newPRs.length === 1
+                  ? "Novo Personal Record!"
+                  : `${newPRs.length} novos Personal Records!`}
               </div>
             </div>
             <div className="mt-3 space-y-1.5">
               {newPRs.map((pr, i) => (
-                <div key={`${pr.label}-${i}`} className="flex items-center justify-between text-[13px]">
+                <div
+                  key={`${pr.label}-${i}`}
+                  className="flex items-center justify-between text-[13px]"
+                >
                   <span className="text-foreground">{pr.label}</span>
                   <span className="num font-semibold text-primary">
                     {pr.estimated_1rm ? `${pr.value}kg · 1RM ~${pr.estimated_1rm}` : pr.value}
@@ -496,13 +556,15 @@ function ConcluidoPage() {
             </span>
           </div>
           <div className="grid grid-cols-5 gap-1.5">
-            {([
-              { value: "muito_leve",   emoji: "😴", label: "Muito leve",   effort: 2 },
-              { value: "leve",         emoji: "😌", label: "Leve",         effort: 4 },
-              { value: "ideal",        emoji: "🙂", label: "Ideal",        effort: 6 },
-              { value: "pesado",       emoji: "😤", label: "Pesado",       effort: 8 },
-              { value: "muito_pesado", emoji: "💀", label: "Muito pesado", effort: 10 },
-            ] as const).map((opt) => {
+            {(
+              [
+                { value: "muito_leve", emoji: "😴", label: "Muito leve", effort: 2 },
+                { value: "leve", emoji: "😌", label: "Leve", effort: 4 },
+                { value: "ideal", emoji: "🙂", label: "Ideal", effort: 6 },
+                { value: "pesado", emoji: "😤", label: "Pesado", effort: 8 },
+                { value: "muito_pesado", emoji: "💀", label: "Muito pesado", effort: 10 },
+              ] as const
+            ).map((opt) => {
               const selected = sessionFeedback === opt.value;
               return (
                 <button
@@ -549,16 +611,17 @@ function ConcluidoPage() {
           )}
         </div>
 
-
         {/* ── 3b. Avaliação da duração ── */}
         <div className="mt-5 animate-slide-up" style={{ animationDelay: "100ms" }}>
           <h2 className="mb-3 text-sm font-semibold text-foreground">E a duração?</h2>
           <div className="grid grid-cols-3 gap-2">
-            {([
-              { value: "too_short", label: "Curto demais", emoji: "⏱️" },
-              { value: "ok",         label: "Na medida",   emoji: "✅" },
-              { value: "too_long",   label: "Longo demais", emoji: "🥵" },
-            ] as const).map((opt) => {
+            {(
+              [
+                { value: "too_short", label: "Curto demais", emoji: "⏱️" },
+                { value: "ok", label: "Na medida", emoji: "✅" },
+                { value: "too_long", label: "Longo demais", emoji: "🥵" },
+              ] as const
+            ).map((opt) => {
               const selected = durationFeedback === opt.value;
               return (
                 <button
@@ -608,9 +671,7 @@ function ConcluidoPage() {
                     className="flex items-center justify-between rounded-xl border border-border/40 bg-surface/40 px-4 py-3"
                   >
                     <div className="min-w-0 flex-1">
-                      <div className="truncate text-sm font-medium text-foreground">
-                        {ex.name}
-                      </div>
+                      <div className="truncate text-sm font-medium text-foreground">{ex.name}</div>
                       <div className="mt-0.5 text-xs text-muted-foreground">
                         {totalSets} série{totalSets !== 1 ? "s" : ""}
                         {plannedReps ? ` × ${plannedReps}` : ""}
@@ -618,9 +679,7 @@ function ConcluidoPage() {
                     </div>
                     {bestLoad !== null && (
                       <div className="num ml-3 shrink-0 text-right">
-                        <div className="text-sm font-semibold text-primary">
-                          {bestLoad}kg
-                        </div>
+                        <div className="text-sm font-semibold text-primary">{bestLoad}kg</div>
                         <div className="text-[10px] text-muted-foreground">melhor</div>
                       </div>
                     )}
@@ -633,14 +692,21 @@ function ConcluidoPage() {
 
         {/* ── 5. Corrida (se houver) ── */}
         {planned?.running && (
-          <Section
-            title="Dados da corrida"
-            defaultOpen
-            icon={<Footprints className="h-4 w-4" />}
-          >
+          <Section title="Dados da corrida" defaultOpen icon={<Footprints className="h-4 w-4" />}>
             <div className="grid grid-cols-2 gap-3">
-              <Field label="Duração total (min)" value={runDuration} onChange={setRunDuration} type="number" />
-              <Field label="Distância (km)" value={runDistance} onChange={setRunDistance} type="number" step="0.1" />
+              <Field
+                label="Duração total (min)"
+                value={runDuration}
+                onChange={setRunDuration}
+                type="number"
+              />
+              <Field
+                label="Distância (km)"
+                value={runDistance}
+                onChange={setRunDistance}
+                type="number"
+                step="0.1"
+              />
               <Field
                 label="Vel. média (km/h)"
                 value={runAvgSpeed}
@@ -752,9 +818,7 @@ function ConcluidoPage() {
             {savedOnce ? "Salvar alterações" : "Salvar treino"}
           </button>
 
-          {savedOnce && (
-            <p className="text-center text-xs text-primary">Treino salvo</p>
-          )}
+          {savedOnce && <p className="text-center text-xs text-primary">Treino salvo</p>}
 
           <div className="grid grid-cols-2 gap-3">
             <button
@@ -773,9 +837,7 @@ function ConcluidoPage() {
 
           <AlertDialog open={repeatOpen} onOpenChange={setRepeatOpen}>
             <AlertDialogTrigger asChild>
-              <button
-                className="w-full rounded-full border border-border/30 bg-transparent py-2.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground active:opacity-70"
-              >
+              <button className="w-full rounded-full border border-border/30 bg-transparent py-2.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground active:opacity-70">
                 Repetir treino hoje
               </button>
             </AlertDialogTrigger>
@@ -800,10 +862,18 @@ function ConcluidoPage() {
                     // Evita o bug do Radix que deixa pointer-events:none no body
                     // (congela o app) quando navegamos durante o fechamento do diálogo.
                     e.preventDefault();
-                    try { sessionStorage.setItem("pm-force-repeat", "1"); } catch { /* noop */ }
+                    try {
+                      sessionStorage.setItem("pm-force-repeat", "1");
+                    } catch {
+                      /* noop */
+                    }
                     setRepeatOpen(false);
                     setTimeout(() => {
-                      try { document.body.style.pointerEvents = ""; } catch { /* noop */ }
+                      try {
+                        document.body.style.pointerEvents = "";
+                      } catch {
+                        /* noop */
+                      }
                       navigate({ to: "/treino" });
                     }, 50);
                   }}
@@ -814,7 +884,6 @@ function ConcluidoPage() {
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
-
         </div>
       </div>
     </div>
@@ -825,15 +894,7 @@ function ConcluidoPage() {
 // Componentes auxiliares
 // ============================================================
 
-function StatCard({
-  icon,
-  label,
-  value,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  value: string;
-}) {
+function StatCard({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
   return (
     <div className="flex items-start gap-3 rounded-2xl border border-border/50 bg-surface/40 px-4 py-4">
       <div className="mt-0.5 text-muted-foreground">{icon}</div>
@@ -880,18 +941,6 @@ function Section({
   );
 }
 
-function Stat({ label, value, icon }: { label: string; value: string; icon?: React.ReactNode }) {
-  return (
-    <div className="rounded-xl border border-border/50 bg-background/40 p-3">
-      <div className="flex items-center gap-1 text-[10px] uppercase tracking-wide text-muted-foreground">
-        {icon}
-        {label}
-      </div>
-      <div className="mt-1 text-base font-semibold text-foreground">{value}</div>
-    </div>
-  );
-}
-
 function Label({ children, className }: { children: React.ReactNode; className?: string }) {
   return (
     <div className={`text-[11px] uppercase tracking-wide text-muted-foreground ${className ?? ""}`}>
@@ -934,13 +983,7 @@ function Field({
   );
 }
 
-function SetLogList({
-  rows,
-  onChange,
-}: {
-  rows: SetRow[];
-  onChange: (next: SetRow[]) => void;
-}) {
+function SetLogList({ rows, onChange }: { rows: SetRow[]; onChange: (next: SetRow[]) => void }) {
   const grouped = useMemo(() => {
     const map = new Map<number, SetRow[]>();
     for (const r of rows) {
@@ -965,7 +1008,8 @@ function SetLogList({
         <div key={idx} className="rounded-xl border border-border/40 bg-background/40 p-3">
           <div className="text-sm font-semibold text-foreground">{sets[0]?.exercise_name}</div>
           <div className="text-[11px] text-muted-foreground">
-            Programado: {sets[0]?.planned_reps ?? "—"} reps · {sets.length} série{sets.length !== 1 ? "s" : ""}
+            Programado: {sets[0]?.planned_reps ?? "—"} reps · {sets.length} série
+            {sets.length !== 1 ? "s" : ""}
           </div>
           <div className="mt-3 flex flex-col gap-2">
             {sets.map((s) => (
@@ -978,7 +1022,9 @@ function SetLogList({
                   inputMode="decimal"
                   placeholder="Carga kg"
                   value={s.actual_load_kg}
-                  onChange={(e) => patch(s.exercise_index, s.set_number, "actual_load_kg", e.target.value)}
+                  onChange={(e) =>
+                    patch(s.exercise_index, s.set_number, "actual_load_kg", e.target.value)
+                  }
                   className="w-full rounded-lg border border-border bg-surface/60 px-2 py-2 text-sm text-foreground outline-none focus:border-primary"
                 />
                 <input
@@ -986,7 +1032,9 @@ function SetLogList({
                   inputMode="numeric"
                   placeholder="Reps"
                   value={s.actual_reps}
-                  onChange={(e) => patch(s.exercise_index, s.set_number, "actual_reps", e.target.value)}
+                  onChange={(e) =>
+                    patch(s.exercise_index, s.set_number, "actual_reps", e.target.value)
+                  }
                   className="w-full rounded-lg border border-border bg-surface/60 px-2 py-2 text-sm text-foreground outline-none focus:border-primary"
                 />
                 <input
@@ -996,7 +1044,9 @@ function SetLogList({
                   min={0}
                   max={10}
                   value={s.actual_rpe}
-                  onChange={(e) => patch(s.exercise_index, s.set_number, "actual_rpe", e.target.value)}
+                  onChange={(e) =>
+                    patch(s.exercise_index, s.set_number, "actual_rpe", e.target.value)
+                  }
                   className="w-full rounded-lg border border-border bg-surface/60 px-2 py-2 text-sm text-foreground outline-none focus:border-primary"
                 />
               </div>

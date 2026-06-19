@@ -13,10 +13,7 @@
 // ============================================================
 
 import { useSyncExternalStore } from "react";
-import {
-  updateWorkoutSessionState,
-  completeWorkoutSession,
-} from "@/lib/workout-session.functions";
+import { updateWorkoutSessionState, completeWorkoutSession } from "@/lib/workout-session.functions";
 
 type SaveStatePayload = {
   session_id: string;
@@ -75,11 +72,7 @@ function enqueue(op: Omit<QueuedOp, "id" | "ts">) {
   if (op.kind === "saveState") {
     // dedupe: só guarda o último snapshot por session_id
     const filtered = ops.filter(
-      (o) =>
-        !(
-          o.kind === "saveState" &&
-          o.payload.session_id === op.payload.session_id
-        ),
+      (o) => !(o.kind === "saveState" && o.payload.session_id === op.payload.session_id),
     );
     filtered.push({ ...op, id: newId(), ts: Date.now() } as QueuedOp);
     writeQueue(filtered);
@@ -199,9 +192,7 @@ export async function syncSaveState(payload: SaveStatePayload): Promise<void> {
  * Conclui a sessão. Se offline ou falhar, enfileira e retorna `{ queued: true }`.
  * Quando online e sucesso, retorna `{ queued: false }`.
  */
-export async function syncComplete(
-  payload: CompletePayload,
-): Promise<{ queued: boolean }> {
+export async function syncComplete(payload: CompletePayload): Promise<{ queued: boolean }> {
   if (getOnline()) {
     try {
       await completeWorkoutSession({ data: payload });

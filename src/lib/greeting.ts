@@ -3,16 +3,54 @@
 // com listas pequenas de exceções para nomes comuns no Brasil.
 
 const FEMALE_EXCEPTIONS = new Set([
-  "isis", "beatris", "ines", "carmen", "miriam", "miriã", "raquel", "ester",
-  "esther", "abigail", "rute", "ruth", "soledad", "iris", "noemi", "noemí",
-  "doris", "lis", "liz", "mercedes", "lourdes",
+  "isis",
+  "beatris",
+  "ines",
+  "carmen",
+  "miriam",
+  "miriã",
+  "raquel",
+  "ester",
+  "esther",
+  "abigail",
+  "rute",
+  "ruth",
+  "soledad",
+  "iris",
+  "noemi",
+  "noemí",
+  "doris",
+  "lis",
+  "liz",
+  "mercedes",
+  "lourdes",
 ]);
 
 const MALE_EXCEPTIONS = new Set([
-  "luca", "joshua", "elias", "tobias", "matias", "matheus", "mateus",
-  "andre", "andré", "jose", "josé", "jonas", "lucas", "thomas", "tomas",
-  "nicolas", "nicholas", "barnaba", "akira", "yoshi", "kenta",
-  "dida", "neca", "guida",
+  "luca",
+  "joshua",
+  "elias",
+  "tobias",
+  "matias",
+  "matheus",
+  "mateus",
+  "andre",
+  "andré",
+  "jose",
+  "josé",
+  "jonas",
+  "lucas",
+  "thomas",
+  "tomas",
+  "nicolas",
+  "nicholas",
+  "barnaba",
+  "akira",
+  "yoshi",
+  "kenta",
+  "dida",
+  "neca",
+  "guida",
 ]);
 
 export type Gender = "f" | "m" | "n";
@@ -33,7 +71,16 @@ export function inferGender(rawName: string | null | undefined): Gender {
 
   const last = first.slice(-1);
   if (last === "a") return "f";
-  if (last === "o" || last === "r" || last === "l" || last === "n" || last === "s" || last === "z" || last === "m") return "m";
+  if (
+    last === "o" ||
+    last === "r" ||
+    last === "l" ||
+    last === "n" ||
+    last === "s" ||
+    last === "z" ||
+    last === "m"
+  )
+    return "m";
   if (last === "e" || last === "i" || last === "u" || last === "y") return "m";
   return "n";
 }

@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { runPRDetectionForSession, type PRDetectedItem } from "./pr-detection.server";
+import { serverError } from "@/lib/server-errors";
 
 // ============================================================
 // Tipos
@@ -43,7 +44,12 @@ export interface CompletedSessionDTO {
     finished_at: string | null;
     duration_seconds: number | null;
     estimated_calories: number | null;
-    completed_summary: { perceived_effort?: number | null; general_notes?: string | null; duration_feedback?: string | null; saved_at?: string | null } | null;
+    completed_summary: {
+      perceived_effort?: number | null;
+      general_notes?: string | null;
+      duration_feedback?: string | null;
+      saved_at?: string | null;
+    } | null;
   };
   set_logs: SetLogDTO[];
   running_log: RunningLogDTO | null;
@@ -62,9 +68,7 @@ export interface CompletedSessionDTO {
 
 export const getCompletedSession = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input) =>
-    z.object({ session_id: z.string().uuid() }).parse(input),
-  )
+  .inputValidator((input) => z.object({ session_id: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }): Promise<CompletedSessionDTO> => {
     const { supabase, userId } = context;
 
@@ -76,17 +80,22 @@ export const getCompletedSession = createServerFn({ method: "GET" })
       .eq("id", data.session_id)
       .eq("user_id", userId)
       .single();
-    if (sErr) throw new Error(sErr.message);
+    if (sErr) serverError("Não foi possível concluir a operação. Tente novamente.", sErr);
 
-    const { data: setRows } = await (supabase as unknown as {
-      from: (t: string) => {
-        select: (s: string) => {
-          eq: (c: string, v: string) => {
-            order: (c: string, o: { ascending: boolean }) => Promise<{ data: unknown[] | null }>;
+    const { data: setRows } = await (
+      supabase as unknown as {
+        from: (t: string) => {
+          select: (s: string) => {
+            eq: (
+              c: string,
+              v: string,
+            ) => {
+              order: (c: string, o: { ascending: boolean }) => Promise<{ data: unknown[] | null }>;
+            };
           };
         };
-      };
-    })
+      }
+    )
       .from("workout_set_logs")
       .select(
         "id, exercise_index, exercise_name, set_number, planned_reps, actual_reps, planned_load_kg, actual_load_kg, planned_rpe, actual_rpe, notes",
@@ -96,15 +105,20 @@ export const getCompletedSession = createServerFn({ method: "GET" })
 
     const setRowsArr = (setRows ?? []) as unknown as SetLogDTO[];
 
-    const { data: runRow } = await (supabase as unknown as {
-      from: (t: string) => {
-        select: (s: string) => {
-          eq: (c: string, v: string) => {
-            maybeSingle: () => Promise<{ data: unknown | null }>;
+    const { data: runRow } = await (
+      supabase as unknown as {
+        from: (t: string) => {
+          select: (s: string) => {
+            eq: (
+              c: string,
+              v: string,
+            ) => {
+              maybeSingle: () => Promise<{ data: unknown | null }>;
+            };
           };
         };
-      };
-    })
+      }
+    )
       .from("running_session_logs")
       .select(
         "id, total_duration_seconds, total_running_seconds, total_rest_seconds, distance_km, average_speed_kmh, max_speed_kmh, perceived_effort, notes",
@@ -121,7 +135,7 @@ export const getCompletedSession = createServerFn({ method: "GET" })
     const durationSec =
       (sess as { duration_seconds?: number | null }).duration_seconds ??
       ((sess as { duration_min?: number | null }).duration_min
-        ? ((sess as { duration_min: number }).duration_min) * 60
+        ? (sess as { duration_min: number }).duration_min * 60
         : null);
 
     return {
@@ -133,8 +147,11 @@ export const getCompletedSession = createServerFn({ method: "GET" })
         started_at: sess.started_at,
         finished_at: sess.finished_at,
         duration_seconds: durationSec,
-        estimated_calories: (sess as { estimated_calories?: number | null }).estimated_calories ?? null,
-        completed_summary: ((sess as { completed_summary?: CompletedSessionDTO["session"]["completed_summary"] }).completed_summary ?? null),
+        estimated_calories:
+          (sess as { estimated_calories?: number | null }).estimated_calories ?? null,
+        completed_summary:
+          (sess as { completed_summary?: CompletedSessionDTO["session"]["completed_summary"] })
+            .completed_summary ?? null,
       },
       set_logs: setRowsArr,
       running_log: (runRow ?? null) as RunningLogDTO | null,
@@ -227,14 +244,19 @@ export const saveWorkoutLogs = createServerFn({ method: "POST" })
         notes: s.notes ?? null,
         set_status: s.set_status ?? "completed",
       }));
-      const { error: uErr } = await (supabase as unknown as {
-        from: (t: string) => {
-          upsert: (rows: unknown[], opts: { onConflict: string }) => Promise<{ error: { message: string } | null }>;
-        };
-      })
+      const { error: uErr } = await (
+        supabase as unknown as {
+          from: (t: string) => {
+            upsert: (
+              rows: unknown[],
+              opts: { onConflict: string },
+            ) => Promise<{ error: { message: string } | null }>;
+          };
+        }
+      )
         .from("workout_set_logs")
         .upsert(rows, { onConflict: "workout_session_id,exercise_index,set_number" });
-      if (uErr) throw new Error(uErr.message);
+      if (uErr) serverError("Não foi possível concluir a operação. Tente novamente.", uErr);
     }
 
     // running log: upsert único por sessão
@@ -251,14 +273,19 @@ export const saveWorkoutLogs = createServerFn({ method: "POST" })
         perceived_effort: data.running_log.perceived_effort ?? null,
         notes: data.running_log.notes ?? null,
       };
-      const { error: rErr } = await (supabase as unknown as {
-        from: (t: string) => {
-          upsert: (row: unknown, opts: { onConflict: string }) => Promise<{ error: { message: string } | null }>;
-        };
-      })
+      const { error: rErr } = await (
+        supabase as unknown as {
+          from: (t: string) => {
+            upsert: (
+              row: unknown,
+              opts: { onConflict: string },
+            ) => Promise<{ error: { message: string } | null }>;
+          };
+        }
+      )
         .from("running_session_logs")
         .upsert(runRow, { onConflict: "workout_session_id" });
-      if (rErr) throw new Error(rErr.message);
+      if (rErr) serverError("Não foi possível concluir a operação. Tente novamente.", rErr);
     }
 
     // calorias + resumo + nota geral na sessão
@@ -278,7 +305,7 @@ export const saveWorkoutLogs = createServerFn({ method: "POST" })
       } as never)
       .eq("id", data.session_id)
       .eq("user_id", userId);
-    if (upErr) throw new Error(upErr.message);
+    if (upErr) serverError("Não foi possível concluir a operação. Tente novamente.", upErr);
 
     // Detecta PRs após salvar logs (idempotente)
     let newPRs: PRDetectedItem[] = [];
@@ -290,12 +317,16 @@ export const saveWorkoutLogs = createServerFn({ method: "POST" })
     }
 
     // Calcula Readiness Score (não quebra o save em caso de erro)
-    let readiness: Awaited<ReturnType<typeof import("./engine/autoregulation.server").computeReadiness>> | null = null;
+    let readiness: Awaited<
+      ReturnType<typeof import("./engine/autoregulation.server").computeReadiness>
+    > | null = null;
     try {
       const { computeReadiness } = await import("./engine/autoregulation.server");
       const { data: setRowsRaw } = await supabase
         .from("workout_set_logs")
-        .select("planned_reps, actual_reps, planned_load_kg, actual_load_kg, set_status, created_at")
+        .select(
+          "planned_reps, actual_reps, planned_load_kg, actual_load_kg, set_status, created_at",
+        )
         .eq("workout_session_id", data.session_id);
 
       const sinceIso = new Date(Date.now() - 28 * 24 * 60 * 60 * 1000).toISOString();
@@ -313,7 +344,9 @@ export const saveWorkoutLogs = createServerFn({ method: "POST" })
           .from("workout_set_logs")
           .select("planned_reps, actual_reps, planned_load_kg, actual_load_kg, set_status")
           .eq("workout_session_id", h.id);
-        const sm = (h.completed_summary ?? {}) as { session_feedback?: import("./engine/autoregulation.server").SessionFeedback | null };
+        const sm = (h.completed_summary ?? {}) as {
+          session_feedback?: import("./engine/autoregulation.server").SessionFeedback | null;
+        };
         historyArr.push({
           id: h.id,
           created_at: h.created_at,
@@ -377,9 +410,7 @@ function roundLoad(kg: number): number {
 
 export const getLastWeightsForExercises = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input) =>
-    z.object({ exercise_ids: z.array(z.string().uuid()) }).parse(input),
-  )
+  .inputValidator((input) => z.object({ exercise_ids: z.array(z.string().uuid()) }).parse(input))
   .handler(async ({ data, context }): Promise<Record<string, number | null>> => {
     const { supabase, userId } = context;
     if (data.exercise_ids.length === 0) return {};

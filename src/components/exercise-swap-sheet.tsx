@@ -13,7 +13,14 @@ interface Props {
   onSelect: (swap: SwapSuggestion) => void;
 }
 
-export function ExerciseSwapSheet({ open, exerciseId, exerciseName, excludeIds = [], onClose, onSelect }: Props) {
+export function ExerciseSwapSheet({
+  open,
+  exerciseId,
+  exerciseName,
+  excludeIds = [],
+  onClose,
+  onSelect,
+}: Props) {
   const fetchSwaps = useServerFn(suggestExerciseSwaps);
   const q = useQuery({
     queryKey: ["exercise-swaps", exerciseId],

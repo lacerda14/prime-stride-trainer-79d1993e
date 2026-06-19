@@ -7,10 +7,30 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instantiate createClient with right options
-  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
-  __InternalSupabase: {
-    PostgrestVersion: "14.5"
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
   }
   public: {
     Tables: {
@@ -49,6 +69,7 @@ export type Database = {
           avatar_url: string | null
           created_at: string
           description: string | null
+          domain_slug: string | null
           emoji: string | null
           fallback_model: string
           id: string
@@ -67,6 +88,7 @@ export type Database = {
           avatar_url?: string | null
           created_at?: string
           description?: string | null
+          domain_slug?: string | null
           emoji?: string | null
           fallback_model?: string
           id?: string
@@ -85,6 +107,7 @@ export type Database = {
           avatar_url?: string | null
           created_at?: string
           description?: string | null
+          domain_slug?: string | null
           emoji?: string | null
           fallback_model?: string
           id?: string
@@ -98,6 +121,87 @@ export type Database = {
           specialty?: string
           system_prompt?: string | null
           tone?: string
+        }
+        Relationships: []
+      }
+      analytics_events: {
+        Row: {
+          event_name: string
+          id: string
+          occurred_at: string
+          plan_at_event: string | null
+          properties: Json
+          user_id: string | null
+        }
+        Insert: {
+          event_name: string
+          id?: string
+          occurred_at?: string
+          plan_at_event?: string | null
+          properties?: Json
+          user_id?: string | null
+        }
+        Update: {
+          event_name?: string
+          id?: string
+          occurred_at?: string
+          plan_at_event?: string | null
+          properties?: Json
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      billing_product_map: {
+        Row: {
+          billing_period: string | null
+          created_at: string
+          is_active: boolean
+          is_founder: boolean
+          plan: string
+          product_id: string
+          provider: string
+        }
+        Insert: {
+          billing_period?: string | null
+          created_at?: string
+          is_active?: boolean
+          is_founder?: boolean
+          plan: string
+          product_id: string
+          provider: string
+        }
+        Update: {
+          billing_period?: string | null
+          created_at?: string
+          is_active?: boolean
+          is_founder?: boolean
+          plan?: string
+          product_id?: string
+          provider?: string
+        }
+        Relationships: []
+      }
+      billing_webhook_events: {
+        Row: {
+          event_id: string
+          notification_type: string | null
+          processed_at: string
+          provider: string
+          user_id: string | null
+        }
+        Insert: {
+          event_id: string
+          notification_type?: string | null
+          processed_at?: string
+          provider: string
+          user_id?: string | null
+        }
+        Update: {
+          event_id?: string
+          notification_type?: string | null
+          processed_at?: string
+          provider?: string
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -134,6 +238,36 @@ export type Database = {
           starts_at?: string
           target_value?: number
           title?: string
+        }
+        Relationships: []
+      }
+      coach_domains: {
+        Row: {
+          avatar_url: string | null
+          internal_coach_persona: string | null
+          is_active: boolean
+          name: string
+          outcome_copy: string
+          slug: string
+          sort_order: number
+        }
+        Insert: {
+          avatar_url?: string | null
+          internal_coach_persona?: string | null
+          is_active?: boolean
+          name: string
+          outcome_copy: string
+          slug: string
+          sort_order?: number
+        }
+        Update: {
+          avatar_url?: string | null
+          internal_coach_persona?: string | null
+          is_active?: boolean
+          name?: string
+          outcome_copy?: string
+          slug?: string
+          sort_order?: number
         }
         Relationships: []
       }
@@ -183,63 +317,87 @@ export type Database = {
       }
       daily_health_metrics: {
         Row: {
-          active_calories: number | null
+          active_energy_kcal: number | null
+          avg_hr_day: number | null
+          body_weight_kg: number | null
           created_at: string
           date: string
-          deep_sleep_min: number | null
-          hrv_ms: number | null
+          exercise_minutes: number | null
           hrv_rmssd: number | null
           id: string
-          raw_data: Json | null
+          max_hr_day: number | null
+          platform: string | null
+          raw_payload: Json | null
           recovery_score_source: number | null
-          rem_sleep_min: number | null
-          resting_heart_rate: number | null
+          respiratory_rate: number | null
+          resting_hr: number | null
+          skin_temp_delta_c: number | null
+          sleep_deep_min: number | null
           sleep_duration_min: number | null
-          sleep_efficiency_pct: number | null
+          sleep_end: string | null
           sleep_quality_score: number | null
-          source_platform: string | null
+          sleep_rem_min: number | null
+          sleep_start: string | null
+          spo2_pct: number | null
+          stand_hours: number | null
           steps: number | null
           updated_at: string
           user_id: string
           vo2_max_estimate: number | null
         }
         Insert: {
-          active_calories?: number | null
+          active_energy_kcal?: number | null
+          avg_hr_day?: number | null
+          body_weight_kg?: number | null
           created_at?: string
           date: string
-          deep_sleep_min?: number | null
-          hrv_ms?: number | null
+          exercise_minutes?: number | null
           hrv_rmssd?: number | null
           id?: string
-          raw_data?: Json | null
+          max_hr_day?: number | null
+          platform?: string | null
+          raw_payload?: Json | null
           recovery_score_source?: number | null
-          rem_sleep_min?: number | null
-          resting_heart_rate?: number | null
+          respiratory_rate?: number | null
+          resting_hr?: number | null
+          skin_temp_delta_c?: number | null
+          sleep_deep_min?: number | null
           sleep_duration_min?: number | null
-          sleep_efficiency_pct?: number | null
+          sleep_end?: string | null
           sleep_quality_score?: number | null
-          source_platform?: string | null
+          sleep_rem_min?: number | null
+          sleep_start?: string | null
+          spo2_pct?: number | null
+          stand_hours?: number | null
           steps?: number | null
           updated_at?: string
           user_id: string
           vo2_max_estimate?: number | null
         }
         Update: {
-          active_calories?: number | null
+          active_energy_kcal?: number | null
+          avg_hr_day?: number | null
+          body_weight_kg?: number | null
           created_at?: string
           date?: string
-          deep_sleep_min?: number | null
-          hrv_ms?: number | null
+          exercise_minutes?: number | null
           hrv_rmssd?: number | null
           id?: string
-          raw_data?: Json | null
+          max_hr_day?: number | null
+          platform?: string | null
+          raw_payload?: Json | null
           recovery_score_source?: number | null
-          rem_sleep_min?: number | null
-          resting_heart_rate?: number | null
+          respiratory_rate?: number | null
+          resting_hr?: number | null
+          skin_temp_delta_c?: number | null
+          sleep_deep_min?: number | null
           sleep_duration_min?: number | null
-          sleep_efficiency_pct?: number | null
+          sleep_end?: string | null
           sleep_quality_score?: number | null
-          source_platform?: string | null
+          sleep_rem_min?: number | null
+          sleep_start?: string | null
+          spo2_pct?: number | null
+          stand_hours?: number | null
           steps?: number | null
           updated_at?: string
           user_id?: string
@@ -431,6 +589,108 @@ export type Database = {
           required_plan?: string
         }
         Relationships: []
+      }
+      feed_comments: {
+        Row: {
+          body: string
+          created_at: string
+          id: string
+          post_id: string
+          user_id: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          id?: string
+          post_id: string
+          user_id: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          id?: string
+          post_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "feed_comments_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "feed_posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      feed_posts: {
+        Row: {
+          caption: string | null
+          created_at: string
+          id: string
+          kind: string
+          photo_path: string | null
+          user_id: string
+          workout_session_id: string | null
+        }
+        Insert: {
+          caption?: string | null
+          created_at?: string
+          id?: string
+          kind?: string
+          photo_path?: string | null
+          user_id: string
+          workout_session_id?: string | null
+        }
+        Update: {
+          caption?: string | null
+          created_at?: string
+          id?: string
+          kind?: string
+          photo_path?: string | null
+          user_id?: string
+          workout_session_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "feed_posts_workout_session_id_fkey"
+            columns: ["workout_session_id"]
+            isOneToOne: false
+            referencedRelation: "workout_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      feed_reactions: {
+        Row: {
+          created_at: string
+          emoji: string
+          id: string
+          post_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          emoji?: string
+          id?: string
+          post_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          emoji?: string
+          id?: string
+          post_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "feed_reactions_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "feed_posts"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       friendships: {
         Row: {
@@ -871,6 +1131,29 @@ export type Database = {
         }
         Relationships: []
       }
+      plan_domain_access: {
+        Row: {
+          domain_slug: string
+          plan: string
+        }
+        Insert: {
+          domain_slug: string
+          plan: string
+        }
+        Update: {
+          domain_slug?: string
+          plan?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "plan_domain_access_domain_slug_fkey"
+            columns: ["domain_slug"]
+            isOneToOne: false
+            referencedRelation: "coach_domains"
+            referencedColumns: ["slug"]
+          },
+        ]
+      }
       plans: {
         Row: {
           ai_requests_daily: number
@@ -1293,19 +1576,13 @@ export type Database = {
           ai_summary: string | null
           calculated_at: string
           created_at: string
-          date: string | null
           fatigue_score: number | null
-          hrv_score: number | null
           id: string
           readiness_score: number | null
           recommended_intensity: Database["public"]["Enums"]["recommended_intensity"]
-          recovery_level: string | null
           recovery_score: number | null
-          resting_hr_score: number | null
-          sleep_score: number | null
           training_load_28d: number | null
           training_load_7d: number | null
-          training_recommendation: string | null
           user_id: string
         }
         Insert: {
@@ -1313,19 +1590,13 @@ export type Database = {
           ai_summary?: string | null
           calculated_at?: string
           created_at?: string
-          date?: string | null
           fatigue_score?: number | null
-          hrv_score?: number | null
           id?: string
           readiness_score?: number | null
           recommended_intensity?: Database["public"]["Enums"]["recommended_intensity"]
-          recovery_level?: string | null
           recovery_score?: number | null
-          resting_hr_score?: number | null
-          sleep_score?: number | null
           training_load_28d?: number | null
           training_load_7d?: number | null
-          training_recommendation?: string | null
           user_id: string
         }
         Update: {
@@ -1333,19 +1604,13 @@ export type Database = {
           ai_summary?: string | null
           calculated_at?: string
           created_at?: string
-          date?: string | null
           fatigue_score?: number | null
-          hrv_score?: number | null
           id?: string
           readiness_score?: number | null
           recommended_intensity?: Database["public"]["Enums"]["recommended_intensity"]
-          recovery_level?: string | null
           recovery_score?: number | null
-          resting_hr_score?: number | null
-          sleep_score?: number | null
           training_load_28d?: number | null
           training_load_7d?: number | null
-          training_recommendation?: string | null
           user_id?: string
         }
         Relationships: []
@@ -1695,6 +1960,7 @@ export type Database = {
           external_customer_id: string | null
           external_subscription_id: string | null
           id: string
+          is_founder: boolean
           payment_provider: string | null
           plan: Database["public"]["Enums"]["subscription_plan"]
           show_ads: boolean
@@ -1718,6 +1984,7 @@ export type Database = {
           external_customer_id?: string | null
           external_subscription_id?: string | null
           id?: string
+          is_founder?: boolean
           payment_provider?: string | null
           plan?: Database["public"]["Enums"]["subscription_plan"]
           show_ads?: boolean
@@ -1741,6 +2008,7 @@ export type Database = {
           external_customer_id?: string | null
           external_subscription_id?: string | null
           id?: string
+          is_founder?: boolean
           payment_provider?: string | null
           plan?: Database["public"]["Enums"]["subscription_plan"]
           show_ads?: boolean
@@ -1750,6 +2018,90 @@ export type Database = {
           trial_used?: boolean
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      subscriptions_backup_pre_tiers: {
+        Row: {
+          active_features: string[] | null
+          ai_requests_reset_at: string | null
+          ai_requests_today: number | null
+          backed_up_at: string | null
+          billing_status:
+            | Database["public"]["Enums"]["billing_status_type"]
+            | null
+          cancelled_at: string | null
+          created_at: string | null
+          current_period_end: string | null
+          current_period_start: string | null
+          expires_at: string | null
+          external_customer_id: string | null
+          external_subscription_id: string | null
+          id: string | null
+          is_founder: boolean | null
+          payment_provider: string | null
+          plan: Database["public"]["Enums"]["subscription_plan"] | null
+          show_ads: boolean | null
+          started_at: string | null
+          trial_ends_at: string | null
+          trial_started_at: string | null
+          trial_used: boolean | null
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          active_features?: string[] | null
+          ai_requests_reset_at?: string | null
+          ai_requests_today?: number | null
+          backed_up_at?: string | null
+          billing_status?:
+            | Database["public"]["Enums"]["billing_status_type"]
+            | null
+          cancelled_at?: string | null
+          created_at?: string | null
+          current_period_end?: string | null
+          current_period_start?: string | null
+          expires_at?: string | null
+          external_customer_id?: string | null
+          external_subscription_id?: string | null
+          id?: string | null
+          is_founder?: boolean | null
+          payment_provider?: string | null
+          plan?: Database["public"]["Enums"]["subscription_plan"] | null
+          show_ads?: boolean | null
+          started_at?: string | null
+          trial_ends_at?: string | null
+          trial_started_at?: string | null
+          trial_used?: boolean | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          active_features?: string[] | null
+          ai_requests_reset_at?: string | null
+          ai_requests_today?: number | null
+          backed_up_at?: string | null
+          billing_status?:
+            | Database["public"]["Enums"]["billing_status_type"]
+            | null
+          cancelled_at?: string | null
+          created_at?: string | null
+          current_period_end?: string | null
+          current_period_start?: string | null
+          expires_at?: string | null
+          external_customer_id?: string | null
+          external_subscription_id?: string | null
+          id?: string | null
+          is_founder?: boolean | null
+          payment_provider?: string | null
+          plan?: Database["public"]["Enums"]["subscription_plan"] | null
+          show_ads?: boolean | null
+          started_at?: string | null
+          trial_ends_at?: string | null
+          trial_started_at?: string | null
+          trial_used?: boolean | null
+          updated_at?: string | null
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -2269,6 +2621,8 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      activate_program: { Args: { p_program_id: string }; Returns: undefined }
+      are_friends: { Args: { a: string; b: string }; Returns: boolean }
       custom_access_token_hook: { Args: { event: Json }; Returns: Json }
       gen_friend_code: { Args: never; Returns: string }
       has_role: {
@@ -2278,6 +2632,15 @@ export type Database = {
         }
         Returns: boolean
       }
+      increment_ai_request: {
+        Args: { p_limit: number; p_user_id: string }
+        Returns: {
+          allowed: boolean
+          remaining: number
+          used: number
+        }[]
+      }
+      is_pro: { Args: { uid: string }; Returns: boolean }
       match_knowledge_chunks: {
         Args: {
           filter_language?: string
@@ -2354,7 +2717,7 @@ export type Database = {
         | "recovery_run"
       session_type_enum: "full_body" | "run_upper" | "run" | "rest"
       sex_enum: "male" | "female" | "other" | "prefer_not_to_say"
-      subscription_plan: "free" | "premium" | "premium_ai"
+      subscription_plan: "free" | "premium" | "premium_ai" | "plus" | "pro"
       velocity_category: "fast" | "normal" | "slow" | "failed"
       wearable_platform:
         | "apple_healthkit"
@@ -2365,6 +2728,8 @@ export type Database = {
         | "whoop"
         | "withings"
         | "samsung_health"
+        | "healthkit"
+        | "health_connect"
       week_type_enum: "A" | "B"
       workout_phase: "idle" | "exercising" | "resting" | "paused" | "finished"
     }
@@ -2492,6 +2857,9 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {
       app_role: ["admin", "moderator", "user"],
@@ -2553,7 +2921,7 @@ export const Constants = {
       ],
       session_type_enum: ["full_body", "run_upper", "run", "rest"],
       sex_enum: ["male", "female", "other", "prefer_not_to_say"],
-      subscription_plan: ["free", "premium", "premium_ai"],
+      subscription_plan: ["free", "premium", "premium_ai", "plus", "pro"],
       velocity_category: ["fast", "normal", "slow", "failed"],
       wearable_platform: [
         "apple_healthkit",
@@ -2564,9 +2932,12 @@ export const Constants = {
         "whoop",
         "withings",
         "samsung_health",
+        "healthkit",
+        "health_connect",
       ],
       week_type_enum: ["A", "B"],
       workout_phase: ["idle", "exercising", "resting", "paused", "finished"],
     },
   },
 } as const
+

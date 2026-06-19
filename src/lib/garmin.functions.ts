@@ -21,7 +21,10 @@ export const getGarminStatus = createServerFn({ method: "GET" })
       .from("garmin_connections")
       .select("connected_at")
       .maybeSingle();
-    return { connected: !!data, connected_at: (data as { connected_at: string } | null)?.connected_at ?? null };
+    return {
+      connected: !!data,
+      connected_at: (data as { connected_at: string } | null)?.connected_at ?? null,
+    };
   });
 
 export interface StartGarminResult {
@@ -47,11 +50,14 @@ export const startGarminConnect = createServerFn({ method: "POST" })
         try {
           const body = await (error as { context?: Response }).context?.json?.();
           code = (body as { code?: string })?.code;
-        } catch { /* noop */ }
+        } catch {
+          /* noop */
+        }
         return { ok: false, code, error: "Não foi possível iniciar a conexão com o Garmin." };
       }
       const r = (res ?? {}) as { url?: string; code?: string };
-      if (r.code) return { ok: false, code: r.code, error: "Integração Garmin ainda não disponível." };
+      if (r.code)
+        return { ok: false, code: r.code, error: "Integração Garmin ainda não disponível." };
       return { ok: !!r.url, url: r.url };
     } catch {
       return { ok: false, error: "Não foi possível iniciar a conexão com o Garmin." };
@@ -90,7 +96,9 @@ export const pushWorkoutToGarmin = createServerFn({ method: "POST" })
         try {
           const body = await (error as { context?: Response }).context?.json?.();
           code = (body as { code?: string })?.code;
-        } catch { /* noop */ }
+        } catch {
+          /* noop */
+        }
         return { ok: false, code, error: "Não consegui enviar o treino pro Garmin." };
       }
       const r = (res ?? {}) as { pushed?: boolean; code?: string };

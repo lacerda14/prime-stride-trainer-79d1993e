@@ -1,6 +1,18 @@
 import type { ReactNode } from "react";
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Home, Dumbbell, TrendingUp, Users, User, LogOut, History, Settings, BarChart3, LifeBuoy, CreditCard } from "lucide-react";
+import {
+  Home,
+  Dumbbell,
+  TrendingUp,
+  Users,
+  User,
+  LogOut,
+  History,
+  Settings,
+  BarChart3,
+  LifeBuoy,
+  CreditCard,
+} from "lucide-react";
 import pmLogo from "@/assets/pm-logo.png";
 import { RequireAuth } from "@/components/require-auth";
 import { useAuth } from "@/hooks/use-auth";
@@ -15,20 +27,20 @@ interface AppShellProps {
 
 // Bottom tabs — 5 abas principais
 const bottomTabs = [
-  { title: "Início",   url: "/",        icon: Home,       exact: true },
-  { title: "Treinos",  url: "/treinos",  icon: Dumbbell,   exact: false },
+  { title: "Início", url: "/", icon: Home, exact: true },
+  { title: "Treinos", url: "/treinos", icon: Dumbbell, exact: false },
   { title: "Evolução", url: "/evolucao", icon: TrendingUp, exact: false },
-  { title: "Social",   url: "/social",   icon: Users,      exact: false },
-  { title: "Perfil",   url: "/perfil",   icon: User,       exact: false },
+  { title: "Social", url: "/social", icon: Users, exact: false },
+  { title: "Perfil", url: "/perfil", icon: User, exact: false },
 ];
 
 // Links extras visíveis na seção "mais" do perfil
 const moreLinks = [
-  { title: "Histórico",     url: "/historico",    icon: History },
-  { title: "Progressão",    url: "/progressao",   icon: BarChart3 },
-  { title: "Assinatura",    url: "/assinaturas",  icon: CreditCard },
+  { title: "Histórico", url: "/historico", icon: History },
+  { title: "Progressão", url: "/progressao", icon: BarChart3 },
+  { title: "Assinatura", url: "/assinaturas", icon: CreditCard },
   { title: "Configurações", url: "/configuracoes", icon: Settings },
-  { title: "Suporte",       url: "/suporte",       icon: LifeBuoy },
+  { title: "Suporte", url: "/suporte", icon: LifeBuoy },
 ];
 
 export function AppShell({ children, title, eyebrow, action }: AppShellProps) {
