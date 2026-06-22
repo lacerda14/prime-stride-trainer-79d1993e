@@ -5,6 +5,8 @@ import { ArrowLeft, ArrowRight, Check, Loader2, Info, ChevronDown } from "lucide
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/use-auth";
 import { completeOnboarding, getProfile } from "@/lib/profile.functions";
+import { track } from "@/lib/analytics.functions";
+import { UsernameInput } from "@/components/username-input";
 import { getMyRole } from "@/lib/exercise-media.functions";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getLocalToday } from "@/lib/local-today";
@@ -39,6 +41,12 @@ import {
   BOX_EQUIPMENT,
   MIXED_PRIMARY_LOCATIONS,
 } from "@/lib/onboarding-options";
+import {
+  FREQUENCY_OPTIONS,
+  isFrequencyLocked,
+  isIntenseFrequency,
+  deriveDaysFromCount,
+} from "@/lib/training-frequency";
 
 interface GymSetup {
   location: string;
@@ -173,6 +181,7 @@ type Experience = "beginner" | "intermediate" | "advanced";
 interface Data {
   // Perfil
   first_name: string;
+  username: string;
   birth_date: string;
   sex: Sex | "";
   height_cm: number | "";
@@ -183,6 +192,7 @@ interface Data {
   // Experiência + disponibilidade
   experience_level: Experience | "";
   training_history: string;
+  available_days: number | ""; // quantos dias/semana (substitui a escolha de quais dias)
   available_days_list: string[];
   available_minutes: number | "";
   preferred_time: string;
@@ -262,8 +272,10 @@ function OnboardingPage() {
 
   const [step, setStep] = useState(0);
   const [saving, setSaving] = useState(false);
+  const [usernameAvailable, setUsernameAvailable] = useState(false);
   const [d, setD] = useState<Data>({
     first_name: "",
+    username: "",
     birth_date: "",
     sex: "",
     height_cm: "",
@@ -272,6 +284,7 @@ function OnboardingPage() {
     secondary_goals: [],
     experience_level: "",
     training_history: "",
+    available_days: "",
     available_days_list: [],
     available_minutes: "",
     preferred_time: "",
@@ -327,6 +340,7 @@ function OnboardingPage() {
       case 1:
         return (
           d.first_name.trim() !== "" &&
+          usernameAvailable &&
           d.birth_date !== "" &&
           isAtLeast16(d.birth_date) &&
           d.sex !== "" &&
@@ -339,7 +353,8 @@ function OnboardingPage() {
         return (
           d.experience_level !== "" &&
           d.training_history !== "" &&
-          d.available_days_list.length > 0 &&
+          d.available_days !== "" &&
+          !isFrequencyLocked(Number(d.available_days), d.experience_level, 0) &&
           d.available_minutes !== ""
         );
       case 4:
@@ -353,7 +368,7 @@ function OnboardingPage() {
       default:
         return false;
     }
-  }, [step, d]);
+  }, [step, d, usernameAvailable]);
 
   const next = () => canAdvance && step < TOTAL_STEPS - 1 && setStep(step + 1);
   const back = () => step > 0 && setStep(step - 1);
@@ -365,6 +380,7 @@ function OnboardingPage() {
       await submit({
         data: {
           first_name: d.first_name.trim(),
+          username: d.username.trim() || null,
           birth_date: d.birth_date,
           sex: d.sex as Sex,
           height_cm: d.height_cm as number,
@@ -378,9 +394,9 @@ function OnboardingPage() {
                 d.gym_setup.location as keyof typeof TRAINING_LOCATION_DB_VALUE
               ] ?? d.gym_setup.location)
             : null,
-          available_days: d.available_days_list.length,
+          available_days: d.available_days as number,
           available_minutes: d.available_minutes as number,
-          available_days_list: d.available_days_list,
+          available_days_list: deriveDaysFromCount(d.available_days as number),
           preferred_time: d.preferred_time || null,
           sports: d.sports,
           sports_frequency: {},
@@ -415,6 +431,7 @@ function OnboardingPage() {
         }));
       }
       void qc.invalidateQueries({ queryKey: ["profile"] });
+      track("onboarding_completed"); // ativação — base do funil de retenção
       toast.success("Tudo pronto. Seu programa foi gerado.");
       navigate({ to: "/", replace: true });
     } catch (e) {
@@ -538,7 +555,7 @@ function OnboardingPage() {
 
       <div className="flex-1 px-6 pb-32 pt-8">
         {step === 0 && <Splash onStart={() => setStep(1)} />}
-        {step === 1 && <S1 d={d} setD={setD} />}
+        {step === 1 && <S1 d={d} setD={setD} onUsernameAvailable={setUsernameAvailable} />}
         {step === 2 && <S2 d={d} setD={setD} />}
         {step === 3 && <S3 d={d} setD={setD} />}
         {step === 4 && <S4 d={d} setD={setD} />}
@@ -889,7 +906,7 @@ const toggleArr = (arr: string[], v: string, max?: number) => {
 type SP = { d: Data; setD: React.Dispatch<React.SetStateAction<Data>> };
 
 // 1 · Perfil
-function S1({ d, setD }: SP) {
+function S1({ d, setD, onUsernameAvailable }: SP & { onUsernameAvailable: (ok: boolean) => void }) {
   return (
     <div className="space-y-6">
       <Hero title="Vamos te conhecer" hint="O básico para calibrar a prescrição." />
@@ -907,6 +924,14 @@ function S1({ d, setD }: SP) {
             autoFocus
             placeholder="Como você quer ser chamado"
             onChange={(e) => setD({ ...d, first_name: e.target.value })}
+          />
+        </div>
+        <div>
+          <label className={labelCls}>Nome de usuário</label>
+          <UsernameInput
+            value={d.username}
+            onChange={(v) => setD({ ...d, username: v })}
+            onStatusChange={onUsernameAvailable}
           />
         </div>
         <div>
@@ -1044,19 +1069,46 @@ function S3({ d, setD }: SP) {
           </div>
         </div>
         <div>
-          <Multi
-            label="Dias que você prefere treinar"
-            items={WEEK_DAYS}
-            selected={d.available_days_list}
-            onToggle={(v) =>
-              setD({ ...d, available_days_list: toggleArr(d.available_days_list, v) })
-            }
-          />
-          <p className="mt-2 text-[12px] leading-relaxed text-muted-foreground">
-            Usamos esses dias só para montar sua{" "}
-            <span className="text-foreground/80">programação inicial</span>. Você pode treinar em
-            qualquer dia e ajustar a agenda depois.
-          </p>
+          <label className={labelCls}>Quantos dias por semana</label>
+          <div className="grid grid-cols-5 gap-1.5">
+            {FREQUENCY_OPTIONS.map((n) => {
+              const locked = isFrequencyLocked(n, d.experience_level || null, 0);
+              const intense = isIntenseFrequency(n);
+              const active = d.available_days === n && !locked;
+              return (
+                <button
+                  key={n}
+                  type="button"
+                  disabled={locked}
+                  onClick={() => setD({ ...d, available_days: n })}
+                  className={`h-12 rounded-xl border text-[14px] font-semibold transition active:scale-[0.97] ${
+                    active
+                      ? intense
+                        ? "border-red-500/60 bg-red-500/15 text-red-400"
+                        : "border-primary/60 bg-primary/15 text-primary"
+                      : locked
+                        ? "cursor-not-allowed border-border/40 bg-surface/20 text-muted-foreground/40"
+                        : intense
+                          ? "border-red-500/30 bg-surface/40 text-red-400/90"
+                          : "border-border bg-surface/40 text-muted-foreground"
+                  }`}
+                >
+                  {n}x
+                </button>
+              );
+            })}
+          </div>
+          {d.experience_level === "beginner" ? (
+            <p className="mt-2 text-[12px] leading-relaxed text-muted-foreground">
+              <span className="text-red-400">5x e 6x</span> liberam após 20 treinos — começar com
+              volume menor acelera seu progresso e evita lesão.
+            </p>
+          ) : (
+            <p className="mt-2 text-[12px] leading-relaxed text-muted-foreground">
+              <span className="text-red-400">5x e 6x</span> são intensos. Você escolhe quantos dias;
+              a gente monta o programa e você treina nos dias que quiser.
+            </p>
+          )}
         </div>
         <div>
           <label className={labelCls}>Tempo por treino</label>

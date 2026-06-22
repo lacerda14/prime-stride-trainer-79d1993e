@@ -19,6 +19,20 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { applyCoachLayer, getCoachPackByPersona } from "./coach-layer.server";
+import { nextMesocycleWindow } from "./rolling";
+import {
+  computeReadiness,
+  type SessionForEngine,
+  type SessionFeedback,
+} from "./autoregulation.server";
+import {
+  deriveMesoAdjustment,
+  recoveryIndex,
+  recurringPainRegions,
+  applyMesoAdjustment,
+  type SubjectiveSummary,
+  type MesoAdjustment,
+} from "./loop";
 import { serverError } from "@/lib/server-errors";
 
 // ============================================================
@@ -1363,6 +1377,7 @@ export async function persistProgram(
   userId: string,
   profile: UserProfileInput,
   plan: GenerationResult,
+  opts?: { rolling?: boolean },
 ): Promise<{ program_id: string }> {
   // Coach Layer (Hybrid V3): se o usuário "contratou" um coach (is_primary),
   // aplica o Methodology Pack dele SOBRE o plano do motor. Opt-in: sem coach
@@ -1398,6 +1413,11 @@ export async function persistProgram(
   // Inserimos todos os filhos e só então ativamos atomicamente (RPC
   // activate_program). Se a montagem falhar no meio, apagamos o draft (cascade)
   // e o programa ANTIGO segue ativo — o usuário nunca fica sem programa.
+  // Engine v2 / Fase 1: se rolling, materializa só o 1º mesociclo agora; o resto
+  // vem por demanda (materializeNextMesocycle). Default = full-bake (cursor NULL).
+  const window = opts?.rolling ? nextMesocycleWindow(0, plan.mesos, plan.total_weeks) : null;
+  const materializeThroughWeek = window?.to ?? null;
+
   const draftIso = new Date().toISOString();
   const { data: prog, error: pErr } = await supabase
     .from("training_programs")
@@ -1408,6 +1428,10 @@ export async function persistProgram(
       available_days: profile.available_days,
       total_weeks: plan.total_weeks,
       reference_velocity: plan.reference_velocity,
+      // Engine v2: snapshot do input (regen determinístico) + cursor de
+      // materialização (NULL = full-bake antigo; nº = rolling até essa semana).
+      generation_input: profile,
+      generation_cursor: materializeThroughWeek,
       active_week: 1,
       active_day: 1,
       generated_from_engine: "v1.0",
@@ -1495,6 +1519,8 @@ export async function persistProgram(
     const runningRows: any[] = [];
 
     for (const w of plan.weeks) {
+      // Rolling: materializa só os treinos até a janela (weeks/esqueleto vão inteiros).
+      if (materializeThroughWeek != null && w.week_number > materializeThroughWeek) continue;
       const weekId = weekIdByNumber.get(w.week_number)!;
       for (const d of w.days) {
         const dayId = crypto.randomUUID();
@@ -1571,6 +1597,273 @@ export async function persistProgram(
   }
 
   return { program_id: programId };
+}
+
+/** Engine v2 rolling ligado? Gate por env (secret do Worker). Default OFF.
+ *  - `ROLLING_ENGINE=1`  → liga GLOBAL (toda geração nova nasce rolante).
+ *  - `ROLLING_ENGINE_USERS=uid,uid` → liga só p/ esses user_ids (rollout em conta
+ *    de teste, sem afetar geral). Passe o userId p/ o gate respeitar o allowlist. */
+export function isRollingEngineEnabled(userId?: string): boolean {
+  if (process.env.ROLLING_ENGINE === "1") return true;
+  if (userId) {
+    const allow = (process.env.ROLLING_ENGINE_USERS ?? "")
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
+    if (allow.includes(userId)) return true;
+  }
+  return false;
+}
+
+/** Engine v2 Fase 2 (loop fechado) ligado? Só age DENTRO da geração rolante
+ *  (materializeNextMesocycle, que já é gated por rolling). Default OFF — assim a
+ *  Fase 1 pode ser validada isolada antes de ligar a adaptação por feedback. */
+export function isCloseLoopEnabled(): boolean {
+  return process.env.ENGINE_CLOSE_LOOP === "1";
+}
+
+// ============================================================
+// Engine v2 / Fase 2 — agrega o feedback do mesociclo CONCLUÍDO (sessões já
+// materializadas, week<=cursor) em UM ajuste para o próximo. Reusa a Decision da
+// autoregulação (esforço/performance) + recuperação subjetiva (sono/energia/dor).
+// Best-effort: nunca lança (retorna null se faltar dado). Puro de efeitos além da
+// leitura — quem aplica é materializeNextMesocycle.
+// ============================================================
+async function loadMesoAdjustment(
+  supabase: DB,
+  userId: string,
+  cursor: number,
+): Promise<MesoAdjustment | null> {
+  try {
+    const { data: sessRows } = await supabase
+      .from("workout_sessions")
+      .select("id, created_at, week_number, completed_summary")
+      .eq("user_id", userId)
+      .not("completed_at", "is", null)
+      .lte("week_number", cursor)
+      .order("created_at", { ascending: false })
+      .limit(15);
+    const sessions = (sessRows ?? []) as Array<{
+      id: string;
+      created_at: string;
+      completed_summary: Record<string, unknown> | null;
+    }>;
+    if (sessions.length === 0) return null;
+
+    // set logs de todas as sessões num fetch só (evita N+1)
+    const ids = sessions.map((s) => s.id);
+    const { data: setRows } = await supabase
+      .from("workout_set_logs")
+      .select(
+        "workout_session_id, planned_reps, actual_reps, planned_load_kg, actual_load_kg, set_status",
+      )
+      .in("workout_session_id", ids);
+    const setsBySession = new Map<string, SessionForEngine["sets"]>();
+    for (const r of (setRows ?? []) as Array<Record<string, unknown>>) {
+      const sid = r.workout_session_id as string;
+      const arr = setsBySession.get(sid) ?? [];
+      arr.push({
+        planned_reps: (r.planned_reps as string | null) ?? null,
+        actual_reps: (r.actual_reps as number | null) ?? null,
+        planned_load_kg: (r.planned_load_kg as number | null) ?? null,
+        actual_load_kg: (r.actual_load_kg as number | null) ?? null,
+        set_status: (r.set_status as "completed" | "failed" | "skipped" | null) ?? null,
+      });
+      setsBySession.set(sid, arr);
+    }
+
+    const engineSessions: SessionForEngine[] = sessions.map((s) => {
+      const sm = (s.completed_summary ?? {}) as { session_feedback?: SessionFeedback | null };
+      return {
+        id: s.id,
+        created_at: s.created_at,
+        feedback: sm.session_feedback ?? null,
+        sets: setsBySession.get(s.id) ?? [],
+      };
+    });
+    const summaries: SubjectiveSummary[] = sessions.map(
+      (s) => (s.completed_summary ?? {}) as SubjectiveSummary,
+    );
+
+    // sessions vêm desc → mais recente é "current"; o resto é histórico.
+    const [current, ...history] = engineSessions;
+    const { decision } = computeReadiness(current, history, 12);
+    const recovery = recoveryIndex(summaries);
+    const pain = recurringPainRegions(summaries);
+    return deriveMesoAdjustment(decision, recovery, pain);
+  } catch (e) {
+    console.warn("[rolling] loadMesoAdjustment falhou (ignorando):", e);
+    return null;
+  }
+}
+
+// ============================================================
+// Engine v2 / Fase 1 — materializa o PRÓXIMO mesociclo de um programa rolante.
+// Regenera o plano DETERMINISTICAMENTE do generation_input (+ coach igual ao
+// persist), insere os training_days/session_exercises só da janela e avança o
+// cursor. Best-effort: nunca lança (loga e retorna null). Só age em programas
+// rolantes (generation_cursor != null); programas antigos são ignorados.
+// Fase 2 (gated ENGINE_CLOSE_LOOP): ajusta a janela pelo feedback acumulado.
+// ============================================================
+export async function materializeNextMesocycle(
+  supabase: DB,
+  userId: string,
+): Promise<{ materialized: number; through: number } | null> {
+  try {
+    const { data: prog } = await supabase
+      .from("training_programs")
+      .select("id, total_weeks, generation_cursor, generation_input")
+      .eq("user_id", userId)
+      .is("archived_at", null)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (!prog || prog.generation_cursor == null) return null; // não-rolling / sem programa
+    const cursor = prog.generation_cursor as number;
+    const total = prog.total_weeks as number;
+    let profile = prog.generation_input as UserProfileInput | null;
+    if (!profile) return null;
+
+    // Fase 2 (loop fechado, gated ENGINE_CLOSE_LOOP): agrega o feedback do meso
+    // concluído. Dor articular recorrente entra em pain_regions ANTES da regen
+    // (filterPoolByInjuries evita os padrões); rpe/volume são aplicados na janela.
+    let adjustment: MesoAdjustment | null = null;
+    if (isCloseLoopEnabled()) {
+      adjustment = await loadMesoAdjustment(supabase, userId, cursor);
+      if (adjustment && adjustment.avoid_pain_regions.length > 0) {
+        profile = {
+          ...profile,
+          pain_regions: [...(profile.pain_regions ?? []), ...adjustment.avoid_pain_regions],
+        };
+      }
+    }
+
+    // Regenera determinístico + coach (mesmo do persistProgram).
+    const pool = await loadExercisePool(supabase);
+    if (pool.length === 0) return null;
+    let plan = generatePlan(profile, pool);
+    try {
+      const { data: uac } = await supabase
+        .from("user_ai_coaches")
+        .select("ai_coaches(persona)")
+        .eq("user_id", userId)
+        .eq("is_primary", true)
+        .maybeSingle();
+      const persona = (uac as { ai_coaches?: { persona?: string } } | null)?.ai_coaches?.persona;
+      const pack = getCoachPackByPersona(persona);
+      if (pack) plan = applyCoachLayer(plan, pack, profile).plan;
+    } catch (e) {
+      console.warn("[rolling] coach layer falhou, motor puro:", e);
+    }
+
+    const window = nextMesocycleWindow(cursor, plan.mesos, total);
+    if (!window) {
+      await supabase
+        .from("training_programs")
+        .update({ generation_cursor: total })
+        .eq("id", prog.id);
+      return { materialized: 0, through: total };
+    }
+
+    // week_ids das semanas da janela (já existem no esqueleto persistido).
+    const { data: weekRows } = await supabase
+      .from("weeks")
+      .select("id, week_number")
+      .eq("program_id", prog.id)
+      .gte("week_number", window.from)
+      .lte("week_number", window.to);
+    const weekIdByNumber = new Map<number, string>();
+    for (const wr of weekRows ?? [])
+      weekIdByNumber.set((wr as { week_number: number }).week_number, (wr as { id: string }).id);
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const dayRows: any[] = [];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const sessionExerciseRows: any[] = [];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const runningRows: any[] = [];
+    for (const w of plan.weeks) {
+      if (w.week_number < window.from || w.week_number > window.to) continue;
+      const weekId = weekIdByNumber.get(w.week_number);
+      if (!weekId) continue;
+      for (const d of w.days) {
+        const dayId = crypto.randomUUID();
+        dayRows.push({
+          id: dayId,
+          week_id: weekId,
+          day_number: d.day_number,
+          day_name: d.day_name,
+          session_type: d.session_type,
+          objective: d.objective,
+          duration_minutes: d.duration_minutes,
+        });
+        for (const e of d.exercises) {
+          sessionExerciseRows.push({
+            training_day_id: dayId,
+            exercise_id: e.exercise_id,
+            slot: e.slot,
+            pair_slot: e.pair_slot,
+            sets: e.sets,
+            reps: e.reps,
+            rpe_target: e.rpe_target,
+            rest_seconds: e.rest_seconds,
+            notes: e.notes,
+          });
+        }
+        if (d.running) {
+          runningRows.push({
+            training_day_id: dayId,
+            protocol_type: d.running.protocol_type,
+            protocol_name: d.running.protocol_name,
+            goal: d.running.goal,
+            total_duration_minutes: d.running.total_duration_minutes,
+            warmup_minutes: d.running.warmup_minutes,
+            cooldown_minutes: d.running.cooldown_minutes,
+            blocks: d.running.blocks,
+            intervals: d.running.intervals_per_block,
+            intervals_per_block: d.running.intervals_per_block,
+            work_duration_seconds: d.running.work_duration_seconds,
+            rest_duration_seconds: d.running.rest_duration_seconds,
+            between_blocks_rest_seconds: d.running.between_blocks_rest_seconds,
+            target_pace_min: d.running.target_pace_min,
+            target_pace_max: d.running.target_pace_max,
+            pace_min: d.running.target_pace_min,
+            pace_max: d.running.target_pace_max,
+            notes: d.running.notes,
+          });
+        }
+      }
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const insertChunks = async (table: string, rows: any[], size = 500) => {
+      for (let i = 0; i < rows.length; i += size) {
+        const { error } = await supabase.from(table).insert(rows.slice(i, i + size));
+        if (error) throw new Error(`${table}: ${error.message}`);
+      }
+    };
+    // Fase 2: aplica o ajuste (rpe/volume acessório) só nas linhas da janela.
+    const exerciseRows = adjustment
+      ? applyMesoAdjustment(sessionExerciseRows, adjustment)
+      : sessionExerciseRows;
+
+    await insertChunks("training_days", dayRows);
+    await insertChunks("session_exercises", exerciseRows);
+    await insertChunks("running_protocols", runningRows);
+
+    await supabase
+      .from("training_programs")
+      .update({
+        generation_cursor: window.to,
+        ...(adjustment ? { last_adjustment: adjustment } : {}),
+      })
+      .eq("id", prog.id);
+
+    return { materialized: dayRows.length, through: window.to };
+  } catch (e) {
+    console.warn("[rolling] materializeNextMesocycle falhou:", e);
+    return null;
+  }
 }
 
 // ============================================================

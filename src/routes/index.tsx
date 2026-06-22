@@ -21,7 +21,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { getDashboard } from "@/lib/profile.functions";
 import { getMySubscription } from "@/lib/subscription.functions";
 import { TierCrown } from "@/components/tier-crown";
-import { accessTier } from "@/lib/tiers";
+import { tierOf, isPaidAccess } from "@/lib/tiers";
 import { CoachAvatar } from "@/components/coach-avatar";
 import { getTodayTraining } from "@/lib/program.queries";
 import { levelProgress, getTitleForLevel } from "@/lib/gamification";
@@ -75,8 +75,8 @@ function DashboardContent() {
   });
   // Tier real do usuário (White=Free · Silver=Plus · Gold=Pro). Trial conta como Pro.
   // Free é o default: sem assinatura paga, tier === "free" e a coroa é branca.
-  const tier = accessTier(subData?.plan, subData?.billing_status);
-  const isPremium = tier !== "free";
+  const tier = tierOf(subData);
+  const isPremium = isPaidAccess(subData);
 
   const profile = dash?.profile;
   const xp = profile?.xp_total ?? 0;

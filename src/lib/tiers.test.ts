@@ -1,5 +1,14 @@
 import { describe, it, expect } from "vitest";
-import { TIERS, TIER_ORDER, tierFromPlan, accessTier, formatBRL } from "./tiers";
+import {
+  TIERS,
+  TIER_ORDER,
+  tierFromPlan,
+  accessTier,
+  tierOf,
+  isProAccess,
+  isPaidAccess,
+  formatBRL,
+} from "./tiers";
 
 describe("tierFromPlan — mapeia plano da subscription → tier de acesso", () => {
   it("pro e premium_ai (legado) → 'pro'", () => {
@@ -51,6 +60,36 @@ describe("accessTier — tier de acesso efetivo (gate único, trial = Pro)", () 
   it("status cancelado/expirado NÃO concede trial (só 'trialing' libera)", () => {
     expect(accessTier("free", "canceled")).toBe("free");
     expect(accessTier("free", "past_due")).toBe("free");
+  });
+});
+
+describe("isProAccess / isPaidAccess — gate único de entitlement (regressão do bug dos coaches)", () => {
+  // Bug real (jun/2026): coach-chat checava `plan === "premium_ai"` cru → travava
+  // owner (plan="pro") e assinantes Pro. Estes casos travam pra sempre.
+  it("owner (LIFETIME_PREMIUM: plan='pro', active) tem acesso Pro", () => {
+    expect(isProAccess({ plan: "pro", billing_status: "active" })).toBe(true);
+  });
+  it("concedido pelo admin (plan='premium_ai', active) tem acesso Pro", () => {
+    expect(isProAccess({ plan: "premium_ai", billing_status: "active" })).toBe(true);
+  });
+  it("trial (billing_status='trialing') tem acesso Pro", () => {
+    expect(isProAccess({ plan: "free", billing_status: "trialing" })).toBe(true);
+  });
+  it("plus NÃO é Pro, mas é pago", () => {
+    expect(isProAccess({ plan: "plus", billing_status: "active" })).toBe(false);
+    expect(isPaidAccess({ plan: "plus", billing_status: "active" })).toBe(true);
+  });
+  it("free / ausência → sem acesso (nunca por engano)", () => {
+    expect(isProAccess({ plan: "free", billing_status: "active" })).toBe(false);
+    expect(isProAccess(null)).toBe(false);
+    expect(isProAccess(undefined)).toBe(false);
+    expect(isPaidAccess(null)).toBe(false);
+    expect(isPaidAccess({ plan: "free" })).toBe(false);
+  });
+  it("tierOf espelha accessTier a partir do objeto de subscription", () => {
+    expect(tierOf({ plan: "premium_ai", billing_status: "active" })).toBe("pro");
+    expect(tierOf({ plan: "plus" })).toBe("plus");
+    expect(tierOf(null)).toBe("free");
   });
 });
 

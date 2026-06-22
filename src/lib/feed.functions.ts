@@ -10,6 +10,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { isOwnerEmail } from "@/lib/owner";
+import { isProAccess } from "@/lib/tiers";
 import { serverError } from "@/lib/server-errors";
 
 const REACTION_EMOJIS = ["fire", "muscle", "clap", "rocket", "heart"] as const;
@@ -79,11 +80,39 @@ async function assertPro(supabase: any, claims: { email?: string } | undefined, 
     .eq("user_id", userId)
     .maybeSingle();
   if (error) serverError("Não foi possível verificar seu plano.", error);
-  const plan = data?.plan;
-  const status = data?.billing_status;
-  const isPro =
-    status === "trialing" || ((plan === "pro" || plan === "premium_ai") && status === "active");
-  if (!isPro) throw new Error("pro_required");
+  // FONTE ÚNICA (tiers.ts): cobre pro/premium_ai/trial. owner já retornou acima.
+  if (!isProAccess({ plan: data?.plan, billing_status: data?.billing_status })) {
+    throw new Error("pro_required");
+  }
+}
+
+// Notifica o dono de um post (push best-effort) sobre uma interação. No-op sem
+// credenciais; nunca quebra a ação; não notifica se o ator é o próprio dono.
+async function notifyPostOwner(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  supabase: any,
+  postId: string,
+  actorId: string,
+  make: (label: string) => import("@/lib/notifications/push-send").PushPayload,
+) {
+  try {
+    const { data: post } = await supabase
+      .from("feed_posts")
+      .select("user_id")
+      .eq("id", postId)
+      .maybeSingle();
+    if (!post || post.user_id === actorId) return;
+    const { data: me } = await supabase
+      .from("profiles")
+      .select("name, username")
+      .eq("id", actorId)
+      .maybeSingle();
+    const label = me?.username ? `@${me.username}` : me?.name || "Alguém";
+    const { sendPushToUser } = await import("@/lib/notifications/push-send");
+    await sendPushToUser(post.user_id, make(label));
+  } catch (e) {
+    console.warn("[push] feed notify falhou", e);
+  }
 }
 
 // ── listFeed ─────────────────────────────────────────────────────────────────
@@ -248,7 +277,42 @@ export const toggleReaction = createServerFn({ method: "POST" })
       .from("feed_reactions")
       .insert({ post_id: data.post_id, user_id: userId, emoji: data.emoji });
     if (error) serverError("Não foi possível reagir.", error);
+    await notifyPostOwner(supabase, data.post_id, userId, (label) => ({
+      category: "social",
+      title: "Nova reação 🔥",
+      body: `${label} reagiu ao seu treino`,
+      route: "/social",
+    }));
     return { my_reaction: data.emoji };
+  });
+
+// ── addComment ────────────────────────────────────────────────────────────────
+// Server fn pronto (a tabela feed_comments + RLS já existem). A UI de comentários
+// é um incremento à parte; aqui já fica o caminho + a notificação pro dono.
+export const addComment = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) =>
+    z.object({ post_id: z.string().uuid(), body: z.string().trim().min(1).max(1000) }).parse(input),
+  )
+  .handler(async ({ context, data }): Promise<{ id: string }> => {
+    const { supabase, userId, claims } = context;
+    await assertPro(supabase, claims as { email?: string } | undefined, userId);
+
+    const { data: row, error } = await supabase
+      .from("feed_comments")
+      .insert({ post_id: data.post_id, user_id: userId, body: data.body })
+      .select("id")
+      .single();
+    if (error) serverError("Não foi possível comentar.", error);
+
+    const preview = data.body.length > 60 ? `${data.body.slice(0, 57)}…` : data.body;
+    await notifyPostOwner(supabase, data.post_id, userId, (label) => ({
+      category: "social",
+      title: "Novo comentário 💬",
+      body: `${label}: ${preview}`,
+      route: "/social",
+    }));
+    return { id: row!.id };
   });
 
 // ── deletePost (próprio) ─────────────────────────────────────────────────────

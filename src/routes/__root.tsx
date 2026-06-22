@@ -14,6 +14,8 @@ import { reportLovableError } from "../lib/lovable-error-reporting";
 import { AuthProvider } from "../hooks/use-auth";
 import { Toaster } from "../components/ui/sonner";
 import { initNative } from "../integrations/native";
+import { LocalNotificationsSync } from "@/components/local-notifications-sync";
+import { PushRegistration } from "@/components/push-registration";
 import { Capacitor } from "@capacitor/core";
 import { WatchBridge } from "../lib/watch-bridge";
 
@@ -190,6 +192,8 @@ function RootComponent() {
         {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
         <Outlet />
         <Toaster />
+        <LocalNotificationsSync />
+        <PushRegistration />
       </AuthProvider>
     </QueryClientProvider>
   );

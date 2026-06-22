@@ -9,6 +9,10 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import type { Json } from "@/integrations/supabase/types";
 
 export type AnalyticsEvent =
+  // Ativação / retenção (Fase 0) — base pra medir D30, sem isso não dá pra
+  // saber se o produto retém. workout_completed é o evento de engajamento core.
+  | "onboarding_completed"
+  | "workout_completed"
   | "paywall_viewed"
   | "plan_selected"
   | "checkout_started"

@@ -7,7 +7,7 @@ import { listCoaches, type CoachDTO } from "@/lib/coach.functions";
 import { getMySubscription } from "@/lib/subscription.functions";
 import { CoachAvatar } from "@/components/coach-avatar";
 import { TierCrown } from "@/components/tier-crown";
-import { accessTier } from "@/lib/tiers";
+import { isProAccess } from "@/lib/tiers";
 import { domainFor } from "@/lib/domains";
 import { track } from "@/lib/analytics.functions";
 
@@ -103,7 +103,7 @@ function CoachesPage() {
   });
   const { data: subData } = useQuery({ queryKey: ["my-subscription"], queryFn: () => fetchSub() });
 
-  const isPro = accessTier(subData?.plan, subData?.billing_status) === "pro";
+  const isPro = isProAccess(subData);
 
   const all = coaches ?? [];
   // Pedro (general / sem domínio) é o coach principal e SEMPRE deve aparecer —

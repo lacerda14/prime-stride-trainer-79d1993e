@@ -26,6 +26,10 @@ import {
   type WorkoutChange,
 } from "@/lib/coach.functions";
 import { getMySubscription } from "@/lib/subscription.functions";
+import { isProAccess } from "@/lib/tiers";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/use-auth";
+import { notifyNow } from "@/lib/notifications/local";
 
 export const Route = createFileRoute("/coach-chat")({
   validateSearch: (s: Record<string, unknown>) => ({
@@ -205,19 +209,59 @@ function CoachChatPage() {
     () => (coaches ?? []).find((c) => c.persona === persona),
     [coaches, persona],
   );
-  const isPremium =
-    (subData?.plan === "premium_ai" && subData?.billing_status === "active") ||
-    subData?.billing_status === "trialing";
-  const locked = !!coach?.is_premium && !isPremium;
+  // FONTE ÚNICA (tiers.ts). Cobre plan="pro" (owner/grant/assinante), "premium_ai"
+  // (legado) e trial. ⚠️ NUNCA checar plan==="premium_ai" cru — travava owner e Pro.
+  const locked = !!coach?.is_premium && !isProAccess(subData);
 
+  const { user } = useAuth();
   const [messages, setMessages] = useState<CoachChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [quickReplies, setQuickReplies] = useState<string[]>([]);
+  const [historyLoaded, setHistoryLoaded] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [messages, quickReplies]);
+
+  // Carrega o histórico da thread (user, persona) ao abrir — antes o chat zerava
+  // toda vez. Best-effort: se falhar, começa vazio (não trava o chat).
+  // coach_chat_messages é nova — ainda não regenerada no types.ts; cast contido
+  // só nesta tabela (o resto do client segue tipado).
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const chatTable = () => (supabase as any).from("coach_chat_messages");
+  useEffect(() => {
+    if (!user?.id || !persona || historyLoaded) return;
+    let cancel = false;
+    (async () => {
+      const { data } = await chatTable()
+        .select("role, content")
+        .eq("persona", persona)
+        .order("created_at", { ascending: true })
+        .limit(200);
+      if (cancel) return;
+      const rows = (data ?? []) as Array<{ role: string; content: string }>;
+      if (rows.length) {
+        setMessages(
+          rows.map((m) => ({
+            role: m.role === "user" ? "user" : "assistant",
+            content: m.content,
+          })),
+        );
+      }
+      setHistoryLoaded(true);
+    })();
+    return () => {
+      cancel = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id, persona, historyLoaded]);
+
+  // Persiste uma mensagem na thread (best-effort, não bloqueia a UI).
+  const persistMessage = (role: "user" | "assistant", content: string) => {
+    if (!user?.id) return;
+    void chatTable().insert({ user_id: user.id, persona, role, content });
+  };
 
   const mutation = useMutation({
     mutationFn: (text: string) =>
@@ -236,6 +280,7 @@ function CoachChatPage() {
           ...m,
           { role: "assistant", content: res.message!, workoutChange: res.workout_change ?? null },
         ]);
+        persistMessage("assistant", res.message);
         setQuickReplies(res.quick_replies ?? []);
       } else {
         // remove a última msg do usuário falhada? mantém e mostra erro como bolha do coach
@@ -263,6 +308,7 @@ function CoachChatPage() {
     const t = text.trim();
     if (!t || mutation.isPending) return;
     setMessages((m) => [...m, { role: "user", content: t }]);
+    persistMessage("user", t);
     setInput("");
     setQuickReplies([]);
     mutation.mutate(t);
@@ -273,7 +319,7 @@ function CoachChatPage() {
   const autoSentRef = useRef(false);
   useEffect(() => {
     if (autoSentRef.current || typeof window === "undefined") return;
-    if (loadingCoaches || locked || !coach) return;
+    if (loadingCoaches || locked || !coach || !historyLoaded) return;
     if (messages.length > 0 || mutation.isPending) return;
     let prefill: string | null = null;
     try {
@@ -290,7 +336,7 @@ function CoachChatPage() {
     }
     submit(prefill);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loadingCoaches, locked, coach]);
+  }, [loadingCoaches, locked, coach, historyLoaded]);
 
   // ── Aplicar alteração de treino (após confirmar a prévia) ─────
   const [applyingIdx, setApplyingIdx] = useState<number | null>(null);
@@ -307,7 +353,15 @@ function CoachChatPage() {
       if (res.ok) {
         // marca o card como aplicado e confirma numa bolha
         setMessages((m) => m.map((msg, i) => (i === vars.idx ? { ...msg, applied: true } : msg)));
-        setMessages((m) => [...m, { role: "assistant", content: `✅ ${res.summary}` }]);
+        const confirm = `✅ ${res.summary}`;
+        setMessages((m) => [...m, { role: "assistant", content: confirm }]);
+        persistMessage("assistant", confirm);
+        // notifica o aluno que o treino foi atualizado (mesmo se sair do chat)
+        void notifyNow(
+          `Treino atualizado por ${coach?.name ?? "seu coach"}`,
+          res.summary ?? "Sua semana foi ajustada.",
+          { route: "/treino" },
+        );
         // invalida caches do programa pra refletir a alteração
         queryClient.invalidateQueries({ queryKey: ["program"] });
         queryClient.invalidateQueries({ queryKey: ["training-program"] });

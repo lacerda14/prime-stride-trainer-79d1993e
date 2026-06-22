@@ -1,5 +1,5 @@
 {
-  "originHash" : "7adb4c75cb55aed9261ee33dd7af72f96bdcef7c9662ec20bd63eec478301a96",
+  "originHash" : "f61877081ba21146f103a79e6f156cfabf63faa177b691556a13e6f0cdfa3880",
   "pins" : [
     {
       "identity" : "app-check",
@@ -78,8 +78,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/RevenueCat/purchases-hybrid-common.git",
       "state" : {
-        "revision" : "b0d62b750bd32dc9c798cba784f17cfa3561a3ee",
-        "version" : "18.14.1"
+        "revision" : "c2eb50e2de900a226473e41188d51519b171853d",
+        "version" : "18.15.1"
       }
     },
     {

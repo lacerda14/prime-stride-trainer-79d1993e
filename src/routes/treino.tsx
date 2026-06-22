@@ -90,6 +90,7 @@ type StrengthItem = {
   rest: number;
   block: "Força" | "Core";
   exerciseIndex: number;
+  isBodyweight: boolean;
 };
 
 type RunItem = {
@@ -152,6 +153,7 @@ function TreinoPage() {
   });
 
   const today = todayQ.data?.today;
+  const bodyWeightKg = todayQ.data?.body_weight_kg ?? null; // p/ exercícios de peso corporal
   const weekNumber = todayQ.data?.week.week_number ?? null;
   const dayKey = today?.day_name ?? null;
 
@@ -260,6 +262,8 @@ function TreinoPage() {
           rest,
           block,
           exerciseIndex: exIdx,
+          // peso corporal: usa o peso do aluno como carga (swap não traz equipment).
+          isBodyweight: !swap && e.exercise.equipment === "bodyweight",
         });
       }
     }
@@ -547,7 +551,8 @@ function TreinoPage() {
   const captureCurrentSet = useCallback(() => {
     if (!current || current.kind !== "strength" || !sessionId) return;
     const key = setKey(current.exerciseIndex, current.set);
-    const loadNum = liveLoad ? Number(liveLoad) : null;
+    // Peso corporal → usa o peso do aluno como carga; senão, o valor digitado.
+    const loadNum = current.isBodyweight ? bodyWeightKg : liveLoad ? Number(liveLoad) : null;
     const repsNum = liveReps ? Number(liveReps) : null;
     setSetLogs((prev) => ({
       ...prev,
@@ -571,7 +576,7 @@ function TreinoPage() {
     }).catch(() => {
       /* offline-tolerant */
     });
-  }, [current, sessionId, liveLoad, liveReps, appendSetLogFn]);
+  }, [current, sessionId, liveLoad, liveReps, bodyWeightKg, appendSetLogFn]);
 
   const handleAdvance = useCallback(() => {
     if (!current) return;
@@ -965,6 +970,7 @@ function TreinoPage() {
         ) : (
           <StrengthView
             current={current}
+            bodyWeightKg={bodyWeightKg}
             phaseLabel={phase === "work" ? `Em execução · ${current.block}` : "Descanso"}
             mins={mins}
             secs={secs}
@@ -1089,6 +1095,7 @@ function BackToDashboard({
 
 function StrengthView({
   current,
+  bodyWeightKg,
   phaseLabel,
   mins,
   secs,
@@ -1103,6 +1110,7 @@ function StrengthView({
   videoAvailable,
 }: {
   current: StrengthItem;
+  bodyWeightKg: number | null;
   phaseLabel: string;
   mins: number;
   secs: number;
@@ -1149,19 +1157,30 @@ function StrengthView({
 
       {!countdown && (
         <div className="mt-6 flex items-center justify-center gap-3">
-          <label className="flex flex-col items-start text-left">
-            <span className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-              Carga (kg)
-            </span>
-            <input
-              type="number"
-              inputMode="decimal"
-              value={liveLoad}
-              onChange={(e) => onLoadChange(e.target.value)}
-              placeholder="0"
-              className="num mt-1 w-24 rounded-xl border border-border bg-surface/60 px-3 py-2 text-center text-base font-semibold"
-            />
-          </label>
+          {current.isBodyweight ? (
+            <div className="flex flex-col items-start text-left">
+              <span className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+                Peso corporal
+              </span>
+              <div className="num mt-1 flex h-[42px] w-24 items-center justify-center rounded-xl border border-border bg-surface/30 px-3 text-base font-semibold text-muted-foreground">
+                {bodyWeightKg != null ? `${bodyWeightKg}kg` : "—"}
+              </div>
+            </div>
+          ) : (
+            <label className="flex flex-col items-start text-left">
+              <span className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+                Carga (kg)
+              </span>
+              <input
+                type="number"
+                inputMode="decimal"
+                value={liveLoad}
+                onChange={(e) => onLoadChange(e.target.value)}
+                placeholder="0"
+                className="num mt-1 w-24 rounded-xl border border-border bg-surface/60 px-3 py-2 text-center text-base font-semibold"
+              />
+            </label>
+          )}
           <label className="flex flex-col items-start text-left">
             <span className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
               Reps

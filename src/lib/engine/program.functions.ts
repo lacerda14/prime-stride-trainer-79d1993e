@@ -5,6 +5,7 @@ import {
   loadExercisePool,
   mapDbGoalToEngineGoal,
   persistProgram,
+  isRollingEngineEnabled,
   type UserProfileInput,
   type RunningMode,
 } from "./pm-engine.server";
@@ -110,6 +111,8 @@ export const generateProgramForCurrentUser = createServerFn({ method: "POST" })
     if (pool.length === 0) throw new Error("Catálogo de exercícios vazio.");
 
     const plan = generatePlan(input, pool);
-    const result = await persistProgram(supabase, userId, input, plan);
+    const result = await persistProgram(supabase, userId, input, plan, {
+      rolling: isRollingEngineEnabled(userId),
+    });
     return result;
   });

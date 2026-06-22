@@ -6,11 +6,14 @@ import {
   loadExercisePool,
   mapDbGoalToEngineGoal,
   persistProgram,
+  isRollingEngineEnabled,
   type Goal as EngineGoal,
   type UserProfileInput,
 } from "@/lib/engine/pm-engine.server";
 import { dayNamesToNumbers } from "@/lib/engine/program.functions";
 import { serverError } from "@/lib/server-errors";
+import { validateUsername } from "@/lib/username";
+import { mergePrefs, type NotifPrefs } from "@/lib/notifications/schedule";
 
 // ============================================================
 // GET
@@ -27,6 +30,127 @@ export const getProfile = createServerFn({ method: "GET" })
       .maybeSingle();
     if (error) serverError("Não foi possível concluir a operação. Tente novamente.", error);
     return data;
+  });
+
+// Atualiza a foto de perfil (avatar_url). O arquivo já foi enviado pro bucket
+// `avatars` pelo cliente (RLS só deixa gravar na pasta {uid}/); aqui só persiste
+// a URL pública. null = remover a foto.
+export const updateAvatarUrl = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) =>
+    z.object({ avatar_url: z.string().url().max(2000).nullable() }).parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const { error } = await supabase
+      .from("profiles")
+      .update({ avatar_url: data.avatar_url, updated_at: new Date().toISOString() })
+      .eq("id", userId);
+    if (error) serverError("Não foi possível atualizar a foto.", error);
+    return { ok: true as const };
+  });
+
+// Nº de treinos concluídos (usado pra trava de frequência 5x/6x do iniciante).
+export const getCompletedWorkoutCount = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }): Promise<number> => {
+    const { supabase, userId } = context;
+    const { count } = await supabase
+      .from("workout_sessions")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", userId)
+      .not("completed_at", "is", null);
+    return count ?? 0;
+  });
+
+// Disponibilidade de @username (onboarding/perfil). Valida formato e checa se já
+// está em uso. Como a RLS de profiles só deixa ver o próprio perfil, a busca por
+// OUTROS usa service role. Match em lowercase exato (usernames são normalizados;
+// `eq` evita o problema do `_` virar wildcard no ilike).
+export const checkUsername = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => z.object({ username: z.string().trim().max(40) }).parse(input))
+  .handler(async ({ context, data }): Promise<{ available: boolean; reason?: string }> => {
+    const { userId } = context;
+    const v = validateUsername(data.username);
+    if (!v.ok) return { available: false, reason: v.reason };
+
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: rows, error } = await supabaseAdmin
+      .from("profiles")
+      .select("id")
+      .eq("username", v.value)
+      .neq("id", userId)
+      .limit(1);
+    if (error) serverError("Não foi possível verificar o nome de usuário.", error);
+    return (rows ?? []).length > 0 ? { available: false, reason: "taken" } : { available: true };
+  });
+
+// Salva/atualiza o @username (perfil — pra quem já passou do onboarding e ficou
+// com placeholder/NULL). User-scoped (RLS UPDATE own); a unicidade é garantida
+// pelo índice unique(lower(username)) → colisão (23505) vira username_taken.
+export const setUsername = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => z.object({ username: z.string().trim().max(40) }).parse(input))
+  .handler(async ({ context, data }): Promise<{ username: string }> => {
+    const { supabase, userId } = context;
+    const v = validateUsername(data.username);
+    if (!v.ok) throw new Error("invalid_username");
+    const { error } = await supabase
+      .from("profiles")
+      .update({ username: v.value })
+      .eq("id", userId);
+    if (error) {
+      const code = (error as { code?: string }).code;
+      const msg = (error as { message?: string }).message ?? "";
+      if (code === "23505" && /username/i.test(msg)) throw new Error("username_taken");
+      serverError("Não foi possível salvar o nome de usuário.", error);
+    }
+    return { username: v.value };
+  });
+
+// ── Preferências de notificação ───────────────────────────────────────────────
+const notifPrefsPatchSchema = z.object({
+  enabled: z.boolean().optional(),
+  workout: z.boolean().optional(),
+  streak: z.boolean().optional(),
+  achievements: z.boolean().optional(),
+  social: z.boolean().optional(),
+  coach: z.boolean().optional(),
+  health: z.boolean().optional(),
+  news: z.boolean().optional(),
+});
+
+export const getNotificationPrefs = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }): Promise<NotifPrefs> => {
+    const { supabase, userId } = context;
+    const { data } = await supabase
+      .from("profiles")
+      .select("notification_prefs")
+      .eq("id", userId)
+      .maybeSingle();
+    return mergePrefs(data?.notification_prefs);
+  });
+
+export const updateNotificationPrefs = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => notifPrefsPatchSchema.parse(input))
+  .handler(async ({ context, data }): Promise<NotifPrefs> => {
+    const { supabase, userId } = context;
+    const { data: row } = await supabase
+      .from("profiles")
+      .select("notification_prefs")
+      .eq("id", userId)
+      .maybeSingle();
+    const current = mergePrefs(row?.notification_prefs);
+    const merged = mergePrefs({ ...current, ...data });
+    const { error } = await supabase
+      .from("profiles")
+      .update({ notification_prefs: merged as unknown as Record<string, boolean> })
+      .eq("id", userId);
+    if (error) serverError("Não foi possível salvar as preferências.", error);
+    return merged;
   });
 
 export interface PRItem {
@@ -259,6 +383,7 @@ const onboardingV2Schema = z.object({
   // S1
   first_name: z.string().trim().min(1).max(60),
   last_name: z.string().trim().max(80).optional().nullable(),
+  username: z.string().trim().max(40).optional().nullable(),
   birth_date: z
     .string()
     .regex(/^\d{4}-\d{2}-\d{2}$/)
@@ -377,6 +502,15 @@ export const completeOnboarding = createServerFn({ method: "POST" })
     const name =
       [data.first_name, data.last_name].filter(Boolean).join(" ").trim() || data.first_name;
 
+    // Username (escolhido no onboarding): valida server-side e normaliza pra lowercase.
+    // A unicidade é garantida pelo índice unique(lower(username)) — colisão vira 23505.
+    let username: string | null = null;
+    if (data.username) {
+      const v = validateUsername(data.username);
+      if (!v.ok) throw new Error("invalid_username");
+      username = v.value;
+    }
+
     const { error: updateErr } = await supabase.from("profiles").upsert(
       {
         id: userId,
@@ -403,6 +537,7 @@ export const completeOnboarding = createServerFn({ method: "POST" })
         // v2 fields
         first_name: data.first_name,
         last_name: data.last_name ?? null,
+        ...(username ? { username } : {}),
         birth_date: data.birth_date,
         waist_cm: data.waist_cm ?? null,
         hip_cm: data.hip_cm ?? null,
@@ -439,7 +574,13 @@ export const completeOnboarding = createServerFn({ method: "POST" })
       },
       { onConflict: "id" },
     );
-    if (updateErr) serverError("Não foi possível concluir a operação. Tente novamente.", updateErr);
+    if (updateErr) {
+      const code = (updateErr as { code?: string }).code;
+      const msg = (updateErr as { message?: string }).message ?? "";
+      // Colisão de username (índice unique) → erro limpo ANTES de gerar o programa.
+      if (code === "23505" && /username/i.test(msg)) throw new Error("username_taken");
+      serverError("Não foi possível concluir a operação. Tente novamente.", updateErr);
+    }
 
     if (data.weight_kg) {
       await supabase.from("weight_history").insert({
@@ -478,7 +619,9 @@ export const completeOnboarding = createServerFn({ method: "POST" })
       const pool = await loadExercisePool(supabase);
       if (pool.length > 0) {
         const plan = generatePlan(input, pool);
-        const res = await persistProgram(supabase, userId, input, plan);
+        const res = await persistProgram(supabase, userId, input, plan, {
+          rolling: isRollingEngineEnabled(userId),
+        });
         program_id = res.program_id;
       } else {
         console.error(
@@ -577,7 +720,9 @@ export const updateProfile = createServerFn({ method: "POST" })
         };
         const pool = await loadExercisePool(supabase);
         const plan = generatePlan(input, pool);
-        await persistProgram(supabase, userId, input, plan);
+        await persistProgram(supabase, userId, input, plan, {
+          rolling: isRollingEngineEnabled(userId),
+        });
         regenerated = true;
       }
     }

@@ -76,7 +76,13 @@ export function PREditSheet({ open, onOpenChange, code, current }: Props) {
     } else {
       setValue(current?.value != null ? String(current.value) : "");
     }
-    setReps(current?.secondary_value != null ? String(current.secondary_value) : "");
+    setReps(
+      current?.secondary_value != null
+        ? String(current.secondary_value)
+        : meta.metric === "weight_load"
+          ? "1"
+          : "",
+    );
   }, [open, code, meta, current]);
 
   if (!code || !meta) return null;
@@ -85,6 +91,15 @@ export function PREditSheet({ open, onOpenChange, code, current }: Props) {
   const isWeight = meta.metric === "weight_load";
   const isReps = meta.metric === "reps";
   const isDist = meta.metric === "distance_km";
+
+  // 1RM estimado ao vivo (Epley) — mostra a sugestão enquanto digita peso + reps.
+  const estimated1rm = (() => {
+    if (!isWeight || !value || !reps) return null;
+    const w = Number(value.replace(",", "."));
+    const r = Number(reps);
+    if (!Number.isFinite(w) || w <= 0 || !Number.isFinite(r) || r <= 1) return null;
+    return Math.round(w * (1 + r / 30) * 10) / 10;
+  })();
 
   const unitLabel = isWeight
     ? "kg"
@@ -128,6 +143,7 @@ export function PREditSheet({ open, onOpenChange, code, current }: Props) {
       await Promise.all([
         qc.invalidateQueries({ queryKey: ["personal-records"] }),
         qc.invalidateQueries({ queryKey: ["recent-prs"] }),
+        qc.invalidateQueries({ queryKey: ["dashboard"] }), // home mostra PRs via getDashboard
       ]);
       onOpenChange(false);
     } catch (e) {
@@ -146,6 +162,7 @@ export function PREditSheet({ open, onOpenChange, code, current }: Props) {
       await Promise.all([
         qc.invalidateQueries({ queryKey: ["personal-records"] }),
         qc.invalidateQueries({ queryKey: ["recent-prs"] }),
+        qc.invalidateQueries({ queryKey: ["dashboard"] }), // home mostra PRs via getDashboard
       ]);
       onOpenChange(false);
     } catch (e) {
@@ -192,15 +209,37 @@ export function PREditSheet({ open, onOpenChange, code, current }: Props) {
             {isWeight && (
               <div>
                 <div className="mb-1.5 text-[10px] font-medium uppercase tracking-[0.22em] text-muted-foreground">
-                  Reps (para estimar 1RM)
+                  Tipo de recorde
                 </div>
-                <input
-                  value={reps}
-                  onChange={(e) => setReps(e.target.value)}
-                  placeholder="ex: 5"
-                  inputMode="numeric"
-                  className="h-12 w-full rounded-2xl border border-border bg-surface/40 px-4 text-[15px] font-medium tabular-nums outline-none focus:border-primary/60"
-                />
+                <div className="grid grid-cols-6 gap-1.5">
+                  {Array.from({ length: 12 }, (_, i) => i + 1).map((rm) => (
+                    <button
+                      key={rm}
+                      type="button"
+                      onClick={() => setReps(String(rm))}
+                      className={`h-10 rounded-xl border text-[12px] font-semibold tabular-nums transition active:scale-95 ${
+                        Number(reps) === rm
+                          ? "border-primary/60 bg-primary/10 text-primary"
+                          : "border-border bg-surface/40 text-muted-foreground"
+                      }`}
+                    >
+                      {rm}RM
+                    </button>
+                  ))}
+                </div>
+                {Number(reps) === 1 ? (
+                  <p className="mt-2 text-[12px] font-semibold text-primary">
+                    1RM — essa carga é seu recorde direto 🏆
+                  </p>
+                ) : estimated1rm != null ? (
+                  <p className="mt-2 text-[12px] font-semibold text-primary">
+                    1RM estimado ~{estimated1rm} kg (a partir de {reps}RM)
+                  </p>
+                ) : (
+                  <p className="mt-2 text-[12px] text-muted-foreground">
+                    Escolha o RM (quantas reps fez com essa carga). 1RM = seu PR direto.
+                  </p>
+                )}
               </div>
             )}
 

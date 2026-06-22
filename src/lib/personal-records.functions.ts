@@ -124,9 +124,10 @@ export const upsertManualPR = createServerFn({ method: "POST" })
     const meta = PR_EXERCISE_CODES[code];
     if (!meta) throw new Error("Exercício inválido para PR.");
 
-    // 1RM Epley quando weight_load + reps
+    // 1RM Epley quando weight_load + reps > 1. Em 1RM a própria carga É o recorde
+    // (sem estimar). Em 2RM..12RM estima o 1RM a partir do peso e das reps.
     let estimated_1rm: number | null = null;
-    if (meta.metric === "weight_load" && data.secondary_value && data.secondary_value > 0) {
+    if (meta.metric === "weight_load" && data.secondary_value && data.secondary_value > 1) {
       const reps = data.secondary_value;
       estimated_1rm = Math.round(data.value * (1 + reps / 30) * 10) / 10;
     }

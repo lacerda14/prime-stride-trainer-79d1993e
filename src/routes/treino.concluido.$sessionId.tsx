@@ -18,6 +18,7 @@ import {
   MessageSquare,
 } from "lucide-react";
 import { getCompletedSession, saveWorkoutLogs, type SetLogDTO } from "@/lib/workout-logs.functions";
+import { track } from "@/lib/analytics.functions";
 import { getWeekDetail } from "@/lib/program.queries";
 import { estimateCalories } from "@/lib/calories";
 import {
@@ -148,6 +149,10 @@ function ConcluidoPage() {
   const [durationFeedback, setDurationFeedback] = useState<"" | "too_short" | "ok" | "too_long">(
     "",
   );
+  const [sleepQuality, setSleepQuality] = useState<"" | "ruim" | "ok" | "otimo">("");
+  const [energyLevel, setEnergyLevel] = useState<"" | "baixa" | "normal" | "alta">("");
+  const [jointPain, setJointPain] = useState<string[]>([]);
+  const [muscleSoreness, setMuscleSoreness] = useState<string[]>([]);
   const [generalNotes, setGeneralNotes] = useState("");
   const [saving, setSaving] = useState(false);
   const [savedOnce, setSavedOnce] = useState(false);
@@ -229,6 +234,20 @@ function ConcluidoPage() {
     ) {
       setSessionFeedback(sf);
     }
+    if (
+      sum?.sleep_quality === "ruim" ||
+      sum?.sleep_quality === "ok" ||
+      sum?.sleep_quality === "otimo"
+    )
+      setSleepQuality(sum.sleep_quality);
+    if (
+      sum?.energy_level === "baixa" ||
+      sum?.energy_level === "normal" ||
+      sum?.energy_level === "alta"
+    )
+      setEnergyLevel(sum.energy_level);
+    if (Array.isArray(sum?.joint_pain)) setJointPain(sum.joint_pain);
+    if (Array.isArray(sum?.muscle_soreness)) setMuscleSoreness(sum.muscle_soreness);
   }, [planned, completedQ.data]);
 
   // Estimativa de calorias em tempo real
@@ -328,9 +347,14 @@ function ConcluidoPage() {
           perceived_effort: generalEffort ? Number(generalEffort) : null,
           duration_feedback: durationFeedback || null,
           session_feedback: sessionFeedback || null,
+          sleep_quality: sleepQuality || null,
+          energy_level: energyLevel || null,
+          joint_pain: jointPain,
+          muscle_soreness: muscleSoreness,
         },
       });
       setSavedOnce(true);
+      track("workout_completed"); // engajamento core — mede retenção/semana
       const prs =
         (
           res as {
@@ -643,6 +667,124 @@ function ConcluidoPage() {
                   >
                     {opt.label}
                   </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* ── 3c. Sono + Energia (alimentam o coach / prontidão) ── */}
+        <div
+          className="mt-5 grid grid-cols-2 gap-3 animate-slide-up"
+          style={{ animationDelay: "110ms" }}
+        >
+          <div>
+            <h2 className="mb-2 text-sm font-semibold text-foreground">Sono</h2>
+            <div className="grid grid-cols-3 gap-1.5">
+              {(
+                [
+                  { value: "ruim", emoji: "😣", label: "Mal" },
+                  { value: "ok", emoji: "😐", label: "Ok" },
+                  { value: "otimo", emoji: "😌", label: "Bem" },
+                ] as const
+              ).map((opt) => {
+                const selected = sleepQuality === opt.value;
+                return (
+                  <button
+                    key={opt.value}
+                    onClick={() => setSleepQuality(selected ? "" : opt.value)}
+                    className={`flex min-h-[60px] flex-col items-center justify-center gap-1 rounded-xl border py-2 text-[10px] font-medium transition active:scale-95 ${
+                      selected
+                        ? "border-primary bg-primary/12 text-primary"
+                        : "border-border/50 bg-surface/40 text-muted-foreground"
+                    }`}
+                  >
+                    <span className="text-lg leading-none">{opt.emoji}</span>
+                    {opt.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+          <div>
+            <h2 className="mb-2 text-sm font-semibold text-foreground">Energia</h2>
+            <div className="grid grid-cols-3 gap-1.5">
+              {(
+                [
+                  { value: "baixa", emoji: "🪫", label: "Baixa" },
+                  { value: "normal", emoji: "🔋", label: "Normal" },
+                  { value: "alta", emoji: "⚡", label: "Alta" },
+                ] as const
+              ).map((opt) => {
+                const selected = energyLevel === opt.value;
+                return (
+                  <button
+                    key={opt.value}
+                    onClick={() => setEnergyLevel(selected ? "" : opt.value)}
+                    className={`flex min-h-[60px] flex-col items-center justify-center gap-1 rounded-xl border py-2 text-[10px] font-medium transition active:scale-95 ${
+                      selected
+                        ? "border-primary bg-primary/12 text-primary"
+                        : "border-border/50 bg-surface/40 text-muted-foreground"
+                    }`}
+                  >
+                    <span className="text-lg leading-none">{opt.emoji}</span>
+                    {opt.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
+        {/* ── 3d. Dor articular + muscular (sinal de segurança / volume) ── */}
+        <div className="mt-5 animate-slide-up" style={{ animationDelay: "120ms" }}>
+          <h2 className="mb-2 text-sm font-semibold text-foreground">
+            Dor articular?{" "}
+            <span className="text-[11px] font-normal text-muted-foreground">(opcional)</span>
+          </h2>
+          <div className="flex flex-wrap gap-1.5">
+            {["Ombro", "Cotovelo", "Punho", "Lombar", "Quadril", "Joelho", "Tornozelo"].map((r) => {
+              const on = jointPain.includes(r);
+              return (
+                <button
+                  key={r}
+                  onClick={() =>
+                    setJointPain((a) => (a.includes(r) ? a.filter((x) => x !== r) : [...a, r]))
+                  }
+                  className={`rounded-full border px-3 py-1.5 text-[12px] font-medium transition active:scale-95 ${
+                    on
+                      ? "border-red-500/60 bg-red-500/12 text-red-400"
+                      : "border-border/50 bg-surface/40 text-muted-foreground"
+                  }`}
+                >
+                  {r}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="mt-5 animate-slide-up" style={{ animationDelay: "130ms" }}>
+          <h2 className="mb-2 text-sm font-semibold text-foreground">
+            Dor muscular?{" "}
+            <span className="text-[11px] font-normal text-muted-foreground">(opcional)</span>
+          </h2>
+          <div className="flex flex-wrap gap-1.5">
+            {["Peito", "Costas", "Ombros", "Braços", "Pernas", "Glúteos", "Core"].map((g) => {
+              const on = muscleSoreness.includes(g);
+              return (
+                <button
+                  key={g}
+                  onClick={() =>
+                    setMuscleSoreness((a) => (a.includes(g) ? a.filter((x) => x !== g) : [...a, g]))
+                  }
+                  className={`rounded-full border px-3 py-1.5 text-[12px] font-medium transition active:scale-95 ${
+                    on
+                      ? "border-primary/60 bg-primary/12 text-primary"
+                      : "border-border/50 bg-surface/40 text-muted-foreground"
+                  }`}
+                >
+                  {g}
                 </button>
               );
             })}

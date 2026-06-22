@@ -17,7 +17,13 @@ import {
 import { useState, useEffect } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { useQueryClient, useQuery, useMutation } from "@tanstack/react-query";
-import { resetOnboarding } from "@/lib/profile.functions";
+import {
+  resetOnboarding,
+  getNotificationPrefs,
+  updateNotificationPrefs,
+} from "@/lib/profile.functions";
+import { isNative, ensureLocalNotifPermission } from "@/integrations/native";
+import type { NotifPrefs, NotifCategory } from "@/lib/notifications/schedule";
 import { getGarminStatus, startGarminConnect, disconnectGarmin } from "@/lib/garmin.functions";
 import { dailyHealthAvailable, dailyHealthLabel, syncDailyHealthMetrics } from "@/lib/healthkit";
 import { toast } from "sonner";
@@ -73,11 +79,7 @@ function ConfigPage() {
           <Row label="Sincronização" value="Local" hint="Em breve: sincronização em nuvem" />
         </Section>
 
-        <Section icon={Bell} title="Notificações">
-          <Toggle label="Lembrete diário de treino" defaultOn />
-          <Toggle label="Resumo semanal" defaultOn />
-          <Toggle label="Alerta de deload" />
-        </Section>
+        <NotificationsSection />
 
         <Section icon={Smartphone} title="Aplicativo">
           <Row label="Versão" value="1.0.0" />
@@ -414,7 +416,7 @@ function AppleWatchRow() {
       ? "Abra um treino para enviá-lo ao relógio"
       : state === "web"
         ? "Chegando no app iOS"
-        : "Em desenvolvimento · chegando nas próximas versões";
+        : "Dados do relógio entram pelo Apple Saúde";
 
   const badgeClass =
     state === "ready"
@@ -734,12 +736,109 @@ function Row({ label, value, hint }: { label: string; value: React.ReactNode; hi
   );
 }
 
-function Toggle({ label, defaultOn }: { label: string; defaultOn?: boolean }) {
+const NOTIF_CATEGORIES: { key: NotifCategory; label: string; hint?: string }[] = [
+  { key: "workout", label: "Treino", hint: "Lembrete do dia e de treino perdido" },
+  { key: "streak", label: "Sequência", hint: "Aviso quando sua sequência está em risco" },
+  { key: "achievements", label: "Conquistas & PRs" },
+  { key: "social", label: "Social", hint: "Pedidos de amizade, reações, comentários" },
+  { key: "coach", label: "Coach IA" },
+  { key: "health", label: "Saúde & recuperação" },
+  { key: "news", label: "Novidades & lembretes" },
+];
+
+function NotificationsSection() {
+  const qc = useQueryClient();
+  const fetchPrefs = useServerFn(getNotificationPrefs);
+  const updateFn = useServerFn(updateNotificationPrefs);
+  const { data: prefs } = useQuery({
+    queryKey: ["notification-prefs"],
+    queryFn: () => fetchPrefs(),
+  });
+
+  const m = useMutation({
+    mutationFn: (patch: Partial<NotifPrefs>) => updateFn({ data: patch }),
+    onMutate: async (patch) => {
+      await qc.cancelQueries({ queryKey: ["notification-prefs"] });
+      const prev = qc.getQueryData<NotifPrefs>(["notification-prefs"]);
+      if (prev) qc.setQueryData(["notification-prefs"], { ...prev, ...patch });
+      return { prev };
+    },
+    onError: (_e, _patch, ctx) => {
+      if (ctx?.prev) qc.setQueryData(["notification-prefs"], ctx.prev);
+      toast.error("Não foi possível salvar.");
+    },
+    onSettled: () => {
+      void qc.invalidateQueries({ queryKey: ["notification-prefs"] });
+      void qc.invalidateQueries({ queryKey: ["profile"] }); // sync de locais reage
+    },
+  });
+
+  const set = async (patch: Partial<NotifPrefs>) => {
+    // Ligar o master no nativo → pede permissão do SO antes.
+    if (patch.enabled === true && isNative()) {
+      const granted = await ensureLocalNotifPermission();
+      if (!granted) {
+        toast.error("Permita notificações nas configurações do sistema.");
+        return;
+      }
+    }
+    m.mutate(patch);
+  };
+
+  const enabled = prefs?.enabled ?? true;
+
   return (
-    <label className="flex cursor-pointer items-center justify-between py-3.5">
-      <span className="text-[14px] font-medium">{label}</span>
-      <input type="checkbox" defaultChecked={defaultOn} className="peer sr-only" />
-      <span className="relative h-6 w-11 rounded-full bg-surface-elevated transition-colors peer-checked:bg-primary">
+    <Section icon={Bell} title="Notificações" description="Escolha o que quer receber">
+      <SettingToggle
+        label="Ativar notificações"
+        checked={enabled}
+        onChange={(v) => set({ enabled: v })}
+      />
+      {NOTIF_CATEGORIES.map((c) => (
+        <SettingToggle
+          key={c.key}
+          label={c.label}
+          hint={c.hint}
+          checked={enabled && (prefs?.[c.key] ?? true)}
+          disabled={!enabled}
+          onChange={(v) => set({ [c.key]: v } as Partial<NotifPrefs>)}
+        />
+      ))}
+    </Section>
+  );
+}
+
+function SettingToggle({
+  label,
+  hint,
+  checked,
+  disabled,
+  onChange,
+}: {
+  label: string;
+  hint?: string;
+  checked: boolean;
+  disabled?: boolean;
+  onChange: (v: boolean) => void;
+}) {
+  return (
+    <label
+      className={`flex items-center justify-between py-3.5 ${
+        disabled ? "opacity-40" : "cursor-pointer"
+      }`}
+    >
+      <div className="pr-3">
+        <span className="text-[14px] font-medium">{label}</span>
+        {hint && <div className="mt-0.5 text-[11px] text-muted-foreground">{hint}</div>}
+      </div>
+      <input
+        type="checkbox"
+        checked={checked}
+        disabled={disabled}
+        onChange={(e) => onChange(e.target.checked)}
+        className="peer sr-only"
+      />
+      <span className="relative h-6 w-11 shrink-0 rounded-full bg-surface-elevated transition-colors peer-checked:bg-primary">
         <span className="absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-foreground transition-transform peer-checked:translate-x-5" />
       </span>
     </label>

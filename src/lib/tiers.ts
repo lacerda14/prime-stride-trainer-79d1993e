@@ -76,6 +76,34 @@ export function accessTier(plan: string | null | undefined, billingStatus?: stri
   return tierFromPlan(plan);
 }
 
+// =============================================================================
+// ENTITLEMENTS — helpers semânticos (FONTE ÚNICA dos gates). SEMPRE usar estes
+// em vez de comparar `plan`/`billing_status` na mão. Comparar `plan === "premium_ai"`
+// cru (sem cobrir "pro"/trial) já travou owner e assinantes Pro nos coaches — não repetir.
+// =============================================================================
+
+/** Forma mínima do objeto de subscription (o que getMySubscription retorna). */
+export interface SubLike {
+  plan?: string | null;
+  billing_status?: string | null;
+}
+
+/** Tier de acesso a partir do objeto de subscription (null-safe → "free"). */
+export function tierOf(sub: SubLike | null | undefined): TierId {
+  return accessTier(sub?.plan, sub?.billing_status);
+}
+
+/** Acesso PRO (topo): coaches especialistas, IA ilimitada, feed social.
+ *  Cobre plan="pro" (owner/grant/assinante), "premium_ai" (legado) E trial. */
+export function isProAccess(sub: SubLike | null | undefined): boolean {
+  return tierOf(sub) === "pro";
+}
+
+/** Qualquer acesso PAGO (Plus ou Pro). Usar p/ esconder CTA de upgrade. */
+export function isPaidAccess(sub: SubLike | null | undefined): boolean {
+  return tierOf(sub) !== "free";
+}
+
 /** "R$ 39,90" a partir do valor numérico. */
 export function formatBRL(amount: number): string {
   return `R$ ${amount.toFixed(2).replace(".", ",")}`;

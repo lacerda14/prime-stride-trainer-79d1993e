@@ -143,11 +143,23 @@ export interface HealthSyncResult {
   present: string[]; // categorias com dados (ex.: ["steps","sleep_duration_min"])
 }
 
+// Garante que NENHUMA chamada (nativa ou de rede) deixe a UI presa em
+// "Sincronizando…" pra sempre — toda promise é limitada por tempo.
+function withTimeout<T>(p: Promise<T>, ms: number, label: string): Promise<T> {
+  return Promise.race([
+    p,
+    new Promise<T>((_, reject) =>
+      setTimeout(() => reject(new Error(`Tempo esgotado (${label})`)), ms),
+    ),
+  ]);
+}
+
 export async function syncDailyHealthMetrics(days = 7): Promise<HealthSyncResult> {
   if (!dailyHealthAvailable()) return { synced: 0, present: [] };
+
   let granted = false;
   try {
-    const r = await HealthKit.requestAuthorization();
+    const r = await withTimeout(HealthKit.requestAuthorization(), 30_000, "permissão");
     granted = !!r.granted;
   } catch {
     granted = false;
@@ -156,27 +168,35 @@ export async function syncDailyHealthMetrics(days = 7): Promise<HealthSyncResult
 
   let metrics: DailyHealthMetric[] = [];
   try {
-    const res = await HealthKit.readDailyMetrics({ days });
+    const res = await withTimeout(HealthKit.readDailyMetrics({ days }), 30_000, "leitura");
     metrics = res.metrics ?? [];
   } catch {
     return { synced: 0, present: [] };
   }
 
+  // Só dias com dado útil.
+  const usable = metrics.filter((m) => m.date && Object.keys(m).some((k) => k !== "date"));
   const present = new Set<string>();
-  let synced = 0;
-  for (const m of metrics) {
-    const { date, ...fields } = m;
-    const keys = Object.keys(fields);
-    if (!date || keys.length === 0) continue; // dia sem dado útil
-    keys.forEach((k) => present.add(k));
-    try {
-      const { error } = await supabase.functions.invoke("ingest-healthkit-batch", {
-        body: { date, platform: "healthkit", ...fields },
-      });
-      if (!error) synced++;
-    } catch {
-      /* ignora dia com falha; segue os demais */
-    }
-  }
+  usable.forEach((m) => Object.keys(m).forEach((k) => k !== "date" && present.add(k)));
+
+  // Envia todos os dias EM PARALELO (antes era sequencial → ~40s no celular,
+  // parecia travado). Cada envio tem timeout próprio; um dia falho não derruba
+  // os demais (allSettled).
+  const results = await Promise.allSettled(
+    usable.map((m) => {
+      const { date, ...fields } = m;
+      return withTimeout(
+        supabase.functions.invoke("ingest-healthkit-batch", {
+          body: { date, platform: "healthkit", ...fields },
+        }),
+        20_000,
+        "envio",
+      );
+    }),
+  );
+  const synced = results.filter(
+    (r) => r.status === "fulfilled" && !(r.value as { error?: unknown } | null)?.error,
+  ).length;
+
   return { synced, present: [...present] };
 }

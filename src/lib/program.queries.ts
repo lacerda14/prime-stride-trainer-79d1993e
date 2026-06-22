@@ -2,6 +2,8 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { serverError } from "@/lib/server-errors";
+import { materializeNextMesocycle, isRollingEngineEnabled } from "@/lib/engine/pm-engine.server";
+import { needsMaterialization } from "@/lib/engine/rolling";
 
 const localTodaySchema = z.object({
   local_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
@@ -18,6 +20,7 @@ export interface ExerciseLite {
   id: string;
   name: string;
   category: string;
+  equipment: string | null;
 }
 
 export interface SessionExerciseDTO {
@@ -305,7 +308,7 @@ async function loadWeekDetail(
     .select(
       `id,day_number,day_name,session_type,objective,duration_minutes,completed_at,
        session_exercises(id,slot,pair_slot,sets,reps,rpe_target,rest_seconds,notes,
-         exercise:exercise_pool(id,name,category)),
+         exercise:exercise_pool(id,name,category,equipment)),
        running_protocols(id,protocol_type,protocol_name,goal,total_duration_minutes,
          warmup_minutes,cooldown_minutes,blocks,intervals,intervals_per_block,
          work_duration_seconds,rest_duration_seconds,between_blocks_rest_seconds,
@@ -355,8 +358,13 @@ async function loadWeekDetail(
           rest_seconds: e.rest_seconds,
           notes: e.notes,
           exercise: e.exercise
-            ? { id: e.exercise.id, name: e.exercise.name, category: e.exercise.category }
-            : { id: "", name: "—", category: "unknown" },
+            ? {
+                id: e.exercise.id,
+                name: e.exercise.name,
+                category: e.exercise.category,
+                equipment: e.exercise.equipment ?? null,
+              }
+            : { id: "", name: "—", category: "unknown", equipment: null },
         })),
       running: (d.running_protocols ?? [])[0] ?? null,
     })),
@@ -398,10 +406,28 @@ export const getTodayTraining = createServerFn({ method: "GET" })
       week: WeekDetailDTO;
       today: TrainingDayDTO | null;
       calendar: TodayTrainingCalendarDTO;
+      body_weight_kg: number | null;
     } | null> => {
       const calendarInput = data;
       const summary = await loadProgramSummary(context.supabase, context.userId, calendarInput);
       if (!summary) return null;
+
+      // Engine v2 / Fase 1 (gated por ROLLING_ENGINE): se o programa é rolante e o
+      // aluno chega perto do fim do que já foi materializado, gera o próximo
+      // mesociclo sob demanda. Best-effort (materialize nunca lança).
+      if (isRollingEngineEnabled(context.userId)) {
+        const { data: prog } = await context.supabase
+          .from("training_programs")
+          .select("generation_cursor")
+          .eq("id", summary.id)
+          .maybeSingle();
+        const cursor = ((prog as { generation_cursor?: number | null } | null)?.generation_cursor ??
+          null) as number | null;
+        if (needsMaterialization(summary.active_week, cursor, summary.total_weeks)) {
+          await materializeNextMesocycle(context.supabase, context.userId);
+        }
+      }
+
       const week = await loadWeekDetail(context.supabase, summary.id, summary.active_week);
       if (!week) return null;
       const today = week.days.find((d) => d.day_number === summary.active_day) ?? null;
@@ -412,7 +438,16 @@ export const getTodayTraining = createServerFn({ method: "GET" })
         .eq("id", context.userId)
         .neq("current_week", summary.current_week);
 
+      // Peso do aluno (onboarding) — usado como carga dos exercícios de peso corporal.
+      const { data: prof } = await context.supabase
+        .from("profiles")
+        .select("weight_kg")
+        .eq("id", context.userId)
+        .maybeSingle();
+      const body_weight_kg = prof?.weight_kg != null ? Number(prof.weight_kg) : null;
+
       return {
+        body_weight_kg,
         program: summary,
         week,
         today,

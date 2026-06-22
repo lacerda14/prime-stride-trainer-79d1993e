@@ -30,6 +30,7 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AssinaturasRouteImport } from './routes/assinaturas'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminUsersRouteImport } from './routes/admin.users'
+import { Route as AdminMetricsRouteImport } from './routes/admin.metrics'
 import { Route as AdminKnowledgeRouteImport } from './routes/admin.knowledge'
 import { Route as AdminExerciseMediaRouteImport } from './routes/admin.exercise-media'
 import { Route as TreinoConcluidoSessionIdRouteImport } from './routes/treino.concluido.$sessionId'
@@ -140,6 +141,11 @@ const AdminUsersRoute = AdminUsersRouteImport.update({
   path: '/admin/users',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminMetricsRoute = AdminMetricsRouteImport.update({
+  id: '/admin/metrics',
+  path: '/admin/metrics',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminKnowledgeRoute = AdminKnowledgeRouteImport.update({
   id: '/admin/knowledge',
   path: '/admin/knowledge',
@@ -185,6 +191,7 @@ export interface FileRoutesByFullPath {
   '/treinos': typeof TreinosRoute
   '/admin/exercise-media': typeof AdminExerciseMediaRoute
   '/admin/knowledge': typeof AdminKnowledgeRoute
+  '/admin/metrics': typeof AdminMetricsRoute
   '/admin/users': typeof AdminUsersRoute
   '/api/public/mp-webhook': typeof ApiPublicMpWebhookRoute
   '/treino/concluido/$sessionId': typeof TreinoConcluidoSessionIdRoute
@@ -212,6 +219,7 @@ export interface FileRoutesByTo {
   '/treinos': typeof TreinosRoute
   '/admin/exercise-media': typeof AdminExerciseMediaRoute
   '/admin/knowledge': typeof AdminKnowledgeRoute
+  '/admin/metrics': typeof AdminMetricsRoute
   '/admin/users': typeof AdminUsersRoute
   '/api/public/mp-webhook': typeof ApiPublicMpWebhookRoute
   '/treino/concluido/$sessionId': typeof TreinoConcluidoSessionIdRoute
@@ -240,6 +248,7 @@ export interface FileRoutesById {
   '/treinos': typeof TreinosRoute
   '/admin/exercise-media': typeof AdminExerciseMediaRoute
   '/admin/knowledge': typeof AdminKnowledgeRoute
+  '/admin/metrics': typeof AdminMetricsRoute
   '/admin/users': typeof AdminUsersRoute
   '/api/public/mp-webhook': typeof ApiPublicMpWebhookRoute
   '/treino/concluido/$sessionId': typeof TreinoConcluidoSessionIdRoute
@@ -269,6 +278,7 @@ export interface FileRouteTypes {
     | '/treinos'
     | '/admin/exercise-media'
     | '/admin/knowledge'
+    | '/admin/metrics'
     | '/admin/users'
     | '/api/public/mp-webhook'
     | '/treino/concluido/$sessionId'
@@ -296,6 +306,7 @@ export interface FileRouteTypes {
     | '/treinos'
     | '/admin/exercise-media'
     | '/admin/knowledge'
+    | '/admin/metrics'
     | '/admin/users'
     | '/api/public/mp-webhook'
     | '/treino/concluido/$sessionId'
@@ -323,6 +334,7 @@ export interface FileRouteTypes {
     | '/treinos'
     | '/admin/exercise-media'
     | '/admin/knowledge'
+    | '/admin/metrics'
     | '/admin/users'
     | '/api/public/mp-webhook'
     | '/treino/concluido/$sessionId'
@@ -351,6 +363,7 @@ export interface RootRouteChildren {
   TreinosRoute: typeof TreinosRoute
   AdminExerciseMediaRoute: typeof AdminExerciseMediaRoute
   AdminKnowledgeRoute: typeof AdminKnowledgeRoute
+  AdminMetricsRoute: typeof AdminMetricsRoute
   AdminUsersRoute: typeof AdminUsersRoute
   ApiPublicMpWebhookRoute: typeof ApiPublicMpWebhookRoute
 }
@@ -504,6 +517,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminUsersRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/metrics': {
+      id: '/admin/metrics'
+      path: '/admin/metrics'
+      fullPath: '/admin/metrics'
+      preLoaderRoute: typeof AdminMetricsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin/knowledge': {
       id: '/admin/knowledge'
       path: '/admin/knowledge'
@@ -569,6 +589,7 @@ const rootRouteChildren: RootRouteChildren = {
   TreinosRoute: TreinosRoute,
   AdminExerciseMediaRoute: AdminExerciseMediaRoute,
   AdminKnowledgeRoute: AdminKnowledgeRoute,
+  AdminMetricsRoute: AdminMetricsRoute,
   AdminUsersRoute: AdminUsersRoute,
   ApiPublicMpWebhookRoute: ApiPublicMpWebhookRoute,
 }

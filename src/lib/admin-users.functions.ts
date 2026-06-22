@@ -19,6 +19,28 @@ async function ensureAdmin(context: any) {
   if (!data) throw new Error("Forbidden: admin only");
 }
 
+// Painel de viabilidade (admin): KPIs de ativação/retenção das views (Fase 0).
+// Lê via service role (agrega todos os usuários, fora da RLS).
+export const getKpis = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await ensureAdmin(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    // views novas ainda não estão no types.ts gerado — cast contido.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const db = supabaseAdmin as any;
+    const [ov, act, ret] = await Promise.all([
+      db.from("v_kpi_overview").select("*").maybeSingle(),
+      db.from("v_activation").select("*").maybeSingle(),
+      db.from("v_retention").select("*").maybeSingle(),
+    ]);
+    return {
+      overview: (ov.data ?? null) as Record<string, number> | null,
+      activation: (act.data ?? null) as Record<string, number> | null,
+      retention: (ret.data ?? null) as Record<string, number> | null,
+    };
+  });
+
 export interface AdminUserDTO {
   id: string;
   name: string | null;

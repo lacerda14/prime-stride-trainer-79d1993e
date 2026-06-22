@@ -48,6 +48,10 @@ export interface CompletedSessionDTO {
       perceived_effort?: number | null;
       general_notes?: string | null;
       duration_feedback?: string | null;
+      sleep_quality?: string | null;
+      energy_level?: string | null;
+      joint_pain?: string[] | null;
+      muscle_soreness?: string[] | null;
       saved_at?: string | null;
     } | null;
   };
@@ -211,6 +215,10 @@ export const saveWorkoutLogs = createServerFn({ method: "POST" })
           .enum(["muito_leve", "leve", "ideal", "pesado", "muito_pesado"])
           .nullable()
           .optional(),
+        sleep_quality: z.enum(["ruim", "ok", "otimo"]).nullable().optional(),
+        energy_level: z.enum(["baixa", "normal", "alta"]).nullable().optional(),
+        joint_pain: z.array(z.string().max(30)).max(12).optional(),
+        muscle_soreness: z.array(z.string().max(30)).max(12).optional(),
       })
       .parse(input),
   )
@@ -299,6 +307,10 @@ export const saveWorkoutLogs = createServerFn({ method: "POST" })
           general_notes: data.general_notes ?? null,
           duration_feedback: data.duration_feedback ?? null,
           session_feedback: data.session_feedback ?? null,
+          sleep_quality: data.sleep_quality ?? null,
+          energy_level: data.energy_level ?? null,
+          joint_pain: data.joint_pain ?? [],
+          muscle_soreness: data.muscle_soreness ?? [],
           saved_at: new Date().toISOString(),
         },
         updated_at: new Date().toISOString(),

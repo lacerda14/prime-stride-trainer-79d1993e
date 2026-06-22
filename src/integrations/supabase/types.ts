@@ -151,6 +151,33 @@ export type Database = {
         }
         Relationships: []
       }
+      device_tokens: {
+        Row: {
+          created_at: string
+          id: string
+          last_seen_at: string
+          platform: string
+          token: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          last_seen_at?: string
+          platform: string
+          token: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          last_seen_at?: string
+          platform?: string
+          token?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       billing_product_map: {
         Row: {
           billing_period: string | null
@@ -1307,6 +1334,7 @@ export type Database = {
           sports_frequency: Json
           sports_frequency_week: number | null
           sports_notes: string | null
+          notification_prefs: Json
           streak_current: number
           streak_last_date: string | null
           streak_longest: number
@@ -1398,6 +1426,7 @@ export type Database = {
           sports_frequency?: Json
           sports_frequency_week?: number | null
           sports_notes?: string | null
+          notification_prefs?: Json
           streak_current?: number
           streak_last_date?: string | null
           streak_longest?: number
@@ -1489,6 +1518,7 @@ export type Database = {
           sports_frequency?: Json
           sports_frequency_week?: number | null
           sports_notes?: string | null
+          notification_prefs?: Json
           streak_current?: number
           streak_last_date?: string | null
           streak_longest?: number
