@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { useAuth } from "@/hooks/use-auth";
 import { completeOnboarding, getProfile } from "@/lib/profile.functions";
 import { track } from "@/lib/analytics.functions";
+import { ensureLocalNotifPermission } from "@/integrations/native";
 import { UsernameInput } from "@/components/username-input";
 import { getMyRole } from "@/lib/exercise-media.functions";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -432,6 +433,9 @@ function OnboardingPage() {
       }
       void qc.invalidateQueries({ queryKey: ["profile"] });
       track("onboarding_completed"); // ativação — base do funil de retenção
+      // Pede permissão de notificação NO MOMENTO certo (acabou de gerar o programa)
+      // → lembrete de treino é o que traz o aluno de volta (come-back loop). Native-only.
+      void ensureLocalNotifPermission();
       toast.success("Tudo pronto. Seu programa foi gerado.");
       navigate({ to: "/", replace: true });
     } catch (e) {

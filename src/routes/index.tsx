@@ -231,12 +231,21 @@ function DashboardContent() {
                   <Dumbbell className="h-5 w-5 text-primary" />
                 </div>
               </div>
+              {/* Start em 1 toque: vai direto pro treino (tela de começar/countdown),
+                  reduz fricção de ativação. Preview/troca de exercícios fica no /hoje
+                  (via "ver treino" abaixo e na aba Treinos). */}
               <Link
-                to="/hoje"
+                to="/treino"
                 className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-primary py-3.5 text-[14px] font-semibold text-primary-foreground shadow-glow transition-transform active:scale-[0.99]"
               >
                 <Play className="h-4 w-4 fill-current" />
                 Iniciar treino
+              </Link>
+              <Link
+                to="/hoje"
+                className="mt-2 flex w-full items-center justify-center gap-1.5 text-[12px] font-medium text-muted-foreground active:opacity-70"
+              >
+                Ver o treino antes <ArrowRight className="h-3.5 w-3.5" />
               </Link>
             </div>
           </div>
