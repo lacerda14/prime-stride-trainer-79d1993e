@@ -2,7 +2,17 @@ node_modules
 dist
 .output
 .vinxi
+.wrangler
 pnpm-lock.yaml
 package-lock.json
 bun.lock
 routeTree.gen.ts
+# Plataformas nativas e artefatos de build (Capacitor) — não são fonte
+android
+ios
+# Saída do Lovable / docs gerados
+.lovable
+# Tipos gerados pelo Supabase (regenerados via `supabase gen types`)
+src/integrations/supabase/types.ts
+playwright-report
+test-results

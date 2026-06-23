@@ -61,7 +61,6 @@ function EvolucaoPage() {
         </div>
       ) : (
         <div className="space-y-4 p-4 pb-8">
-
           {/* ── Hero: Nível e XP ── */}
           <section className="animate-fade-in glass-strong relative overflow-hidden rounded-3xl p-5">
             <div className="pointer-events-none absolute -right-12 -top-12 h-40 w-40 rounded-full bg-primary/20 blur-3xl" />
@@ -89,8 +88,13 @@ function EvolucaoPage() {
               </div>
               <div className="mt-4">
                 <div className="flex items-center justify-between text-[11px] text-muted-foreground mb-1.5">
-                  <span>{prog.intoLevel.toLocaleString("pt-BR")} / {prog.levelSpan.toLocaleString("pt-BR")} XP</span>
-                  <span>Nível {level + 1} em {prog.xpToNext.toLocaleString("pt-BR")} XP</span>
+                  <span>
+                    {prog.intoLevel.toLocaleString("pt-BR")} /{" "}
+                    {prog.levelSpan.toLocaleString("pt-BR")} XP
+                  </span>
+                  <span>
+                    Nível {level + 1} em {prog.xpToNext.toLocaleString("pt-BR")} XP
+                  </span>
                 </div>
                 <div className="h-2 w-full overflow-hidden rounded-full bg-surface">
                   <div
@@ -185,7 +189,8 @@ function EvolucaoPage() {
                     {evo?.consistencyPct ?? 0}%
                   </div>
                   <div className="mt-1 text-[12px] text-muted-foreground">
-                    {evo?.sessionsLast30 ?? 0} sessão{evo?.sessionsLast30 !== 1 ? "ões" : ""} concluída{evo?.sessionsLast30 !== 1 ? "s" : ""}
+                    {evo?.sessionsLast30 ?? 0} sessão{evo?.sessionsLast30 !== 1 ? "ões" : ""}{" "}
+                    concluída{evo?.sessionsLast30 !== 1 ? "s" : ""}
                   </div>
                 </div>
                 <div className="flex-1">
@@ -208,23 +213,26 @@ function EvolucaoPage() {
                     Últimos 7 dias
                   </div>
                   <div className="flex items-end justify-between gap-1.5">
-                    {evo.daysWithSession30.slice(0, 7).reverse().map((done, i) => {
-                      const d = new Date();
-                      d.setHours(0, 0, 0, 0);
-                      d.setDate(d.getDate() - (6 - i));
-                      const label = d.toLocaleDateString("pt-BR", { weekday: "narrow" });
-                      return (
-                        <div key={i} className="flex flex-1 flex-col items-center gap-1">
-                          <div
-                            className={`w-full rounded-md transition-colors ${
-                              done ? "bg-primary" : "bg-surface border border-border/60"
-                            }`}
-                            style={{ height: done ? "32px" : "10px" }}
-                          />
-                          <div className="text-[9px] text-muted-foreground">{label}</div>
-                        </div>
-                      );
-                    })}
+                    {evo.daysWithSession30
+                      .slice(0, 7)
+                      .reverse()
+                      .map((done, i) => {
+                        const d = new Date();
+                        d.setHours(0, 0, 0, 0);
+                        d.setDate(d.getDate() - (6 - i));
+                        const label = d.toLocaleDateString("pt-BR", { weekday: "narrow" });
+                        return (
+                          <div key={i} className="flex flex-1 flex-col items-center gap-1">
+                            <div
+                              className={`w-full rounded-md transition-colors ${
+                                done ? "bg-primary" : "bg-surface border border-border/60"
+                              }`}
+                              style={{ height: done ? "32px" : "10px" }}
+                            />
+                            <div className="text-[9px] text-muted-foreground">{label}</div>
+                          </div>
+                        );
+                      })}
                   </div>
                 </div>
               )}
@@ -249,13 +257,20 @@ function EvolucaoPage() {
                     </div>
                     <div className="flex items-baseline gap-1.5">
                       <span className="num text-[32px] font-semibold leading-none tracking-tight">
-                        {evo.lastWeightKg.toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
+                        {evo.lastWeightKg.toLocaleString("pt-BR", {
+                          minimumFractionDigits: 1,
+                          maximumFractionDigits: 1,
+                        })}
                       </span>
                       <span className="text-[13px] text-muted-foreground">kg</span>
                     </div>
                     {evo.lastWeightDate && (
                       <div className="mt-0.5 text-[11px] text-muted-foreground">
-                        {new Date(evo.lastWeightDate).toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric" })}
+                        {new Date(evo.lastWeightDate).toLocaleDateString("pt-BR", {
+                          day: "2-digit",
+                          month: "short",
+                          year: "numeric",
+                        })}
                       </div>
                     )}
                   </div>
@@ -340,7 +355,11 @@ function EvolucaoPage() {
                     <div className="min-w-0 flex-1">
                       <div className="truncate text-[13px] font-semibold">{pr.exercise_name}</div>
                       <div className="text-[11px] text-muted-foreground">
-                        {new Date(pr.achieved_at).toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric" })}
+                        {new Date(pr.achieved_at).toLocaleDateString("pt-BR", {
+                          day: "2-digit",
+                          month: "short",
+                          year: "numeric",
+                        })}
                         {pr.reps ? ` · ${pr.reps} reps` : ""}
                       </div>
                     </div>
@@ -367,8 +386,6 @@ function EvolucaoPage() {
             )}
           </section>
 
-
-
           {/* ── Medidas ── */}
           <section className="animate-fade-in">
             <SectionHeader icon={<Ruler className="h-4 w-4" />} title="Medidas corporais" />
@@ -377,14 +394,17 @@ function EvolucaoPage() {
                 <div className="grid grid-cols-2 gap-3">
                   {[
                     { label: "Cintura", value: evo?.measures.waist_cm },
-                    { label: "Quadril",  value: evo?.measures.hip_cm },
-                    { label: "Peito",    value: evo?.measures.chest_cm },
-                    { label: "Braço",    value: evo?.measures.arm_cm },
-                    { label: "Coxa",     value: evo?.measures.thigh_cm },
+                    { label: "Quadril", value: evo?.measures.hip_cm },
+                    { label: "Peito", value: evo?.measures.chest_cm },
+                    { label: "Braço", value: evo?.measures.arm_cm },
+                    { label: "Coxa", value: evo?.measures.thigh_cm },
                   ]
                     .filter((m) => m.value != null)
                     .map((m) => (
-                      <div key={m.label} className="rounded-xl border border-border/60 bg-surface/40 px-4 py-3">
+                      <div
+                        key={m.label}
+                        className="rounded-xl border border-border/60 bg-surface/40 px-4 py-3"
+                      >
                         <div className="text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
                           {m.label}
                         </div>
@@ -443,7 +463,6 @@ function EvolucaoPage() {
               <ArrowRight className="h-4 w-4 text-muted-foreground" />
             </Link>
           </section>
-
         </div>
       )}
     </AppShell>
@@ -479,12 +498,12 @@ function StatCard({
   return (
     <div className="glass rounded-2xl px-4 py-4 text-center">
       <div className="flex items-center justify-center gap-1 mb-1">{icon}</div>
-      <div className={`num text-[24px] font-semibold leading-none ${color === "orange" ? "text-orange-400" : "text-primary"}`}>
+      <div
+        className={`num text-[24px] font-semibold leading-none ${color === "orange" ? "text-orange-400" : "text-primary"}`}
+      >
         {value}
       </div>
-      {suffix && (
-        <div className="mt-0.5 text-[10px] text-muted-foreground">{suffix}</div>
-      )}
+      {suffix && <div className="mt-0.5 text-[10px] text-muted-foreground">{suffix}</div>}
       <div className="mt-1 text-[10px] font-medium uppercase tracking-[0.15em] text-muted-foreground">
         {label}
       </div>
@@ -512,7 +531,9 @@ function PlaceholderCard({
       </div>
       <div>
         <div className="text-[13px] font-semibold">{title}</div>
-        <p className="mt-1 text-[11px] text-muted-foreground max-w-[240px] mx-auto">{description}</p>
+        <p className="mt-1 text-[11px] text-muted-foreground max-w-[240px] mx-auto">
+          {description}
+        </p>
       </div>
       <Link
         to={ctaHref}
@@ -524,7 +545,21 @@ function PlaceholderCard({
   );
 }
 
-function hasMeasures(m?: { waist_cm: number | null; hip_cm: number | null; chest_cm: number | null; arm_cm: number | null; thigh_cm: number | null } | null): boolean {
+function hasMeasures(
+  m?: {
+    waist_cm: number | null;
+    hip_cm: number | null;
+    chest_cm: number | null;
+    arm_cm: number | null;
+    thigh_cm: number | null;
+  } | null,
+): boolean {
   if (!m) return false;
-  return m.waist_cm != null || m.hip_cm != null || m.chest_cm != null || m.arm_cm != null || m.thigh_cm != null;
+  return (
+    m.waist_cm != null ||
+    m.hip_cm != null ||
+    m.chest_cm != null ||
+    m.arm_cm != null ||
+    m.thigh_cm != null
+  );
 }

@@ -5,9 +5,22 @@ import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { getTodayTraining, type SessionExerciseDTO } from "@/lib/program.queries";
 import { getLastWeightsForExercises } from "@/lib/workout-logs.functions";
-import { getCoachRefinement, type CoachRefinementExercise, type CoachTechnique } from "@/lib/coach.functions";
+import {
+  getCoachRefinement,
+  type CoachRefinementExercise,
+  type CoachTechnique,
+} from "@/lib/coach.functions";
 import { useAuth } from "@/hooks/use-auth";
-import { ChevronDown, Play, Timer, Target, Loader2, PlayCircle, ArrowRightLeft, Sparkles } from "lucide-react";
+import {
+  ChevronDown,
+  Play,
+  Timer,
+  Target,
+  Loader2,
+  PlayCircle,
+  ArrowRightLeft,
+  Sparkles,
+} from "lucide-react";
 import { runningHeadline, runningInstructions } from "@/lib/format-running";
 import { useLocalToday } from "@/hooks/use-local-today";
 import { ExerciseDetailModal, useExerciseDetail } from "@/components/exercise-detail-modal";
@@ -19,26 +32,38 @@ import type { SwapSuggestion } from "@/lib/exercise-swap.functions";
 type AppliedSwap = { id: string; name: string; category: string };
 type SwapMap = Record<string, AppliedSwap>;
 
-function swapKey(date: string) { return `hoje_swaps_${date}`; }
+function swapKey(date: string) {
+  return `hoje_swaps_${date}`;
+}
 function loadSwaps(date: string): SwapMap {
-  try { return JSON.parse(localStorage.getItem(swapKey(date)) ?? "{}") as SwapMap; }
-  catch { return {}; }
+  try {
+    return JSON.parse(localStorage.getItem(swapKey(date)) ?? "{}") as SwapMap;
+  } catch {
+    return {};
+  }
 }
 function persistSwaps(date: string, m: SwapMap) {
-  try { localStorage.setItem(swapKey(date), JSON.stringify(m)); } catch { /* noop */ }
+  try {
+    localStorage.setItem(swapKey(date), JSON.stringify(m));
+  } catch {
+    /* noop */
+  }
 }
 
 function applySwap(e: SessionExerciseDTO, swaps: SwapMap): SessionExerciseDTO {
   const s = swaps[e.id];
   if (!s) return e;
-  return { ...e, exercise: { id: s.id, name: s.name, category: s.category } };
+  return { ...e, exercise: { id: s.id, name: s.name, category: s.category, equipment: null } };
 }
 
 export const Route = createFileRoute("/hoje")({
   head: () => ({
     meta: [
       { title: "Treino de Hoje · PM Hybrid" },
-      { name: "description", content: "Sessão de treino do dia com séries, descanso e progressão." },
+      {
+        name: "description",
+        content: "Sessão de treino do dia com séries, descanso e progressão.",
+      },
     ],
   }),
   component: HojePage,
@@ -74,15 +99,28 @@ function loadKey(exerciseId: string, set: number) {
   return `load_${exerciseId}_s${set}`;
 }
 function getLoad(exerciseId: string, set: number): string {
-  try { return localStorage.getItem(loadKey(exerciseId, set)) ?? ""; } catch { return ""; }
+  try {
+    return localStorage.getItem(loadKey(exerciseId, set)) ?? "";
+  } catch {
+    return "";
+  }
 }
 function setLoad(exerciseId: string, set: number, value: string) {
-  try { localStorage.setItem(loadKey(exerciseId, set), value); } catch { /* noop */ }
+  try {
+    localStorage.setItem(loadKey(exerciseId, set), value);
+  } catch {
+    /* noop */
+  }
 }
 
 // ── Sub-components ─────────────────────────────────────────────
 
-function SetRow({ exerciseId, setNum, reps, lastWeight }: {
+function SetRow({
+  exerciseId,
+  setNum,
+  reps,
+  lastWeight,
+}: {
   exerciseId: string;
   setNum: number;
   reps: string;
@@ -117,34 +155,15 @@ function SetRow({ exerciseId, setNum, reps, lastWeight }: {
   );
 }
 
-function ExerciseRows({ exercise, onOpenVideo }: { exercise: SessionExerciseDTO; onOpenVideo: (id: string) => void }) {
-  return (
-    <div className="space-y-1">
-      <div className="flex items-center gap-2 px-1 pb-1">
-        <button
-          type="button"
-          onClick={() => onOpenVideo(exercise.exercise.id)}
-          className="inline-flex items-center gap-1.5 text-sm font-semibold tracking-tight transition-colors hover:text-primary text-left"
-        >
-          {exercise.exercise.name}
-          <PlayCircle className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-        </button>
-        <div className="num flex items-center gap-2 text-xs text-muted-foreground">
-          <span>{exercise.sets}×{exercise.reps}</span>
-          {exercise.rpe_target && <span>· RPE {exercise.rpe_target}</span>}
-        </div>
-      </div>
-      {Array.from({ length: exercise.sets || 1 }).map((_, i) => (
-        <SetRow key={i} exerciseId={exercise.id} setNum={i + 1} reps={exercise.reps} />
-      ))}
-    </div>
-  );
-}
-
 // Rótulos pt-BR das técnicas que o coach pode atribuir
 const TECHNIQUE_LABEL: Record<CoachTechnique, string> = {
-  straight: "", superset: "Supersérie", rest_pause: "Rest-pause", drop_set: "Drop-set",
-  tempo: "Tempo controlado", cluster: "Cluster", myo_reps: "Myo-reps",
+  straight: "",
+  superset: "Supersérie",
+  rest_pause: "Rest-pause",
+  drop_set: "Drop-set",
+  tempo: "Tempo controlado",
+  cluster: "Cluster",
+  myo_reps: "Myo-reps",
 };
 
 // Bloco de cue do coach (camada 3) dentro de um card de exercício
@@ -167,7 +186,15 @@ function CoachCue({ refine }: { refine: CoachRefinementExercise }) {
 }
 
 // Card de exercício simples
-function SingleCard({ exercise, index, onOpenVideo, lastWeights, onRequestSwap, isSwapped, refine }: {
+function SingleCard({
+  exercise,
+  index,
+  onOpenVideo,
+  lastWeights,
+  onRequestSwap,
+  isSwapped,
+  refine,
+}: {
   exercise: SessionExerciseDTO;
   index: number;
   onOpenVideo: (id: string) => void;
@@ -192,7 +219,10 @@ function SingleCard({ exercise, index, onOpenVideo, lastWeights, onRequestSwap, 
             <div className="flex flex-wrap items-center gap-2 text-base font-semibold tracking-tight">
               <button
                 type="button"
-                onClick={(e) => { e.stopPropagation(); onOpenVideo(exercise.exercise.id); }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onOpenVideo(exercise.exercise.id);
+                }}
                 className="inline-flex items-center gap-1.5 text-left transition-colors hover:text-primary"
               >
                 {exercise.exercise.name}
@@ -205,7 +235,9 @@ function SingleCard({ exercise, index, onOpenVideo, lastWeights, onRequestSwap, 
               )}
             </div>
             <div className="num mt-0.5 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-              <span>{exercise.sets}×{exercise.reps}</span>
+              <span>
+                {exercise.sets}×{exercise.reps}
+              </span>
               {exercise.rest_seconds && (
                 <span className="inline-flex items-center gap-1 text-primary/90">
                   <Timer className="h-3 w-3" /> {exercise.rest_seconds}s
@@ -215,19 +247,31 @@ function SingleCard({ exercise, index, onOpenVideo, lastWeights, onRequestSwap, 
             </div>
           </div>
         </div>
-        <ChevronDown className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-300 ${open ? "rotate-180" : ""}`} />
+        <ChevronDown
+          className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-300 ${open ? "rotate-180" : ""}`}
+        />
       </button>
 
-      <div className={`grid transition-[grid-template-rows] duration-300 ease-out ${open ? "grid-rows-[1fr]" : "grid-rows-[0fr]"}`}>
+      <div
+        className={`grid transition-[grid-template-rows] duration-300 ease-out ${open ? "grid-rows-[1fr]" : "grid-rows-[0fr]"}`}
+      >
         <div className="overflow-hidden">
           <div className="space-y-2 border-t border-border px-5 pb-5 pt-4">
             {refine && !isSwapped && <CoachCue refine={refine} />}
             {Array.from({ length: exercise.sets || 1 }).map((_, i) => (
-              <SetRow key={i} exerciseId={exercise.id} setNum={i + 1} reps={exercise.reps} lastWeight={lastWeights[exercise.exercise.id]} />
+              <SetRow
+                key={i}
+                exerciseId={exercise.id}
+                setNum={i + 1}
+                reps={exercise.reps}
+                lastWeight={lastWeights[exercise.exercise.id]}
+              />
             ))}
             <button
               type="button"
-              onClick={() => onRequestSwap(exercise.id, exercise.exercise.id, exercise.exercise.name)}
+              onClick={() =>
+                onRequestSwap(exercise.id, exercise.exercise.id, exercise.exercise.name)
+              }
               className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl border border-border bg-surface/40 px-3 py-2 text-[11px] font-semibold text-muted-foreground transition-colors hover:text-primary"
             >
               <ArrowRightLeft className="h-3.5 w-3.5" />
@@ -246,7 +290,16 @@ function SingleCard({ exercise, index, onOpenVideo, lastWeights, onRequestSwap, 
 }
 
 // Card de biset — agrupa todos os exercícios do par
-function BisetCard({ exercises, slot, index, onOpenVideo, lastWeights, onRequestSwap, swappedIds, refineBySlot }: {
+function BisetCard({
+  exercises,
+  slot,
+  index,
+  onOpenVideo,
+  lastWeights,
+  onRequestSwap,
+  swappedIds,
+  refineBySlot,
+}: {
   exercises: SessionExerciseDTO[];
   slot: number;
   index: number;
@@ -279,7 +332,9 @@ function BisetCard({ exercises, slot, index, onOpenVideo, lastWeights, onRequest
             </div>
             <div className="num mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
               {exercises.map((e) => (
-                <span key={e.id} className="font-medium text-foreground/80">{e.exercise.name}</span>
+                <span key={e.id} className="font-medium text-foreground/80">
+                  {e.exercise.name}
+                </span>
               ))}
             </div>
             {restSeconds && (
@@ -289,11 +344,15 @@ function BisetCard({ exercises, slot, index, onOpenVideo, lastWeights, onRequest
             )}
           </div>
         </div>
-        <ChevronDown className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-300 ${open ? "rotate-180" : ""}`} />
+        <ChevronDown
+          className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-300 ${open ? "rotate-180" : ""}`}
+        />
       </button>
 
       {/* Expanded */}
-      <div className={`grid transition-[grid-template-rows] duration-300 ease-out ${open ? "grid-rows-[1fr]" : "grid-rows-[0fr]"}`}>
+      <div
+        className={`grid transition-[grid-template-rows] duration-300 ease-out ${open ? "grid-rows-[1fr]" : "grid-rows-[0fr]"}`}
+      >
         <div className="overflow-hidden">
           <div className="border-t border-border/60 px-5 pb-5 pt-4">
             {/* Cues do coach por exercício do par */}
@@ -301,7 +360,9 @@ function BisetCard({ exercises, slot, index, onOpenVideo, lastWeights, onRequest
               const r = refineBySlot[ex.slot];
               return r && !swappedIds.has(ex.id) ? (
                 <div key={`cue-${ex.id}`} className="mb-3">
-                  <div className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{ex.exercise.name}</div>
+                  <div className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    {ex.exercise.name}
+                  </div>
                   <CoachCue refine={r} />
                 </div>
               ) : null;
@@ -382,11 +443,11 @@ function BisetCard({ exercises, slot, index, onOpenVideo, lastWeights, onRequest
 
 function HojePage() {
   const { user } = useAuth();
-  const fetchToday      = useServerFn(getTodayTraining);
-  const fetchWeights    = useServerFn(getLastWeightsForExercises);
+  const fetchToday = useServerFn(getTodayTraining);
+  const fetchWeights = useServerFn(getLastWeightsForExercises);
   const fetchRefinement = useServerFn(getCoachRefinement);
-  const localToday   = useLocalToday();
-  const detail       = useExerciseDetail();
+  const localToday = useLocalToday();
+  const detail = useExerciseDetail();
 
   const { data, isLoading } = useQuery({
     queryKey: ["today-training", user?.id, localToday.local_date, localToday.timezone],
@@ -400,9 +461,11 @@ function HojePage() {
     setSwaps(loadSwaps(localToday.local_date));
   }, [localToday.local_date]);
 
-  const [swapTarget, setSwapTarget] = useState<
-    { slotId: string; poolId: string; name: string } | null
-  >(null);
+  const [swapTarget, setSwapTarget] = useState<{
+    slotId: string;
+    poolId: string;
+    name: string;
+  } | null>(null);
 
   const handleApplySwap = (sug: SwapSuggestion) => {
     if (!swapTarget) return;
@@ -440,7 +503,9 @@ function HojePage() {
   if (isLoading) {
     return (
       <AppShell eyebrow="Treino" title="Treino de Hoje">
-        <div className="flex justify-center p-12"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
+        <div className="flex justify-center p-12">
+          <Loader2 className="h-6 w-6 animate-spin text-primary" />
+        </div>
       </AppShell>
     );
   }
@@ -449,23 +514,24 @@ function HojePage() {
     return (
       <AppShell eyebrow="Treino" title="Treino de Hoje">
         <div className="p-8 text-center text-sm text-muted-foreground">
-          Hoje é {data?.calendar.day_name ?? "um dia sem treino"}. Nenhum treino programado para esta data.
+          Hoje é {data?.calendar.day_name ?? "um dia sem treino"}. Nenhum treino programado para
+          esta data.
         </div>
       </AppShell>
     );
   }
 
   const today = data.today;
-  const week  = data.week;
+  const week = data.week;
   // Aplica swaps locais antes de filtrar/agrupar
   const displayExercises = today.exercises.map((e) => applySwap(e, swaps));
   const strength = displayExercises.filter((e) => e.exercise.category !== "core");
-  const core     = displayExercises.filter((e) => e.exercise.category === "core");
-  const groups   = groupExercises(strength);
+  const core = displayExercises.filter((e) => e.exercise.category === "core");
+  const groups = groupExercises(strength);
 
   return (
     <AppShell
-      eyebrow={`Hoje é ${data.calendar.day_name} · Semana ${String(week.week_number).padStart(2, "0")} de ${data.calendar.total_weeks}`}
+      eyebrow={`Hoje é ${data.calendar.day_name} · Semana ${String(week.week_number).padStart(2, "0")}`}
       title="Treino de Hoje"
       action={
         <Link
@@ -477,7 +543,6 @@ function HojePage() {
       }
     >
       <div className="mx-auto max-w-2xl space-y-5 p-4 pb-10 sm:p-6">
-
         {/* Info card */}
         <section className="glass-strong animate-fade-in rounded-3xl p-6">
           <div className="text-[10px] font-medium uppercase tracking-[0.22em] text-muted-foreground">
@@ -510,7 +575,9 @@ function HojePage() {
             <div className="flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-[0.18em] text-primary">
               <Sparkles className="h-3.5 w-3.5" /> {coachData.coach ?? "Coach"} · Estratégia
             </div>
-            <p className="mt-2 text-sm leading-snug text-foreground/90">{coachData.refinement.session_strategy}</p>
+            <p className="mt-2 text-sm leading-snug text-foreground/90">
+              {coachData.refinement.session_strategy}
+            </p>
           </section>
         )}
 
@@ -518,14 +585,19 @@ function HojePage() {
         {today.running && (
           <section className="glass rounded-2xl p-5">
             <div className="flex items-baseline justify-between">
-              <div className="text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">Corrida</div>
+              <div className="text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                Corrida
+              </div>
               <div className="num text-[10px] uppercase tracking-wider text-primary/80">
                 {runningHeadline(today.running)}
               </div>
             </div>
             <ol className="mt-3 space-y-2 text-sm">
               {runningInstructions(today.running).map((step, i) => (
-                <li key={i} className="num flex gap-3 rounded-lg border border-border/60 bg-surface/40 px-3 py-2.5">
+                <li
+                  key={i}
+                  className="num flex gap-3 rounded-lg border border-border/60 bg-surface/40 px-3 py-2.5"
+                >
                   <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/15 text-[10px] font-semibold text-primary">
                     {i + 1}
                   </span>
@@ -539,7 +611,9 @@ function HojePage() {
         {/* Força — bisets agrupados */}
         {groups.length > 0 && (
           <div>
-            <div className="mb-3 text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">Força</div>
+            <div className="mb-3 text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
+              Força
+            </div>
             <div className="space-y-3">
               {groups.map((g) => {
                 const onRequestSwap = (slotId: string, poolId: string, name: string) =>
@@ -576,10 +650,15 @@ function HojePage() {
         {/* Core */}
         {core.length > 0 && (
           <section className="glass rounded-2xl p-5">
-            <div className="text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">Core</div>
+            <div className="text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
+              Core
+            </div>
             <div className="mt-3 space-y-2">
               {core.map((c) => (
-                <div key={c.id} className="num flex items-center justify-between gap-3 rounded-lg border border-border/60 bg-surface/40 px-3 py-2.5 text-sm">
+                <div
+                  key={c.id}
+                  className="num flex items-center justify-between gap-3 rounded-lg border border-border/60 bg-surface/40 px-3 py-2.5 text-sm"
+                >
                   <button
                     type="button"
                     onClick={() => detail.open(c.exercise.id)}
@@ -589,7 +668,9 @@ function HojePage() {
                     <PlayCircle className="h-3 w-3 shrink-0 text-muted-foreground" />
                   </button>
                   <div className="flex shrink-0 items-center gap-2 text-muted-foreground">
-                    <span>{c.sets}x{c.reps}</span>
+                    <span>
+                      {c.sets}x{c.reps}
+                    </span>
                     {c.rest_seconds && (
                       <span className="inline-flex items-center gap-1 rounded-md bg-primary/10 px-1.5 py-0.5 text-[10px] text-primary">
                         <Timer className="h-3 w-3" /> {c.rest_seconds}s
@@ -597,7 +678,13 @@ function HojePage() {
                     )}
                     <button
                       type="button"
-                      onClick={() => setSwapTarget({ slotId: c.id, poolId: c.exercise.id, name: c.exercise.name })}
+                      onClick={() =>
+                        setSwapTarget({
+                          slotId: c.id,
+                          poolId: c.exercise.id,
+                          name: c.exercise.name,
+                        })
+                      }
                       className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-border bg-surface/60 transition-colors hover:text-primary"
                       aria-label="Trocar exercício"
                     >

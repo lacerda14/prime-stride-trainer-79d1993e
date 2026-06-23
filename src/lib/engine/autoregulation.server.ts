@@ -3,12 +3,7 @@
 // NUNCA altera estrutura semanal, Push/Pull ou periodização — só sugere
 // ajustes de carga, séries acessórias e descansos.
 
-export type SessionFeedback =
-  | "muito_leve"
-  | "leve"
-  | "ideal"
-  | "pesado"
-  | "muito_pesado";
+export type SessionFeedback = "muito_leve" | "leve" | "ideal" | "pesado" | "muito_pesado";
 
 export interface SetLogForEngine {
   planned_reps: string | null;
@@ -39,8 +34,8 @@ export interface ReadinessSignals {
 }
 
 export interface Decision {
-  load_adjust_pct: number;          // ex.: +0.05 = +5%
-  accessory_volume_adjust: number;  // séries +/-
+  load_adjust_pct: number; // ex.: +0.05 = +5%
+  accessory_volume_adjust: number; // séries +/-
   deload_recommended: boolean;
   monitor_only: boolean;
   message: string;
@@ -75,7 +70,8 @@ function linearSlope(values: number[]): number {
   const n = values.length;
   const xMean = (n - 1) / 2;
   const yMean = values.reduce((a, b) => a + b, 0) / n;
-  let num = 0, den = 0;
+  let num = 0,
+    den = 0;
   for (let i = 0; i < n; i++) {
     num += (i - xMean) * (values[i] - yMean);
     den += (i - xMean) ** 2;
@@ -131,7 +127,7 @@ function sessionSignals(s: SessionForEngine) {
 export function computeReadiness(
   current: SessionForEngine,
   history4w: SessionForEngine[], // últimas ~12 sessões (4 sem * 3/sem)
-  scheduledSessions4w: number,    // sessões planejadas nos últimos 28 dias
+  scheduledSessions4w: number, // sessões planejadas nos últimos 28 dias
 ): ReadinessResult {
   const cur = sessionSignals(current);
 
@@ -144,18 +140,15 @@ export function computeReadiness(
   const failureSeries: number[] = [];
   for (const h of historical) {
     const sig = sessionSignals(h);
-    const avgLoad = h.sets
-      .map((x) => x.actual_load_kg ?? 0)
-      .filter((v) => v > 0);
+    const avgLoad = h.sets.map((x) => x.actual_load_kg ?? 0).filter((v) => v > 0);
     if (avgLoad.length) loadSeries.push(avgLoad.reduce((a, b) => a + b, 0) / avgLoad.length);
     failureSeries.push(sig.failure_rate);
   }
 
   const trend_load_4w = linearSlope(loadSeries);
   const trend_failure_4w = linearSlope(failureSeries);
-  const consistency_4w = scheduledSessions4w > 0
-    ? clamp(historical.length / scheduledSessions4w, 0, 1)
-    : 0;
+  const consistency_4w =
+    scheduledSessions4w > 0 ? clamp(historical.length / scheduledSessions4w, 0, 1) : 0;
 
   const signals: ReadinessSignals = {
     ...cur,
@@ -166,13 +159,13 @@ export function computeReadiness(
 
   // Score 0..100
   const raw =
-    50
-    + 15 * Math.sign(trend_load_4w)
-    - 25 * cur.failure_rate
-    + 10 * (cur.completion_rate - 0.8) * 5
-    - 8 * Math.max(0, cur.feedback_score)
-    + 5 * cur.pr_count
-    + 10 * (consistency_4w - 0.7) * 3;
+    50 +
+    15 * Math.sign(trend_load_4w) -
+    25 * cur.failure_rate +
+    10 * (cur.completion_rate - 0.8) * 5 -
+    8 * Math.max(0, cur.feedback_score) +
+    5 * cur.pr_count +
+    10 * (consistency_4w - 0.7) * 3;
 
   const score = Math.round(clamp(raw, 0, 100));
 
@@ -195,7 +188,8 @@ function decide(s: ReadinessSignals): Decision {
       accessory_volume_adjust: 0,
       deload_recommended: false,
       monitor_only: true,
-      message: "Você relatou pesado mas bateu PR e completou tudo. Vamos monitorar antes de reduzir.",
+      message:
+        "Você relatou pesado mas bateu PR e completou tudo. Vamos monitorar antes de reduzir.",
     };
   }
 
@@ -217,7 +211,8 @@ function decide(s: ReadinessSignals): Decision {
       accessory_volume_adjust: +1,
       deload_recommended: false,
       monitor_only: false,
-      message: "Você passou por cima do planejado. Subindo 5% na carga e adicionando 1 série acessória.",
+      message:
+        "Você passou por cima do planejado. Subindo 5% na carga e adicionando 1 série acessória.",
     };
   }
 
@@ -228,7 +223,8 @@ function decide(s: ReadinessSignals): Decision {
       accessory_volume_adjust: -2,
       deload_recommended: true,
       monitor_only: false,
-      message: "Sinais de fadiga acumulada. Sugerimos uma semana de deload (-10% carga, -2 séries).",
+      message:
+        "Sinais de fadiga acumulada. Sugerimos uma semana de deload (-10% carga, -2 séries).",
     };
   }
 

@@ -45,14 +45,24 @@ export const Route = createFileRoute("/api/public/mp-webhook")({
             if (!userId) return new Response("ok");
 
             const isActive = pa.status === "authorized";
+            // Mapeia status do Mercado Pago → enum billing_status (evita string crua)
+            const mpToBillingStatus: Record<string, "canceled" | "past_due" | "incomplete"> = {
+              paused: "past_due",
+              cancelled: "canceled",
+              pending: "incomplete",
+            };
             await supabaseAdmin
               .from("subscriptions")
               .update({
                 plan: isActive ? "premium_ai" : "free",
-                billing_status: isActive ? "active" : pa.status,
+                billing_status: isActive
+                  ? "active"
+                  : (mpToBillingStatus[pa.status ?? ""] ?? "canceled"),
                 current_period_end: pa.next_payment_date ?? null,
-                mp_preapproval_id: pa.id,
-                mp_customer_id: pa.payer_id ? String(pa.payer_id) : null,
+                // colunas canônicas (antes usava mp_preapproval_id/mp_customer_id, inexistentes)
+                payment_provider: "mercado_pago",
+                external_subscription_id: pa.id ?? null,
+                external_customer_id: pa.payer_id ? String(pa.payer_id) : null,
               })
               .eq("user_id", userId);
           }

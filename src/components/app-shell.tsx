@@ -1,10 +1,29 @@
 import type { ReactNode } from "react";
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Home, Dumbbell, TrendingUp, Users, User, LogOut, History, Settings, BarChart3, LifeBuoy, CreditCard } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
+import {
+  Home,
+  Dumbbell,
+  TrendingUp,
+  Users,
+  User,
+  LogOut,
+  History,
+  Settings,
+  BarChart3,
+  LifeBuoy,
+  Crown,
+  ChevronRight,
+  HeartPulse,
+} from "lucide-react";
 import pmLogo from "@/assets/pm-logo.png";
 import { RequireAuth } from "@/components/require-auth";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
+import { getMySubscription } from "@/lib/subscription.functions";
+import { isPaidAccess } from "@/lib/tiers";
+import { FEATURES } from "@/lib/features";
 
 interface AppShellProps {
   children: ReactNode;
@@ -15,20 +34,24 @@ interface AppShellProps {
 
 // Bottom tabs — 5 abas principais
 const bottomTabs = [
-  { title: "Início",   url: "/",        icon: Home,       exact: true },
-  { title: "Treinos",  url: "/treinos",  icon: Dumbbell,   exact: false },
+  { title: "Início", url: "/", icon: Home, exact: true },
+  { title: "Treinos", url: "/treinos", icon: Dumbbell, exact: false },
   { title: "Evolução", url: "/evolucao", icon: TrendingUp, exact: false },
-  { title: "Social",   url: "/social",   icon: Users,      exact: false },
-  { title: "Perfil",   url: "/perfil",   icon: User,       exact: false },
+  { title: "Social", url: "/social", icon: Users, exact: false },
+  { title: "Perfil", url: "/perfil", icon: User, exact: false },
 ];
 
-// Links extras visíveis na seção "mais" do perfil
+// Abas visíveis — respeita o flag de feature (social escondido na Fase 1).
+const visibleTabs = bottomTabs.filter((t) => FEATURES.social || t.url !== "/social");
+
+// Links extras (utilidades) visíveis na seção "mais" do perfil.
+// Assinatura NÃO entra aqui — vira um CTA próprio em destaque (ver abaixo).
 const moreLinks = [
-  { title: "Histórico",     url: "/historico",    icon: History },
-  { title: "Progressão",    url: "/progressao",   icon: BarChart3 },
-  { title: "Assinatura",    url: "/assinaturas",  icon: CreditCard },
+  { title: "Saúde", url: "/configuracoes", icon: HeartPulse },
+  { title: "Histórico", url: "/historico", icon: History },
+  { title: "Progressão", url: "/progressao", icon: BarChart3 },
   { title: "Configurações", url: "/configuracoes", icon: Settings },
-  { title: "Suporte",       url: "/suporte",       icon: LifeBuoy },
+  { title: "Suporte", url: "/suporte", icon: LifeBuoy },
 ];
 
 export function AppShell({ children, title, eyebrow, action }: AppShellProps) {
@@ -42,6 +65,17 @@ export function AppShell({ children, title, eyebrow, action }: AppShellProps) {
 
   const isActive = (url: string, exact: boolean) =>
     exact ? currentPath === url : currentPath.startsWith(url);
+
+  // Status de assinatura — só pra decidir o CTA da aba Perfil (free → converter,
+  // premium → gerenciar). Mesma query/cache da home (não refaz request).
+  const fetchSub = useServerFn(getMySubscription);
+  const { data: subData } = useQuery({
+    queryKey: ["subscription", "me"],
+    queryFn: () => fetchSub(),
+    enabled: !!user && currentPath.startsWith("/perfil"),
+    staleTime: 5 * 60_000,
+  });
+  const isPremium = isPaidAccess(subData);
 
   return (
     <RequireAuth>
@@ -82,9 +116,51 @@ export function AppShell({ children, title, eyebrow, action }: AppShellProps) {
           <div className="pointer-events-none absolute inset-0 grid-fade opacity-25" />
           <div className="relative">{children}</div>
 
-          {/* Links extras na página de perfil */}
+          {/* Seção "mais" da página de perfil */}
           {currentPath.startsWith("/perfil") && (
-            <div className="relative px-5 pb-6 pt-2">
+            <div className="relative space-y-3 px-5 pb-6 pt-2">
+              {/* CTA de assinatura em destaque — contextual (free converte, premium gerencia) */}
+              {subData &&
+                (isPremium ? (
+                  <Link
+                    to="/assinaturas"
+                    className="flex items-center gap-3 rounded-2xl border border-border/60 bg-surface/40 px-4 py-3 transition active:scale-[0.99]"
+                  >
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-amber-400/30 bg-amber-400/10">
+                      <Crown className="h-5 w-5 fill-amber-400/30 text-amber-400" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="text-[13.5px] font-semibold tracking-tight">
+                        Assinatura Premium
+                      </div>
+                      <div className="text-[11.5px] leading-tight text-muted-foreground">
+                        Ativa — toque para gerenciar
+                      </div>
+                    </div>
+                    <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+                  </Link>
+                ) : (
+                  <Link
+                    to="/assinaturas"
+                    className="relative flex items-center gap-3 overflow-hidden rounded-2xl border border-amber-400/30 bg-gradient-to-r from-amber-400/20 via-amber-500/8 to-surface px-4 py-3.5 transition active:scale-[0.99]"
+                  >
+                    <div className="pointer-events-none absolute -right-8 -top-8 h-24 w-24 rounded-full bg-amber-400/20 blur-2xl" />
+                    <div className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-amber-400/30 bg-amber-400/15">
+                      <Crown className="h-5 w-5 fill-amber-400/30 text-amber-400" />
+                    </div>
+                    <div className="relative min-w-0 flex-1">
+                      <div className="text-[14px] font-semibold tracking-tight">Seja Premium</div>
+                      <div className="text-[12px] leading-tight text-muted-foreground">
+                        Coaches especialistas, treinos sob medida e tudo liberado.
+                      </div>
+                    </div>
+                    <span className="relative shrink-0 rounded-full bg-amber-400 px-3.5 py-1.5 text-[12px] font-bold text-black">
+                      Assinar
+                    </span>
+                  </Link>
+                ))}
+
+              {/* Utilidades */}
               <div className="grid grid-cols-3 gap-2">
                 {moreLinks.map((l) => (
                   <Link
@@ -103,8 +179,8 @@ export function AppShell({ children, title, eyebrow, action }: AppShellProps) {
 
         {/* ── Bottom Tab Bar ── */}
         <nav className="fixed bottom-0 left-1/2 z-40 w-full max-w-[480px] -translate-x-1/2 border-t border-border/60 bg-background/95 backdrop-blur-xl pb-[env(safe-area-inset-bottom,0px)]">
-          <ul className="grid grid-cols-5">
-            {bottomTabs.map((t) => {
+          <ul className={`grid ${visibleTabs.length >= 5 ? "grid-cols-5" : "grid-cols-4"}`}>
+            {visibleTabs.map((t) => {
               const active = isActive(t.url, t.exact);
               return (
                 <li key={t.url}>

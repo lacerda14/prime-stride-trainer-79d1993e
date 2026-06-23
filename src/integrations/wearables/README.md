@@ -4,6 +4,7 @@ This directory is the decoupled integration layer for wearables.
 No implementation yet — only the contract.
 
 Planned providers:
+
 - Apple Watch (HealthKit)
 - Garmin (Connect IQ / OAuth)
 - Coros

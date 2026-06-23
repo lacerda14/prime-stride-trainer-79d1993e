@@ -233,7 +233,11 @@ struct RestTimerView: View {
         _remaining = State(initialValue: seconds)
     }
 
-    let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
+    // @State (não `let`): o ActiveWorkoutView re-renderiza a cada 1s (FC/tempo do
+    // WorkoutManager) e recriaria o publisher antes dele completar 1s → nunca
+    // disparava (descanso travado / treino não avançava). @State sobrevive aos
+    // re-renders, então o timer conta certo.
+    @State private var timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
     var body: some View {
         VStack(spacing: 8) {

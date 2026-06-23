@@ -7,12 +7,7 @@ import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   Select,
   SelectContent,
@@ -32,7 +27,11 @@ import {
   Search,
 } from "lucide-react";
 import { getMyRole } from "@/lib/exercise-media.functions";
-import { listKnowledgeDocs, deleteKnowledgeDoc, type KnowledgeDoc } from "@/lib/knowledge.functions";
+import {
+  listKnowledgeDocs,
+  deleteKnowledgeDoc,
+  type KnowledgeDoc,
+} from "@/lib/knowledge.functions";
 import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/admin/knowledge")({
@@ -46,16 +45,15 @@ export const Route = createFileRoute("/admin/knowledge")({
 });
 
 const SOURCE_TYPES = [
-  { value: "scientific_paper",    label: "Artigo Científico" },
-  { value: "methodology",         label: "Metodologia" },
-  { value: "exercise_guide",      label: "Guia de Exercícios" },
-  { value: "nutrition_guide",     label: "Guia Nutricional" },
-  { value: "recovery_protocol",   label: "Protocolo de Recuperação" },
-  { value: "internal",            label: "Interno" },
+  { value: "scientific_paper", label: "Artigo Científico" },
+  { value: "methodology", label: "Metodologia" },
+  { value: "exercise_guide", label: "Guia de Exercícios" },
+  { value: "nutrition_guide", label: "Guia Nutricional" },
+  { value: "recovery_protocol", label: "Protocolo de Recuperação" },
+  { value: "internal", label: "Interno" },
 ] as const;
 
 type SourceType = (typeof SOURCE_TYPES)[number]["value"];
-
 
 function KnowledgePage() {
   const fetchRole = useServerFn(getMyRole);
@@ -78,9 +76,7 @@ function KnowledgePage() {
       <AppShell title="Restrito">
         <div className="flex h-64 flex-col items-center justify-center gap-3 px-6 text-center">
           <ShieldAlert className="h-8 w-8 text-muted-foreground" />
-          <p className="text-sm text-muted-foreground">
-            Esta área é restrita a administradores.
-          </p>
+          <p className="text-sm text-muted-foreground">Esta área é restrita a administradores.</p>
         </div>
       </AppShell>
     );
@@ -186,8 +182,7 @@ function DocRow({
   onDelete: () => void;
   deleting: boolean;
 }) {
-  const label =
-    SOURCE_TYPES.find((s) => s.value === doc.source_type)?.label ?? doc.source_type;
+  const label = SOURCE_TYPES.find((s) => s.value === doc.source_type)?.label ?? doc.source_type;
 
   return (
     <div className="rounded-xl border border-border/60 bg-surface/40 px-4 py-3 flex items-start gap-3">
@@ -211,7 +206,11 @@ function DocRow({
         onClick={onDelete}
         disabled={deleting}
       >
-        {deleting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+        {deleting ? (
+          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+        ) : (
+          <Trash2 className="h-3.5 w-3.5" />
+        )}
       </Button>
     </div>
   );
@@ -222,77 +221,105 @@ type UploadMode = "text" | "file";
 // Bases de conhecimento: "geral" (aluno sem coach) + 1 tag por coach (persona).
 // A tag marcada vira o escopo de RAG: o coach só busca na própria base + geral.
 const KNOWLEDGE_BASES: { tag: string; label: string; emoji: string }[] = [
-  { tag: "geral",     label: "Base Geral",  emoji: "📚" },
-  { tag: "strength",  label: "Alex (Força)",     emoji: "💪" },
-  { tag: "cardio",    label: "Maya (Corrida)",   emoji: "🏃" },
-  { tag: "nutrition", label: "Nut (Nutrição)",   emoji: "🥗" },
-  { tag: "recovery",  label: "Carlos (Recuperação)", emoji: "🧘" },
-  { tag: "mindset",   label: "Max (Mente)",      emoji: "🧠" },
+  { tag: "geral", label: "Base Geral", emoji: "📚" },
+  { tag: "strength", label: "Alex (Força)", emoji: "💪" },
+  { tag: "cardio", label: "Maya (Corrida)", emoji: "🏃" },
+  { tag: "nutrition", label: "Nut (Nutrição)", emoji: "🥗" },
+  { tag: "recovery", label: "Carlos (Recuperação)", emoji: "🧘" },
+  { tag: "mindset", label: "Max (Mente)", emoji: "🧠" },
 ];
 
 function UploadDialog({ onClose }: { onClose: () => void }) {
-  const [mode, setMode]               = useState<UploadMode>("text");
-  const [title, setTitle]             = useState("");
-  const [sourceType, setSourceType]   = useState<SourceType>("scientific_paper");
-  const [author, setAuthor]           = useState("");
-  const [tags, setTags]               = useState("");
-  const [bases, setBases]             = useState<string[]>(["geral"]);
+  const [mode, setMode] = useState<UploadMode>("text");
+  const [title, setTitle] = useState("");
+  const [sourceType, setSourceType] = useState<SourceType>("scientific_paper");
+  const [author, setAuthor] = useState("");
+  const [tags, setTags] = useState("");
+  const [bases, setBases] = useState<string[]>(["geral"]);
   const [textContent, setTextContent] = useState("");
-  const [file, setFile]               = useState<File | null>(null);
-  const [busy, setBusy]               = useState(false);
-  const fileRef                       = useRef<HTMLInputElement>(null);
+  const [file, setFile] = useState<File | null>(null);
+  const [busy, setBusy] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
 
   async function readFileAsText(f: File): Promise<string> {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
-      reader.onload  = () => resolve(reader.result as string);
+      reader.onload = () => resolve(reader.result as string);
       reader.onerror = () => reject(reader.error);
       reader.readAsText(f, "utf-8");
     });
   }
 
   async function handleSubmit() {
-    if (!title.trim()) { toast.error("Título é obrigatório"); return; }
+    if (!title.trim()) {
+      toast.error("Título é obrigatório");
+      return;
+    }
 
     let content = "";
     if (mode === "text") {
       content = textContent.trim();
-      if (content.length < 50) { toast.error("Conteúdo muito curto (mínimo 50 caracteres)"); return; }
+      if (content.length < 50) {
+        toast.error("Conteúdo muito curto (mínimo 50 caracteres)");
+        return;
+      }
     } else {
-      if (!file) { toast.error("Selecione um arquivo"); return; }
+      if (!file) {
+        toast.error("Selecione um arquivo");
+        return;
+      }
       if (file.name.toLowerCase().endsWith(".pdf")) {
         toast.error(
           "PDFs devem ser processados via CLI:\npython3 scripts/ingest.py --vision arquivo.pdf",
-          { duration: 6000 }
+          { duration: 6000 },
         );
         return;
       }
       content = await readFileAsText(file);
-      if (content.length < 50) { toast.error("Arquivo muito curto ou vazio"); return; }
+      if (content.length < 50) {
+        toast.error("Arquivo muito curto ou vazio");
+        return;
+      }
     }
 
     setBusy(true);
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) { toast.error("Sessão expirada"); setBusy(false); return; }
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    if (!session) {
+      toast.error("Sessão expirada");
+      setBusy(false);
+      return;
+    }
 
     const { error } = await supabase.functions.invoke("ingest-document", {
       body: {
-        title:       title.trim(),
+        title: title.trim(),
         source_type: sourceType,
         content,
-        author:      author.trim() || undefined,
+        author: author.trim() || undefined,
         // bases (geral/coach) + tags livres → dedup
-        tags:        [...new Set([
-                       ...bases,
-                       ...(tags ? tags.split(",").map((t) => t.trim()).filter(Boolean) : []),
-                     ])],
-        language:    "pt-BR",
-        force:       true,
+        tags: [
+          ...new Set([
+            ...bases,
+            ...(tags
+              ? tags
+                  .split(",")
+                  .map((t) => t.trim())
+                  .filter(Boolean)
+              : []),
+          ]),
+        ],
+        language: "pt-BR",
+        force: true,
       },
     });
 
     setBusy(false);
-    if (error) { toast.error("Erro ao processar: " + (error as Error).message); return; }
+    if (error) {
+      toast.error("Erro ao processar: " + (error as Error).message);
+      return;
+    }
     toast.success("Documento processado com sucesso!");
     onClose();
   }
@@ -311,7 +338,9 @@ function UploadDialog({ onClose }: { onClose: () => void }) {
                 key={m}
                 onClick={() => setMode(m)}
                 className={`flex-1 py-2 text-sm font-medium transition-colors ${
-                  mode === m ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+                  mode === m
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:text-foreground"
                 }`}
               >
                 {m === "text" ? "Colar texto" : "Arquivo .txt / .md"}
@@ -321,23 +350,33 @@ function UploadDialog({ onClose }: { onClose: () => void }) {
 
           <div className="space-y-1">
             <label className="text-xs font-medium text-muted-foreground">Título *</label>
-            <Input placeholder="Nome do documento" value={title} onChange={(e) => setTitle(e.target.value)} />
+            <Input
+              placeholder="Nome do documento"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+            />
           </div>
 
           <div className="space-y-1">
             <label className="text-xs font-medium text-muted-foreground">Tipo</label>
             <Select value={sourceType} onValueChange={(v) => setSourceType(v as SourceType)}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
               <SelectContent>
                 {SOURCE_TYPES.map((s) => (
-                  <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
+                  <SelectItem key={s.value} value={s.value}>
+                    {s.label}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-xs font-medium text-muted-foreground">Base de conhecimento</label>
+            <label className="text-xs font-medium text-muted-foreground">
+              Base de conhecimento
+            </label>
             <div className="flex flex-wrap gap-1.5">
               {KNOWLEDGE_BASES.map((b) => {
                 const on = bases.includes(b.tag);
@@ -345,9 +384,13 @@ function UploadDialog({ onClose }: { onClose: () => void }) {
                   <button
                     key={b.tag}
                     type="button"
-                    onClick={() => setBases((prev) => on ? prev.filter((t) => t !== b.tag) : [...prev, b.tag])}
+                    onClick={() =>
+                      setBases((prev) => (on ? prev.filter((t) => t !== b.tag) : [...prev, b.tag]))
+                    }
                     className={`rounded-full border px-3 py-1.5 text-[12px] font-medium transition-all ${
-                      on ? "border-primary/60 bg-primary/[0.12] text-foreground" : "border-border bg-surface/40 text-muted-foreground hover:text-foreground"
+                      on
+                        ? "border-primary/60 bg-primary/[0.12] text-foreground"
+                        : "border-border bg-surface/40 text-muted-foreground hover:text-foreground"
                     }`}
                   >
                     {b.emoji} {b.label}
@@ -356,18 +399,29 @@ function UploadDialog({ onClose }: { onClose: () => void }) {
               })}
             </div>
             <p className="text-[11px] text-muted-foreground">
-              Marque os coaches que devem usar este documento. Cada coach busca só na própria base + na Geral.
+              Marque os coaches que devem usar este documento. Cada coach busca só na própria base +
+              na Geral.
             </p>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
               <label className="text-xs font-medium text-muted-foreground">Autor</label>
-              <Input placeholder="Opcional" value={author} onChange={(e) => setAuthor(e.target.value)} />
+              <Input
+                placeholder="Opcional"
+                value={author}
+                onChange={(e) => setAuthor(e.target.value)}
+              />
             </div>
             <div className="space-y-1">
-              <label className="text-xs font-medium text-muted-foreground">Tags extras (vírgula)</label>
-              <Input placeholder="hipertrofia, força" value={tags} onChange={(e) => setTags(e.target.value)} />
+              <label className="text-xs font-medium text-muted-foreground">
+                Tags extras (vírgula)
+              </label>
+              <Input
+                placeholder="hipertrofia, força"
+                value={tags}
+                onChange={(e) => setTags(e.target.value)}
+              />
             </div>
           </div>
 
@@ -387,7 +441,9 @@ function UploadDialog({ onClose }: { onClose: () => void }) {
             </div>
           ) : (
             <div className="space-y-2">
-              <label className="text-xs font-medium text-muted-foreground">Arquivo (.txt ou .md)</label>
+              <label className="text-xs font-medium text-muted-foreground">
+                Arquivo (.txt ou .md)
+              </label>
               <div
                 className="border-2 border-dashed border-border/60 rounded-xl p-6 text-center cursor-pointer hover:border-primary/40 transition-colors"
                 onClick={() => fileRef.current?.click()}
@@ -408,7 +464,9 @@ function UploadDialog({ onClose }: { onClose: () => void }) {
               />
               <p className="text-[11px] text-muted-foreground">
                 Para PDFs:{" "}
-                <code className="bg-muted px-1 rounded">python3 scripts/ingest.py --vision arquivo.pdf</code>
+                <code className="bg-muted px-1 rounded">
+                  python3 scripts/ingest.py --vision arquivo.pdf
+                </code>
               </p>
             </div>
           )}

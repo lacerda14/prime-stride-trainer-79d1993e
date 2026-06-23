@@ -21,11 +21,16 @@ const config: CapacitorConfig = {
   plugins: {
     GoogleAuth: {
       scopes: ['profile', 'email'],
-      // serverClientId: usado pelo plugin nativo iOS (custom). clientId: usado
-      // pelo plugin @codetrix no Android (requestIdToken) — sem ele o Android
-      // cai em R.string.server_client_id inexistente e CRASHA.
+      // serverClientId: usado pelo plugin nativo iOS p/ o serverAuthCode.
+      // clientId: usado pelo @codetrix no Android (requestIdToken) — sem ele o
+      // Android cai em R.string.server_client_id inexistente e CRASHA. É o client WEB.
+      // iosClientId: client tipo iOS (NÃO o web). O plugin iOS (App/GoogleAuth.swift)
+      // checa iosClientId ANTES de clientId; sem isso pegava o client web e o
+      // GIDSignIn exigia o URL scheme …-htbk9s0fvo… (inexistente no Info.plist) →
+      // CRASH. Com o client iOS, o scheme …-evkdovsrvjr… bate e o login funciona.
       serverClientId: '230882994224-htbk9s0fvo33tdl4c1o9p7d12juke4po.apps.googleusercontent.com',
       clientId: '230882994224-htbk9s0fvo33tdl4c1o9p7d12juke4po.apps.googleusercontent.com',
+      iosClientId: '230882994224-evkdovsrvjr12sqkmg253tec4q8ivh9l.apps.googleusercontent.com',
       forceCodeForRefreshToken: false,
     },
     SplashScreen: {

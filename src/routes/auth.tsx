@@ -53,9 +53,7 @@ function AuthPage() {
             PM Hybrid
           </span>
           <h1 className="mt-1 text-2xl font-semibold tracking-tight">Performance System</h1>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Acesse seu programa personalizado
-          </p>
+          <p className="mt-2 text-sm text-muted-foreground">Acesse seu programa personalizado</p>
         </div>
 
         <div className="glass rounded-2xl p-6">
@@ -95,15 +93,23 @@ function SignInForm() {
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (forgotMode) {
-      try { emailSchema.parse(email); } catch (err) {
-        if (err instanceof z.ZodError) { toast.error(err.issues[0].message); return; }
+      try {
+        emailSchema.parse(email);
+      } catch (err) {
+        if (err instanceof z.ZodError) {
+          toast.error(err.issues[0].message);
+          return;
+        }
       }
       setBusy(true);
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
         redirectTo: `${window.location.origin}/reset-password`,
       });
       setBusy(false);
-      if (error) { toast.error(error.message); return; }
+      if (error) {
+        toast.error(error.message);
+        return;
+      }
       setResetSent(true);
       return;
     }
@@ -120,7 +126,9 @@ function SignInForm() {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     setBusy(false);
     if (error) {
-      toast.error(error.message === "Invalid login credentials" ? "Email ou senha inválidos" : error.message);
+      toast.error(
+        error.message === "Invalid login credentials" ? "Email ou senha inválidos" : error.message,
+      );
       return;
     }
     toast.success("Bem-vindo de volta");
@@ -130,10 +138,18 @@ function SignInForm() {
     return (
       <div className="space-y-4 text-center">
         <p className="text-sm text-muted-foreground">
-          Email de redefinição enviado para <span className="font-medium text-foreground">{email}</span>.
-          Verifique sua caixa de entrada.
+          Email de redefinição enviado para{" "}
+          <span className="font-medium text-foreground">{email}</span>. Verifique sua caixa de
+          entrada.
         </p>
-        <Button variant="ghost" className="w-full" onClick={() => { setForgotMode(false); setResetSent(false); }}>
+        <Button
+          variant="ghost"
+          className="w-full"
+          onClick={() => {
+            setForgotMode(false);
+            setResetSent(false);
+          }}
+        >
           Voltar ao login
         </Button>
       </div>
@@ -144,7 +160,14 @@ function SignInForm() {
     <form onSubmit={onSubmit} className="space-y-4">
       <div className="space-y-2">
         <Label htmlFor="si-email">Email</Label>
-        <Input id="si-email" type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+        <Input
+          id="si-email"
+          type="email"
+          autoComplete="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          required
+        />
       </div>
       {!forgotMode && (
         <div className="space-y-2">
@@ -158,7 +181,14 @@ function SignInForm() {
               Esqueci minha senha
             </button>
           </div>
-          <Input id="si-pass" type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+          <Input
+            id="si-pass"
+            type="password"
+            autoComplete="current-password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+          />
         </div>
       )}
       <Button type="submit" className="w-full" disabled={busy}>
@@ -207,7 +237,11 @@ function SignUpForm() {
     });
     setBusy(false);
     if (error) {
-      toast.error(error.message === "User already registered" ? "Este email já está cadastrado" : error.message);
+      toast.error(
+        error.message === "User already registered"
+          ? "Este email já está cadastrado"
+          : error.message,
+      );
       return;
     }
     toast.success("Conta criada! Verifique seu email para confirmar.");
@@ -221,11 +255,26 @@ function SignUpForm() {
       </div>
       <div className="space-y-2">
         <Label htmlFor="su-email">Email</Label>
-        <Input id="su-email" type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+        <Input
+          id="su-email"
+          type="email"
+          autoComplete="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          required
+        />
       </div>
       <div className="space-y-2">
         <Label htmlFor="su-pass">Senha</Label>
-        <Input id="su-pass" type="password" autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={6} />
+        <Input
+          id="su-pass"
+          type="password"
+          autoComplete="new-password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          required
+          minLength={6}
+        />
         <p className="text-[11px] text-muted-foreground">Mínimo 6 caracteres</p>
       </div>
       <Button type="submit" className="w-full" disabled={busy}>
@@ -239,7 +288,9 @@ function SignUpForm() {
 function isInAppBrowser(): boolean {
   if (typeof navigator === "undefined") return false;
   const ua = navigator.userAgent || "";
-  return /FBAN|FBAV|FB_IAB|Instagram|Line\/|MicroMessenger|WhatsApp|TikTok|Snapchat|Twitter|LinkedInApp/i.test(ua);
+  return /FBAN|FBAV|FB_IAB|Instagram|Line\/|MicroMessenger|WhatsApp|TikTok|Snapchat|Twitter|LinkedInApp/i.test(
+    ua,
+  );
 }
 
 function GoogleButton() {
@@ -282,21 +333,33 @@ function GoogleButton() {
       return;
     }
 
-    const result = await lovable.auth.signInWithOAuth("google", {
-      redirect_uri: window.location.origin,
-      extraParams: { prompt: "select_account" },
-    });
-    if (result.error) {
-      setBusy(false);
-      const msg = String((result.error as Error)?.message || "");
-      if (/state/i.test(msg)) {
-        toast.error("Sessão expirou. Toque novamente em Continuar com Google.");
-      } else {
-        toast.error("Falha ao entrar com Google");
+    try {
+      const result = await lovable.auth.signInWithOAuth("google", {
+        redirect_uri: window.location.origin,
+        extraParams: { prompt: "select_account" },
+      });
+      if (result.error) {
+        const msg = String((result.error as Error)?.message || "");
+        console.error("[google-oauth] error:", result.error);
+        setBusy(false);
+        if (/state/i.test(msg)) {
+          toast.error("Sessão expirou. Toque novamente em Continuar com Google.");
+        } else {
+          toast.error(`Falha ao entrar com Google: ${msg || "erro desconhecido"}`);
+        }
+        return;
       }
-      return;
+      if (result.redirected) return; // navegando pro Google
+      // Sem url e sem erro: não conseguiu montar o redirect → não deixa o spinner preso.
+      console.error("[google-oauth] sem url e sem erro:", result);
+      setBusy(false);
+      toast.error("Não consegui abrir o login do Google. Tenta de novo?");
+    } catch (err: unknown) {
+      console.error("[google-oauth] throw:", err);
+      setBusy(false);
+      const msg = err instanceof Error ? err.message : String(err);
+      toast.error(`Falha ao entrar com Google: ${msg || "erro inesperado"}`);
     }
-    if (result.redirected) return;
   };
 
   return (
@@ -312,11 +375,26 @@ function GoogleButton() {
             <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
           ) : (
             <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" aria-hidden="true">
-              <path fill="#EA4335" d="M12 10.2v3.92h5.45c-.24 1.4-1.7 4.1-5.45 4.1-3.28 0-5.96-2.71-5.96-6.06s2.68-6.06 5.96-6.06c1.87 0 3.12.8 3.84 1.48l2.62-2.52C16.78 3.52 14.6 2.5 12 2.5 6.76 2.5 2.5 6.76 2.5 12S6.76 21.5 12 21.5c6.07 0 10.08-4.27 10.08-10.27 0-.69-.07-1.22-.16-1.74H12z"/>
-              <path fill="#4285F4" d="M22.08 11.23c0-.69-.07-1.22-.16-1.74H12v3.92h5.66c-.11.94-.73 2.36-2.1 3.32l.02.13 3.05 2.36.21.02c1.94-1.79 3.06-4.43 3.06-7.55"/>
-              <path fill="#FBBC05" d="M5.92 13.5a5.8 5.8 0 0 1-.32-1.9c0-.66.12-1.3.31-1.9l-.01-.13-3.09-2.4-.1.05A9.5 9.5 0 0 0 1.5 12c0 1.54.37 2.99 1.02 4.27z"/>
-              <path fill="#34A853" d="M12 21.5c2.7 0 4.96-.89 6.62-2.42l-3.16-2.45c-.85.59-1.98 1-3.46 1-2.65 0-4.9-1.74-5.7-4.16l-.12.01-3.21 2.49-.04.12C4.74 19.16 8.08 21.5 12 21.5"/>
-              <path fill="#EA4335" d="M12 5.94c1.88 0 3.14.8 3.86 1.49l2.82-2.75C16.97 3.16 14.7 2.5 12 2.5 8.08 2.5 4.74 4.84 3.93 8.41l3.36 2.6C8.1 8.5 9.84 5.94 12 5.94"/>
+              <path
+                fill="#EA4335"
+                d="M12 10.2v3.92h5.45c-.24 1.4-1.7 4.1-5.45 4.1-3.28 0-5.96-2.71-5.96-6.06s2.68-6.06 5.96-6.06c1.87 0 3.12.8 3.84 1.48l2.62-2.52C16.78 3.52 14.6 2.5 12 2.5 6.76 2.5 2.5 6.76 2.5 12S6.76 21.5 12 21.5c6.07 0 10.08-4.27 10.08-10.27 0-.69-.07-1.22-.16-1.74H12z"
+              />
+              <path
+                fill="#4285F4"
+                d="M22.08 11.23c0-.69-.07-1.22-.16-1.74H12v3.92h5.66c-.11.94-.73 2.36-2.1 3.32l.02.13 3.05 2.36.21.02c1.94-1.79 3.06-4.43 3.06-7.55"
+              />
+              <path
+                fill="#FBBC05"
+                d="M5.92 13.5a5.8 5.8 0 0 1-.32-1.9c0-.66.12-1.3.31-1.9l-.01-.13-3.09-2.4-.1.05A9.5 9.5 0 0 0 1.5 12c0 1.54.37 2.99 1.02 4.27z"
+              />
+              <path
+                fill="#34A853"
+                d="M12 21.5c2.7 0 4.96-.89 6.62-2.42l-3.16-2.45c-.85.59-1.98 1-3.46 1-2.65 0-4.9-1.74-5.7-4.16l-.12.01-3.21 2.49-.04.12C4.74 19.16 8.08 21.5 12 21.5"
+              />
+              <path
+                fill="#EA4335"
+                d="M12 5.94c1.88 0 3.14.8 3.86 1.49l2.82-2.75C16.97 3.16 14.7 2.5 12 2.5 8.08 2.5 4.74 4.84 3.93 8.41l3.36 2.6C8.1 8.5 9.84 5.94 12 5.94"
+              />
             </svg>
           )}
         </span>
@@ -324,7 +402,8 @@ function GoogleButton() {
       </button>
       {inApp && (
         <p className="text-center text-[11px] leading-snug text-muted-foreground">
-          Você está em um navegador embutido. Abra este link no Safari ou Chrome para entrar com Google.
+          Você está em um navegador embutido. Abra este link no Safari ou Chrome para entrar com
+          Google.
         </p>
       )}
     </div>

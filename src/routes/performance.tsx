@@ -5,10 +5,19 @@ import { useState } from "react";
 import { AppShell } from "@/components/app-shell";
 import { RequireAuth } from "@/components/require-auth";
 import { useAuth } from "@/hooks/use-auth";
-import { getPersonalRecords, getRecentPRs, type PersonalRecordDTO } from "@/lib/personal-records.functions";
+import { getPersonalRecords, getRecentPRs } from "@/lib/personal-records.functions";
 import { PR_EXERCISE_CODES, type PRExerciseCode } from "@/lib/pr-detection.server";
 import { PREditSheet } from "@/components/pr-edit-sheet";
-import { Trophy, TrendingUp, Loader2, ArrowRight, Dumbbell, Footprints, Plus, Pencil } from "lucide-react";
+import {
+  Trophy,
+  TrendingUp,
+  Loader2,
+  ArrowRight,
+  Dumbbell,
+  Footprints,
+  Plus,
+  Pencil,
+} from "lucide-react";
 
 export const Route = createFileRoute("/performance")({
   head: () => ({
@@ -71,7 +80,7 @@ function PerformancePage() {
   const isLoading = prs.isLoading || recent.isLoading;
   const prMap = new Map((prs.data ?? []).map((r) => [r.exercise_code, r]));
   const [editingCode, setEditingCode] = useState<PRExerciseCode | null>(null);
-  const editingPR = editingCode ? prMap.get(editingCode) ?? null : null;
+  const editingPR = editingCode ? (prMap.get(editingCode) ?? null) : null;
 
   return (
     <AppShell eyebrow="Minha performance" title="PRs & Performance">
@@ -97,7 +106,11 @@ function PerformancePage() {
                     <div className="min-w-0 flex-1">
                       <div className="truncate text-[13px] font-semibold">{r.label}</div>
                       <div className="num text-[11px] text-muted-foreground">
-                        {new Date(r.achieved_at).toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric" })}
+                        {new Date(r.achieved_at).toLocaleDateString("pt-BR", {
+                          day: "2-digit",
+                          month: "short",
+                          year: "numeric",
+                        })}
                         {r.improvement_pct != null && r.improvement_pct > 0 && (
                           <span className="ml-1.5 text-primary">+{r.improvement_pct}%</span>
                         )}
@@ -119,7 +132,12 @@ function PerformancePage() {
             <SectionHeader icon={<Dumbbell className="h-4 w-4" />} title="Força" />
             <div className="space-y-2">
               {STRENGTH_ORDER.map((code) => (
-                <PRCard key={code} code={code} pr={prMap.get(code)} onEdit={() => setEditingCode(code)} />
+                <PRCard
+                  key={code}
+                  code={code}
+                  pr={prMap.get(code)}
+                  onEdit={() => setEditingCode(code)}
+                />
               ))}
             </div>
           </section>
@@ -129,7 +147,12 @@ function PerformancePage() {
             <SectionHeader icon={<Footprints className="h-4 w-4" />} title="Corrida" />
             <div className="space-y-2">
               {RUNNING_ORDER.map((code) => (
-                <PRCard key={code} code={code} pr={prMap.get(code)} onEdit={() => setEditingCode(code)} />
+                <PRCard
+                  key={code}
+                  code={code}
+                  pr={prMap.get(code)}
+                  onEdit={() => setEditingCode(code)}
+                />
               ))}
             </div>
           </section>
@@ -170,7 +193,9 @@ function SectionHeader({ icon, title }: { icon: React.ReactNode; title: string }
   return (
     <div className="mb-2 flex items-center gap-2 px-1">
       <span className="text-primary">{icon}</span>
-      <span className="text-[11px] font-medium uppercase tracking-[0.2em] text-muted-foreground">{title}</span>
+      <span className="text-[11px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
+        {title}
+      </span>
     </div>
   );
 }
@@ -221,9 +246,15 @@ function PRCard({
             </span>
           </div>
           <div className="num mt-1.5 text-[11px] text-muted-foreground">
-            {new Date(pr.achieved_at).toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric" })}
+            {new Date(pr.achieved_at).toLocaleDateString("pt-BR", {
+              day: "2-digit",
+              month: "short",
+              year: "numeric",
+            })}
             {pr.improvement_pct != null && pr.improvement_pct !== 0 && (
-              <span className={`ml-1.5 ${pr.improvement_pct > 0 ? "text-primary" : "text-muted-foreground"}`}>
+              <span
+                className={`ml-1.5 ${pr.improvement_pct > 0 ? "text-primary" : "text-muted-foreground"}`}
+              >
                 {pr.improvement_pct > 0 ? "+" : ""}
                 {pr.improvement_pct}%
               </span>

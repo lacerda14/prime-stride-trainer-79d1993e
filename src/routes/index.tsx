@@ -1,5 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useState } from "react";
 import { AppShell } from "@/components/app-shell";
+import { WeekAdjustSheet } from "@/components/week-adjust-sheet";
 import {
   ArrowRight,
   Flame,
@@ -10,6 +12,7 @@ import {
   TrendingUp,
   Play,
   Crown,
+  SlidersHorizontal,
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { firstName, inferGender, timeOfDayGreeting, type Gender } from "@/lib/greeting";
@@ -17,6 +20,8 @@ import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { getDashboard } from "@/lib/profile.functions";
 import { getMySubscription } from "@/lib/subscription.functions";
+import { TierCrown } from "@/components/tier-crown";
+import { tierOf, isPaidAccess } from "@/lib/tiers";
 import { CoachAvatar } from "@/components/coach-avatar";
 import { getTodayTraining } from "@/lib/program.queries";
 import { levelProgress, getTitleForLevel } from "@/lib/gamification";
@@ -68,9 +73,10 @@ function DashboardContent() {
     enabled: !!user,
     staleTime: 5 * 60_000,
   });
-  const isPremium =
-    (subData?.plan === "premium_ai" && subData?.billing_status === "active") ||
-    subData?.billing_status === "trialing";
+  // Tier real do usuário (White=Free · Silver=Plus · Gold=Pro). Trial conta como Pro.
+  // Free é o default: sem assinatura paga, tier === "free" e a coroa é branca.
+  const tier = tierOf(subData);
+  const isPremium = isPaidAccess(subData);
 
   const profile = dash?.profile;
   const xp = profile?.xp_total ?? 0;
@@ -100,11 +106,14 @@ function DashboardContent() {
       if (d.event === "requestWorkout" && today) {
         void sendWorkoutToWatch(buildWatchWorkout(today));
       }
-    }).then((h) => { remove = () => { void h.remove(); }; });
+    }).then((h) => {
+      remove = () => {
+        void h.remove();
+      };
+    });
     return () => remove?.();
   }, [today]);
   const activeWeek = summary?.active_week ?? 1;
-  const totalWeeks = summary?.total_weeks ?? 48;
 
   const rawName =
     (user?.user_metadata?.name as string | undefined) ||
@@ -123,8 +132,11 @@ function DashboardContent() {
   // Conquistas próximas — milestones de treinos/streak
   const nextMilestones = buildNextMilestones(totalCompleted, streak);
 
+  const [showAdjust, setShowAdjust] = useState(false);
+
   return (
     <div className="space-y-5 p-4 pb-6">
+      {showAdjust && <WeekAdjustSheet onClose={() => setShowAdjust(false)} />}
 
       {/* ── 1. Header pessoal ── */}
       <section className="animate-fade-in pt-1">
@@ -132,12 +144,10 @@ function DashboardContent() {
           {greetWord(gender)}
         </div>
         <h2 className="mt-0.5 flex items-center gap-2 text-[24px] font-semibold leading-tight tracking-tight">
-          <span>{timeOfDayGreeting()}, {name || "atleta"}</span>
-          <Crown
-            className={`h-5 w-5 shrink-0 ${
-              isPremium ? "fill-amber-400/30 text-amber-400" : "fill-white/10 text-white/70"
-            }`}
-          />
+          <span>
+            {timeOfDayGreeting()}, {name || "atleta"}
+          </span>
+          <TierCrown tier={tier} className="h-5 w-5 shrink-0" />
         </h2>
         <div className="mt-1.5 flex flex-wrap items-center gap-2">
           <span className="inline-flex items-center gap-1 rounded-full border border-primary/30 bg-primary/10 px-2.5 py-1 text-[11px] font-semibold text-primary">
@@ -221,12 +231,21 @@ function DashboardContent() {
                   <Dumbbell className="h-5 w-5 text-primary" />
                 </div>
               </div>
+              {/* Start em 1 toque: vai direto pro treino (tela de começar/countdown),
+                  reduz fricção de ativação. Preview/troca de exercícios fica no /hoje
+                  (via "ver treino" abaixo e na aba Treinos). */}
               <Link
-                to="/hoje"
+                to="/treino"
                 className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-primary py-3.5 text-[14px] font-semibold text-primary-foreground shadow-glow transition-transform active:scale-[0.99]"
               >
                 <Play className="h-4 w-4 fill-current" />
                 Iniciar treino
+              </Link>
+              <Link
+                to="/hoje"
+                className="mt-2 flex w-full items-center justify-center gap-1.5 text-[12px] font-medium text-muted-foreground active:opacity-70"
+              >
+                Ver o treino antes <ArrowRight className="h-3.5 w-3.5" />
               </Link>
             </div>
           </div>
@@ -235,18 +254,35 @@ function DashboardContent() {
             <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-surface-elevated">
               <span className="text-xl">☕</span>
             </div>
-            <div className="text-[15px] font-semibold tracking-tight">Dia de descanso</div>
+            <div className="text-[15px] font-semibold tracking-tight">
+              Hoje é dia de descanso no seu plano
+            </div>
             <p className="mt-1 text-[12px] text-muted-foreground">
-              Aproveite para recuperar. O descanso também faz parte do treino.
+              O descanso faz parte do treino — mas você decide. Quer treinar mesmo assim?
             </p>
+            {/* Nunca bloqueia: sempre há uma ação clara pra treinar hoje. */}
             <Link
               to="/treinos"
-              className="mt-3 inline-flex items-center gap-1.5 text-[12px] font-medium text-primary"
+              className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-primary py-3 text-[13.5px] font-semibold text-primary-foreground shadow-glow transition-transform active:scale-[0.99]"
             >
-              Ver próximos treinos <ArrowRight className="h-3.5 w-3.5" />
+              <Play className="h-4 w-4 fill-current" />
+              Treinar mesmo assim
+            </Link>
+            <Link
+              to="/treinos"
+              className="mt-2.5 inline-flex items-center gap-1.5 text-[12px] font-medium text-muted-foreground"
+            >
+              Ver a semana <ArrowRight className="h-3.5 w-3.5" />
             </Link>
           </div>
         )}
+        {/* Controle do usuário: adaptar a semana a qualquer momento */}
+        <button
+          onClick={() => setShowAdjust(true)}
+          className="mt-2.5 flex w-full items-center justify-center gap-1.5 text-[12px] font-medium text-muted-foreground active:opacity-70"
+        >
+          <SlidersHorizontal className="h-3.5 w-3.5" /> Ajustar minha semana
+        </button>
       </section>
 
       {/* ── 3. Card COACH IA — teaser premium ── */}
@@ -306,7 +342,9 @@ function DashboardContent() {
           <div className="flex items-baseline justify-between gap-2 mb-2">
             <div className="flex items-center gap-2">
               <Zap className="h-4 w-4 text-primary" />
-              <span className="num text-[18px] font-semibold tracking-tight">{xp.toLocaleString("pt-BR")}</span>
+              <span className="num text-[18px] font-semibold tracking-tight">
+                {xp.toLocaleString("pt-BR")}
+              </span>
               <span className="text-[12px] text-muted-foreground">XP</span>
             </div>
             <span className="text-[10px] text-muted-foreground">
@@ -320,7 +358,10 @@ function DashboardContent() {
             />
           </div>
           <div className="mt-1.5 flex items-center justify-between text-[10px] text-muted-foreground">
-            <span>{prog.intoLevel.toLocaleString("pt-BR")} / {prog.levelSpan.toLocaleString("pt-BR")} XP no nível</span>
+            <span>
+              {prog.intoLevel.toLocaleString("pt-BR")} / {prog.levelSpan.toLocaleString("pt-BR")} XP
+              no nível
+            </span>
             <span>{Math.round(prog.pct * 100)}%</span>
           </div>
         </div>
@@ -336,7 +377,10 @@ function DashboardContent() {
           </div>
           <div className="space-y-2">
             {nextMilestones.map((m) => (
-              <div key={m.label} className="flex items-center gap-3 rounded-2xl border border-border/60 bg-surface/40 p-3.5">
+              <div
+                key={m.label}
+                className="flex items-center gap-3 rounded-2xl border border-border/60 bg-surface/40 p-3.5"
+              >
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-surface-elevated text-xl">
                   {m.emoji}
                 </div>
@@ -383,7 +427,10 @@ function DashboardContent() {
                 <div className="min-w-0 flex-1">
                   <div className="truncate text-[13px] font-semibold">{pr.exercise_name}</div>
                   <div className="text-[11px] text-muted-foreground">
-                    {new Date(pr.achieved_at).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })}
+                    {new Date(pr.achieved_at).toLocaleDateString("pt-BR", {
+                      day: "2-digit",
+                      month: "short",
+                    })}
                     {pr.reps ? ` · ${pr.reps} reps` : ""}
                   </div>
                 </div>
@@ -412,17 +459,28 @@ function DashboardContent() {
           </div>
           <div className="space-y-2">
             {recentAchievements.map((a) => {
-              const ach = a.achievements as { title: string; description: string; xp_reward: number } | null;
+              const ach = a.achievements as {
+                title: string;
+                description: string;
+                xp_reward: number;
+              } | null;
               return (
-                <div key={a.achievement_code} className="flex items-center gap-3 rounded-2xl border border-primary/20 bg-primary/5 p-3.5">
+                <div
+                  key={a.achievement_code}
+                  className="flex items-center gap-3 rounded-2xl border border-primary/20 bg-primary/5 p-3.5"
+                >
                   <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/15 text-primary">
                     <Trophy className="h-5 w-5" />
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="truncate text-[13px] font-semibold">{ach?.title}</div>
-                    <div className="truncate text-[11px] text-muted-foreground">{ach?.description}</div>
+                    <div className="truncate text-[11px] text-muted-foreground">
+                      {ach?.description}
+                    </div>
                   </div>
-                  <div className="shrink-0 text-[12px] font-semibold text-primary">+{ach?.xp_reward}</div>
+                  <div className="shrink-0 text-[12px] font-semibold text-primary">
+                    +{ach?.xp_reward}
+                  </div>
                 </div>
               );
             })}
@@ -452,7 +510,6 @@ function DashboardContent() {
           </Link>
         </div>
       </section>
-
     </div>
   );
 }
@@ -467,14 +524,18 @@ function greetWord(gender: Gender): string {
 
 function sessionLabel(type: string): string {
   switch (type) {
-    case "full_body": return "Full Body";
-    case "run_upper": return "Corrida + Superior";
-    case "run": return "Corrida";
-    case "rest": return "Descanso";
-    default: return type;
+    case "full_body":
+      return "Full Body";
+    case "run_upper":
+      return "Corrida + Superior";
+    case "run":
+      return "Corrida";
+    case "rest":
+      return "Descanso";
+    default:
+      return type;
   }
 }
-
 
 interface Milestone {
   label: string;

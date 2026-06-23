@@ -8,6 +8,7 @@ import {
   type PRExerciseCode,
   type PRDetectionRunResult,
 } from "./pr-detection.server";
+import { serverError } from "@/lib/server-errors";
 
 export interface PersonalRecordDTO {
   exercise_code: PRExerciseCode;
@@ -39,9 +40,11 @@ export const getPersonalRecords = createServerFn({ method: "GET" })
     const { supabase, userId } = context;
     const { data, error } = await supabase
       .from("personal_records")
-      .select("exercise_code, category, metric_type, value, secondary_value, estimated_1rm, previous_value, achieved_at")
+      .select(
+        "exercise_code, category, metric_type, value, secondary_value, estimated_1rm, previous_value, achieved_at",
+      )
       .eq("user_id", userId);
-    if (error) throw new Error(error.message);
+    if (error) serverError("Não foi possível concluir a operação. Tente novamente.", error);
 
     return (data ?? []).map((r) => {
       const code = r.exercise_code as PRExerciseCode;
@@ -65,16 +68,20 @@ export const getPersonalRecords = createServerFn({ method: "GET" })
 
 export const getRecentPRs = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input) => z.object({ limit: z.number().int().min(1).max(20).default(5) }).parse(input))
+  .inputValidator((input) =>
+    z.object({ limit: z.number().int().min(1).max(20).default(5) }).parse(input),
+  )
   .handler(async ({ data, context }): Promise<RecentPRDTO[]> => {
     const { supabase, userId } = context;
     const { data: rows, error } = await supabase
       .from("pr_history")
-      .select("exercise_code, category, metric_type, value, estimated_1rm, improvement_pct, achieved_at")
+      .select(
+        "exercise_code, category, metric_type, value, estimated_1rm, improvement_pct, achieved_at",
+      )
       .eq("user_id", userId)
       .order("achieved_at", { ascending: false })
       .limit(data.limit);
-    if (error) throw new Error(error.message);
+    if (error) serverError("Não foi possível concluir a operação. Tente novamente.", error);
     return (rows ?? []).map((r) => {
       const code = r.exercise_code as PRExerciseCode;
       const meta = PR_EXERCISE_CODES[code];
@@ -117,9 +124,10 @@ export const upsertManualPR = createServerFn({ method: "POST" })
     const meta = PR_EXERCISE_CODES[code];
     if (!meta) throw new Error("Exercício inválido para PR.");
 
-    // 1RM Epley quando weight_load + reps
+    // 1RM Epley quando weight_load + reps > 1. Em 1RM a própria carga É o recorde
+    // (sem estimar). Em 2RM..12RM estima o 1RM a partir do peso e das reps.
     let estimated_1rm: number | null = null;
-    if (meta.metric === "weight_load" && data.secondary_value && data.secondary_value > 0) {
+    if (meta.metric === "weight_load" && data.secondary_value && data.secondary_value > 1) {
       const reps = data.secondary_value;
       estimated_1rm = Math.round(data.value * (1 + reps / 30) * 10) / 10;
     }
@@ -151,7 +159,7 @@ export const upsertManualPR = createServerFn({ method: "POST" })
       },
       { onConflict: "user_id,exercise_code" },
     );
-    if (upErr) throw new Error(upErr.message);
+    if (upErr) serverError("Não foi possível concluir a operação. Tente novamente.", upErr);
 
     // History (sempre registra a edição manual)
     const improvement =
@@ -184,6 +192,6 @@ export const deletePR = createServerFn({ method: "POST" })
       .delete()
       .eq("user_id", userId)
       .eq("exercise_code", data.exercise_code);
-    if (error) throw new Error(error.message);
+    if (error) serverError("Não foi possível concluir a operação. Tente novamente.", error);
     return { ok: true };
   });

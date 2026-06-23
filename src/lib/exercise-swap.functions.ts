@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { serverError } from "@/lib/server-errors";
 
 export interface SwapSuggestion {
   id: string;
@@ -40,12 +41,10 @@ export const suggestExerciseSwaps = createServerFn({ method: "POST" })
 
     const { data: current, error: cErr } = await supabase
       .from("exercise_pool")
-      .select(
-        "id, name, category, equipment, movement_pattern, primary_muscles, shoulder_safe",
-      )
+      .select("id, name, category, equipment, movement_pattern, primary_muscles, shoulder_safe")
       .eq("id", data.exercise_id)
       .maybeSingle();
-    if (cErr) throw new Error(cErr.message);
+    if (cErr) serverError("Não foi possível concluir a operação. Tente novamente.", cErr);
     if (!current) return [];
 
     const { data: profile } = await supabase
@@ -71,16 +70,17 @@ export const suggestExerciseSwaps = createServerFn({ method: "POST" })
     else if (level === "advanced") q = q.eq("allowed_advanced", true);
 
     const { data: pool, error: pErr } = await q;
-    if (pErr) throw new Error(pErr.message);
+    if (pErr) serverError("Não foi possível concluir a operação. Tente novamente.", pErr);
 
     const currentMuscles = new Set<string>(current.primary_muscles ?? []);
 
     const scored = (pool ?? []).map((e) => {
       const muscles = new Set<string>(e.primary_muscles ?? []);
       const overlap = [...muscles].filter((m) => currentMuscles.has(m)).length;
-      const sameMovement = e.movement_pattern && current.movement_pattern
-        ? e.movement_pattern === current.movement_pattern
-        : true;
+      const sameMovement =
+        e.movement_pattern && current.movement_pattern
+          ? e.movement_pattern === current.movement_pattern
+          : true;
       const differentEquip = (e.equipment ?? "") !== (current.equipment ?? "");
       const hasUserEquip = e.equipment ? userEquip.has(e.equipment) || userEquip.size === 0 : true;
       const shoulderOk = current.shoulder_safe ? e.shoulder_safe : true;

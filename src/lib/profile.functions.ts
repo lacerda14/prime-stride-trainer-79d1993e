@@ -1,9 +1,19 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { generatePlan, loadExercisePool, mapDbGoalToEngineGoal, persistProgram, type Goal as EngineGoal, type UserProfileInput } from "@/lib/engine/pm-engine.server";
+import {
+  generatePlan,
+  loadExercisePool,
+  mapDbGoalToEngineGoal,
+  persistProgram,
+  isRollingEngineEnabled,
+  type Goal as EngineGoal,
+  type UserProfileInput,
+} from "@/lib/engine/pm-engine.server";
 import { dayNamesToNumbers } from "@/lib/engine/program.functions";
-
+import { serverError } from "@/lib/server-errors";
+import { validateUsername } from "@/lib/username";
+import { mergePrefs, type NotifPrefs } from "@/lib/notifications/schedule";
 
 // ============================================================
 // GET
@@ -14,9 +24,133 @@ export const getProfile = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     const { supabase, userId } = context;
     const { data, error } = await supabase
-      .from("profiles").select("*").eq("id", userId).maybeSingle();
-    if (error) throw new Error(error.message);
+      .from("profiles")
+      .select("*")
+      .eq("id", userId)
+      .maybeSingle();
+    if (error) serverError("Não foi possível concluir a operação. Tente novamente.", error);
     return data;
+  });
+
+// Atualiza a foto de perfil (avatar_url). O arquivo já foi enviado pro bucket
+// `avatars` pelo cliente (RLS só deixa gravar na pasta {uid}/); aqui só persiste
+// a URL pública. null = remover a foto.
+export const updateAvatarUrl = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) =>
+    z.object({ avatar_url: z.string().url().max(2000).nullable() }).parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const { error } = await supabase
+      .from("profiles")
+      .update({ avatar_url: data.avatar_url, updated_at: new Date().toISOString() })
+      .eq("id", userId);
+    if (error) serverError("Não foi possível atualizar a foto.", error);
+    return { ok: true as const };
+  });
+
+// Nº de treinos concluídos (usado pra trava de frequência 5x/6x do iniciante).
+export const getCompletedWorkoutCount = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }): Promise<number> => {
+    const { supabase, userId } = context;
+    const { count } = await supabase
+      .from("workout_sessions")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", userId)
+      .not("completed_at", "is", null);
+    return count ?? 0;
+  });
+
+// Disponibilidade de @username (onboarding/perfil). Valida formato e checa se já
+// está em uso. Como a RLS de profiles só deixa ver o próprio perfil, a busca por
+// OUTROS usa service role. Match em lowercase exato (usernames são normalizados;
+// `eq` evita o problema do `_` virar wildcard no ilike).
+export const checkUsername = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => z.object({ username: z.string().trim().max(40) }).parse(input))
+  .handler(async ({ context, data }): Promise<{ available: boolean; reason?: string }> => {
+    const { userId } = context;
+    const v = validateUsername(data.username);
+    if (!v.ok) return { available: false, reason: v.reason };
+
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: rows, error } = await supabaseAdmin
+      .from("profiles")
+      .select("id")
+      .eq("username", v.value)
+      .neq("id", userId)
+      .limit(1);
+    if (error) serverError("Não foi possível verificar o nome de usuário.", error);
+    return (rows ?? []).length > 0 ? { available: false, reason: "taken" } : { available: true };
+  });
+
+// Salva/atualiza o @username (perfil — pra quem já passou do onboarding e ficou
+// com placeholder/NULL). User-scoped (RLS UPDATE own); a unicidade é garantida
+// pelo índice unique(lower(username)) → colisão (23505) vira username_taken.
+export const setUsername = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => z.object({ username: z.string().trim().max(40) }).parse(input))
+  .handler(async ({ context, data }): Promise<{ username: string }> => {
+    const { supabase, userId } = context;
+    const v = validateUsername(data.username);
+    if (!v.ok) throw new Error("invalid_username");
+    const { error } = await supabase
+      .from("profiles")
+      .update({ username: v.value })
+      .eq("id", userId);
+    if (error) {
+      const code = (error as { code?: string }).code;
+      const msg = (error as { message?: string }).message ?? "";
+      if (code === "23505" && /username/i.test(msg)) throw new Error("username_taken");
+      serverError("Não foi possível salvar o nome de usuário.", error);
+    }
+    return { username: v.value };
+  });
+
+// ── Preferências de notificação ───────────────────────────────────────────────
+const notifPrefsPatchSchema = z.object({
+  enabled: z.boolean().optional(),
+  workout: z.boolean().optional(),
+  streak: z.boolean().optional(),
+  achievements: z.boolean().optional(),
+  social: z.boolean().optional(),
+  coach: z.boolean().optional(),
+  health: z.boolean().optional(),
+  news: z.boolean().optional(),
+});
+
+export const getNotificationPrefs = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }): Promise<NotifPrefs> => {
+    const { supabase, userId } = context;
+    const { data } = await supabase
+      .from("profiles")
+      .select("notification_prefs")
+      .eq("id", userId)
+      .maybeSingle();
+    return mergePrefs(data?.notification_prefs);
+  });
+
+export const updateNotificationPrefs = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => notifPrefsPatchSchema.parse(input))
+  .handler(async ({ context, data }): Promise<NotifPrefs> => {
+    const { supabase, userId } = context;
+    const { data: row } = await supabase
+      .from("profiles")
+      .select("notification_prefs")
+      .eq("id", userId)
+      .maybeSingle();
+    const current = mergePrefs(row?.notification_prefs);
+    const merged = mergePrefs({ ...current, ...data });
+    const { error } = await supabase
+      .from("profiles")
+      .update({ notification_prefs: merged as unknown as Record<string, boolean> })
+      .eq("id", userId);
+    if (error) serverError("Não foi possível salvar as preferências.", error);
+    return merged;
   });
 
 export interface PRItem {
@@ -34,31 +168,45 @@ export const getDashboard = createServerFn({ method: "GET" })
     const sevenDaysAgo = new Date(now - 7 * 24 * 60 * 60 * 1000).toISOString();
     const fourteenDaysAgo = new Date(now - 14 * 24 * 60 * 60 * 1000).toISOString();
 
-    const [profileRes, achievementsRes, recentXpRes, weekSessionsRes, prSetsRes, volumeSetsRes] = await Promise.all([
-      supabase.from("profiles").select("*").eq("id", userId).maybeSingle(),
-      supabase.from("user_achievements")
-        .select("achievement_code, unlocked_at, achievements(code,title,description,icon,xp_reward)")
-        .eq("user_id", userId).order("unlocked_at", { ascending: false }).limit(3),
-      supabase.from("xp_events").select("xp_amount, created_at").eq("user_id", userId)
-        .gte("created_at", sevenDaysAgo),
-      supabase.from("workout_sessions").select("week_number, completed_at")
-        .eq("user_id", userId).not("completed_at", "is", null),
-      // Todos os sets com carga registrada → calcula PRs em memória
-      supabase.from("workout_set_logs")
-        .select("exercise_name, actual_load_kg, actual_reps, created_at")
-        .eq("user_id", userId)
-        .not("actual_load_kg", "is", null)
-        .gt("actual_load_kg", 0)
-        .order("actual_load_kg", { ascending: false })
-        .limit(500),
-      // Volume últimos 14 dias para comparar esta semana vs anterior
-      supabase.from("workout_set_logs")
-        .select("actual_load_kg, actual_reps, created_at")
-        .eq("user_id", userId)
-        .gte("created_at", fourteenDaysAgo)
-        .not("actual_load_kg", "is", null)
-        .not("actual_reps", "is", null),
-    ]);
+    const [profileRes, achievementsRes, recentXpRes, weekSessionsRes, prSetsRes, volumeSetsRes] =
+      await Promise.all([
+        supabase.from("profiles").select("*").eq("id", userId).maybeSingle(),
+        supabase
+          .from("user_achievements")
+          .select(
+            "achievement_code, unlocked_at, achievements(code,title,description,icon,xp_reward)",
+          )
+          .eq("user_id", userId)
+          .order("unlocked_at", { ascending: false })
+          .limit(3),
+        supabase
+          .from("xp_events")
+          .select("xp_amount, created_at")
+          .eq("user_id", userId)
+          .gte("created_at", sevenDaysAgo),
+        supabase
+          .from("workout_sessions")
+          .select("week_number, completed_at")
+          .eq("user_id", userId)
+          .not("completed_at", "is", null),
+        // Todos os sets com carga registrada → calcula PRs em memória
+        supabase
+          .from("workout_set_logs")
+          .select("exercise_name, actual_load_kg, actual_reps, created_at")
+          .eq("user_id", userId)
+          .not("actual_load_kg", "is", null)
+          .gt("actual_load_kg", 0)
+          .order("actual_load_kg", { ascending: false })
+          .limit(500),
+        // Volume últimos 14 dias para comparar esta semana vs anterior
+        supabase
+          .from("workout_set_logs")
+          .select("actual_load_kg, actual_reps, created_at")
+          .eq("user_id", userId)
+          .gte("created_at", fourteenDaysAgo)
+          .not("actual_load_kg", "is", null)
+          .not("actual_reps", "is", null),
+      ]);
     if (profileRes.error) throw new Error(profileRes.error.message);
 
     const weeklyXp = (recentXpRes.data ?? []).reduce((s, e) => s + (e.xp_amount ?? 0), 0);
@@ -163,30 +311,49 @@ function buildCoachInsightServer(d: {
 // Goal mapping
 // ============================================================
 
-const PRIMARY_GOALS = [
-  "emagrecimento", "hipertrofia", "ganho_forca", "condicionamento",
-  "correr_5k", "correr_10k", "saude_geral", "performance_hibrida", "outro",
-] as const;
-type PrimaryGoal = (typeof PRIMARY_GOALS)[number];
+type PrimaryGoal =
+  | "emagrecimento"
+  | "hipertrofia"
+  | "ganho_forca"
+  | "condicionamento"
+  | "correr_5k"
+  | "correr_10k"
+  | "saude_geral"
+  | "performance_hibrida"
+  | "outro";
 
 // Legacy engine goals (kept for backwards compat with the rest of the codebase).
 const ENGINE_DB_GOALS = [
-  "fat_loss", "hypertrophy", "endurance", "hybrid",
-  "general_health", "conditioning", "run_5k",
+  "fat_loss",
+  "hypertrophy",
+  "endurance",
+  "hybrid",
+  "general_health",
+  "conditioning",
+  "run_5k",
 ] as const;
 type DbGoal = (typeof ENGINE_DB_GOALS)[number];
 
 function mapPrimaryToDbGoal(g: PrimaryGoal): DbGoal {
   switch (g) {
-    case "emagrecimento": return "fat_loss";
-    case "hipertrofia": return "hypertrophy";
-    case "ganho_forca": return "hypertrophy";
-    case "condicionamento": return "conditioning";
-    case "correr_5k": return "run_5k";
-    case "correr_10k": return "run_5k";
-    case "saude_geral": return "general_health";
-    case "performance_hibrida": return "hybrid";
-    case "outro": return "general_health";
+    case "emagrecimento":
+      return "fat_loss";
+    case "hipertrofia":
+      return "hypertrophy";
+    case "ganho_forca":
+      return "hypertrophy";
+    case "condicionamento":
+      return "conditioning";
+    case "correr_5k":
+      return "run_5k";
+    case "correr_10k":
+      return "run_5k";
+    case "saude_geral":
+      return "general_health";
+    case "performance_hibrida":
+      return "hybrid";
+    case "outro":
+      return "general_health";
   }
 }
 
@@ -216,7 +383,12 @@ const onboardingV2Schema = z.object({
   // S1
   first_name: z.string().trim().min(1).max(60),
   last_name: z.string().trim().max(80).optional().nullable(),
-  birth_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().nullable(),
+  username: z.string().trim().max(40).optional().nullable(),
+  birth_date: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .optional()
+    .nullable(),
   sex: z.enum(["male", "female", "other", "prefer_not_to_say"]).optional().nullable(),
   height_cm: z.number().min(50).max(250).optional().nullable(),
   weight_kg: z.number().min(10).max(500).optional().nullable(),
@@ -252,10 +424,15 @@ const onboardingV2Schema = z.object({
   // S8
   medical_conditions: z.array(z.string().min(1).max(60)).max(20).default([]),
   medications: z.string().max(500).optional().nullable(),
-  surgeries: z.array(z.object({
-    name: z.string().min(1).max(120),
-    year: z.string().max(10).optional().nullable(),
-  })).max(10).default([]),
+  surgeries: z
+    .array(
+      z.object({
+        name: z.string().min(1).max(120),
+        year: z.string().max(10).optional().nullable(),
+      }),
+    )
+    .max(10)
+    .default([]),
   medical_restrictions: z.string().max(500).optional().nullable(),
   // S9
   current_pain_level: z.number().int().min(0).max(10).default(0),
@@ -264,21 +441,23 @@ const onboardingV2Schema = z.object({
   uncomfortable_movements: z.array(z.string().min(1).max(40)).max(20).default([]),
   // S10
   equipment: z.array(z.string().min(1).max(60)).max(60).default([]),
-  gym_setup: z.object({
-    location: z.string().max(60).optional().nullable(),
-    full_gym_completeness: z.string().max(60).optional().nullable(),
-    full_gym_missing: z.array(z.string().max(60)).max(30).default([]),
-    full_gym_missing_other: z.string().max(300).optional().nullable(),
-    condo_equipment: z.array(z.string().max(60)).max(40).default([]),
-    condo_other: z.string().max(300).optional().nullable(),
-    home_equipment: z.array(z.string().max(60)).max(40).default([]),
-    home_other: z.string().max(300).optional().nullable(),
-    box_completeness: z.string().max(10).optional().nullable(),
-    box_equipment: z.array(z.string().max(60)).max(30).default([]),
-    box_other: z.string().max(300).optional().nullable(),
-    mixed_primary: z.string().max(40).optional().nullable(),
-    mixed_other_locations: z.array(z.string().max(40)).max(10).default([]),
-  }).default({}),
+  gym_setup: z
+    .object({
+      location: z.string().max(60).optional().nullable(),
+      full_gym_completeness: z.string().max(60).optional().nullable(),
+      full_gym_missing: z.array(z.string().max(60)).max(30).default([]),
+      full_gym_missing_other: z.string().max(300).optional().nullable(),
+      condo_equipment: z.array(z.string().max(60)).max(40).default([]),
+      condo_other: z.string().max(300).optional().nullable(),
+      home_equipment: z.array(z.string().max(60)).max(40).default([]),
+      home_other: z.string().max(300).optional().nullable(),
+      box_completeness: z.string().max(10).optional().nullable(),
+      box_equipment: z.array(z.string().max(60)).max(30).default([]),
+      box_other: z.string().max(300).optional().nullable(),
+      mixed_primary: z.string().max(40).optional().nullable(),
+      mixed_other_locations: z.array(z.string().max(40)).max(10).default([]),
+    })
+    .default({}),
   // S11
   preferences: z.array(z.string().min(1).max(40)).max(20).default([]),
   training_style: z.string().max(40).optional().nullable(),
@@ -320,11 +499,20 @@ export const completeOnboarding = createServerFn({ method: "POST" })
     }
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const dbGoal = data.primary_goal ? mapPrimaryToDbGoal(data.primary_goal as any) : null;
-    const name = [data.first_name, data.last_name].filter(Boolean).join(" ").trim() || data.first_name;
+    const name =
+      [data.first_name, data.last_name].filter(Boolean).join(" ").trim() || data.first_name;
 
-    const { error: updateErr } = await supabase
-      .from("profiles")
-      .upsert({
+    // Username (escolhido no onboarding): valida server-side e normaliza pra lowercase.
+    // A unicidade é garantida pelo índice unique(lower(username)) — colisão vira 23505.
+    let username: string | null = null;
+    if (data.username) {
+      const v = validateUsername(data.username);
+      if (!v.ok) throw new Error("invalid_username");
+      username = v.value;
+    }
+
+    const { error: updateErr } = await supabase.from("profiles").upsert(
+      {
         id: userId,
         // legacy
         name,
@@ -349,6 +537,7 @@ export const completeOnboarding = createServerFn({ method: "POST" })
         // v2 fields
         first_name: data.first_name,
         last_name: data.last_name ?? null,
+        ...(username ? { username } : {}),
         birth_date: data.birth_date,
         waist_cm: data.waist_cm ?? null,
         hip_cm: data.hip_cm ?? null,
@@ -382,34 +571,42 @@ export const completeOnboarding = createServerFn({ method: "POST" })
         perf_max_plank_seconds: data.perf_max_plank_seconds ?? null,
         perf_max_run_minutes: data.perf_max_run_minutes ?? null,
         perf_lifts_done: data.perf_lifts_done,
-      }, { onConflict: "id" });
-    if (updateErr) throw new Error(updateErr.message);
+      },
+      { onConflict: "id" },
+    );
+    if (updateErr) {
+      const code = (updateErr as { code?: string }).code;
+      const msg = (updateErr as { message?: string }).message ?? "";
+      // Colisão de username (índice unique) → erro limpo ANTES de gerar o programa.
+      if (code === "23505" && /username/i.test(msg)) throw new Error("username_taken");
+      serverError("Não foi possível concluir a operação. Tente novamente.", updateErr);
+    }
 
     if (data.weight_kg) {
       await supabase.from("weight_history").insert({
-        user_id: userId, weight_kg: data.weight_kg,
+        user_id: userId,
+        weight_kg: data.weight_kg,
       });
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     // Input COMPLETO do onboarding — cada resposta impacta a geração.
     const runningModeOb = (data.running_mode as any) ?? null;
     const input: UserProfileInput = {
-      age:              age ?? 30,
-      sex:              (data.sex as any) ?? "other",
-      weight_kg:        data.weight_kg ?? 70,
-      height_cm:        data.height_cm ?? 170,
+      age: age ?? 30,
+      sex: (data.sex as any) ?? "other",
+      weight_kg: data.weight_kg ?? 70,
+      height_cm: data.height_cm ?? 170,
       experience_level: (data.experience_level as any) ?? "beginner",
-      goal:             mapDbToEngineGoal(dbGoal as any) ?? "hybrid",
-      available_days:   clampDays(data.available_days ?? 4),
-      selected_days:    dayNamesToNumbers(data.available_days_list ?? []),
-      wants_running:    runningModeOb ? runningModeOb !== "desabilitado" : true,
-      running_mode:     runningModeOb,
+      goal: mapDbToEngineGoal(dbGoal as any) ?? "hybrid",
+      available_days: clampDays(data.available_days ?? 4),
+      selected_days: dayNamesToNumbers(data.available_days_list ?? []),
+      wants_running: runningModeOb ? runningModeOb !== "desabilitado" : true,
+      running_mode: runningModeOb,
       available_equipment: (data.equipment ?? []) as string[],
       available_minutes: data.available_minutes ?? null,
-      seed:             userId,
-      pain_regions:     data.pain_regions ?? [],
-      past_injuries:    data.past_injuries ?? [],
+      seed: userId,
+      pain_regions: data.pain_regions ?? [],
+      past_injuries: data.past_injuries ?? [],
       uncomfortable_movements: data.uncomfortable_movements ?? [],
     };
 
@@ -422,13 +619,20 @@ export const completeOnboarding = createServerFn({ method: "POST" })
       const pool = await loadExercisePool(supabase);
       if (pool.length > 0) {
         const plan = generatePlan(input, pool);
-        const res = await persistProgram(supabase, userId, input, plan);
+        const res = await persistProgram(supabase, userId, input, plan, {
+          rolling: isRollingEngineEnabled(userId),
+        });
         program_id = res.program_id;
       } else {
-        console.error("[completeOnboarding] pool de exercícios vazio — programa será gerado depois");
+        console.error(
+          "[completeOnboarding] pool de exercícios vazio — programa será gerado depois",
+        );
       }
     } catch (e) {
-      console.error("[completeOnboarding] falha ao gerar programa (não-fatal):", e instanceof Error ? e.message : e);
+      console.error(
+        "[completeOnboarding] falha ao gerar programa (não-fatal):",
+        e instanceof Error ? e.message : e,
+      );
     }
 
     return { ok: true, program_id };
@@ -467,32 +671,44 @@ export const updateProfile = createServerFn({ method: "POST" })
       if (composed) patch.name = composed;
     }
     if (rest.available_days != null) patch.available_days = clampDays(rest.available_days);
-    if (rest.available_minutes != null) patch.available_minutes = clampMinutes(rest.available_minutes);
+    if (rest.available_minutes != null)
+      patch.available_minutes = clampMinutes(rest.available_minutes);
 
     if (Object.keys(patch).length > 0) {
-      const { error } = await supabase.from("profiles").update(patch as never).eq("id", userId);
-      if (error) throw new Error(error.message);
+      const { error } = await supabase
+        .from("profiles")
+        .update(patch as never)
+        .eq("id", userId);
+      if (error) serverError("Não foi possível concluir a operação. Tente novamente.", error);
     }
 
     if (rest.weight_kg != null) {
       await supabase.from("weight_history").insert({
-        user_id: userId, weight_kg: rest.weight_kg,
+        user_id: userId,
+        weight_kg: rest.weight_kg,
       });
     }
 
     let regenerated = false;
     if (regenerate_plan) {
       const { data: profile, error: pErr } = await supabase
-        .from("profiles").select("*").eq("id", userId).maybeSingle();
+        .from("profiles")
+        .select("*")
+        .eq("id", userId)
+        .maybeSingle();
       if (pErr || !profile) throw new Error(pErr?.message ?? "Perfil não encontrado.");
       if (
-        profile.age && profile.weight_kg && profile.height_cm &&
-        profile.experience_level && profile.goal && profile.available_days
+        profile.age &&
+        profile.weight_kg &&
+        profile.height_cm &&
+        profile.experience_level &&
+        profile.goal &&
+        profile.available_days
       ) {
-        await supabase.from("training_programs")
-          .update({ archived_at: new Date().toISOString() })
-          .eq("user_id", userId).is("archived_at", null);
-
+        // NÃO arquivar o programa antigo aqui: persistProgram insere o novo como
+        // draft e ativa via RPC activate_program (arquiva o antigo + ativa o novo
+        // numa transação, com rollback). Se a geração falhar, o antigo continua
+        // ativo — antes, arquivar aqui apagava o treino quando a regeneração falhava.
         const input: UserProfileInput = {
           age: profile.age,
           sex: (profile.sex ?? "other") as "male" | "female" | "other",
@@ -504,7 +720,9 @@ export const updateProfile = createServerFn({ method: "POST" })
         };
         const pool = await loadExercisePool(supabase);
         const plan = generatePlan(input, pool);
-        await persistProgram(supabase, userId, input, plan);
+        await persistProgram(supabase, userId, input, plan, {
+          rolling: isRollingEngineEnabled(userId),
+        });
         regenerated = true;
       }
     }
@@ -525,23 +743,29 @@ export const listProgressPhotos = createServerFn({ method: "GET" })
       .select("id, photo_type, storage_path, uploaded_at")
       .eq("user_id", userId)
       .order("uploaded_at", { ascending: false });
-    if (error) throw new Error(error.message);
+    if (error) serverError("Não foi possível concluir a operação. Tente novamente.", error);
 
-    const out = await Promise.all((data ?? []).map(async (p) => {
-      const { data: signed } = await supabase.storage
-        .from("progress-photos")
-        .createSignedUrl(p.storage_path, 60 * 60);
-      return { ...p, url: signed?.signedUrl ?? null };
-    }));
+    const out = await Promise.all(
+      (data ?? []).map(async (p) => {
+        const { data: signed } = await supabase.storage
+          .from("progress-photos")
+          .createSignedUrl(p.storage_path, 60 * 60);
+        return { ...p, url: signed?.signedUrl ?? null };
+      }),
+    );
     return out;
   });
 
 export const registerProgressPhoto = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input) => z.object({
-    photo_type: z.enum(["frente", "lado", "costas"]),
-    storage_path: z.string().min(1).max(500),
-  }).parse(input))
+  .inputValidator((input) =>
+    z
+      .object({
+        photo_type: z.enum(["frente", "lado", "costas"]),
+        storage_path: z.string().min(1).max(500),
+      })
+      .parse(input),
+  )
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
     const { error } = await supabase.from("progress_photos").insert({
@@ -549,7 +773,7 @@ export const registerProgressPhoto = createServerFn({ method: "POST" })
       photo_type: data.photo_type,
       storage_path: data.storage_path,
     });
-    if (error) throw new Error(error.message);
+    if (error) serverError("Não foi possível concluir a operação. Tente novamente.", error);
     return { ok: true };
   });
 
@@ -561,12 +785,15 @@ export const resetOnboarding = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     const { supabase, userId } = context;
-    await supabase.from("training_programs")
+    await supabase
+      .from("training_programs")
       .update({ archived_at: new Date().toISOString() })
-      .eq("user_id", userId).is("archived_at", null);
-    const { error } = await supabase.from("profiles")
+      .eq("user_id", userId)
+      .is("archived_at", null);
+    const { error } = await supabase
+      .from("profiles")
       .update({ onboarding_completed: false, current_week: 1 })
       .eq("id", userId);
-    if (error) throw new Error(error.message);
+    if (error) serverError("Não foi possível concluir a operação. Tente novamente.", error);
     return { ok: true };
   });

@@ -1,11 +1,27 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { generatePlan, loadExercisePool, mapDbGoalToEngineGoal, persistProgram, type UserProfileInput, type RunningMode } from "./pm-engine.server";
+import {
+  generatePlan,
+  loadExercisePool,
+  mapDbGoalToEngineGoal,
+  persistProgram,
+  isRollingEngineEnabled,
+  type UserProfileInput,
+  type RunningMode,
+} from "./pm-engine.server";
+import { serverError } from "@/lib/server-errors";
 
 /** "Segunda" → 1 ... "Domingo" → 7. Aceita variações com/sem acento. */
 const DAY_NAME_TO_NUM: Record<string, number> = {
-  segunda: 1, terca: 2, "terça": 2, quarta: 3, quinta: 4,
-  sexta: 5, sabado: 6, "sábado": 6, domingo: 7,
+  segunda: 1,
+  terca: 2,
+  terça: 2,
+  quarta: 3,
+  quinta: 4,
+  sexta: 5,
+  sabado: 6,
+  sábado: 6,
+  domingo: 7,
 };
 export function dayNamesToNumbers(list: string[] | null | undefined): number[] {
   if (!Array.isArray(list)) return [];
@@ -20,8 +36,13 @@ export function dayNamesToNumbers(list: string[] | null | undefined): number[] {
 
 export function buildEngineInput(profile: {
   id?: string;
-  age: number; sex: string; weight_kg: number | string; height_cm: number | string;
-  experience_level: string; goal: string; available_days: number;
+  age: number;
+  sex: string;
+  weight_kg: number | string;
+  height_cm: number | string;
+  experience_level: string;
+  goal: string;
+  available_days: number;
   equipment?: string[] | null;
   available_days_list?: string[] | null;
   running_mode?: string | null;
@@ -67,12 +88,21 @@ export const generateProgramForCurrentUser = createServerFn({ method: "POST" })
 
     const { data: profile, error: pErr } = await supabase
       .from("profiles")
-      .select("id, age, sex, weight_kg, height_cm, experience_level, goal, available_days, equipment, available_days_list, running_mode, available_minutes, pain_regions, past_injuries, uncomfortable_movements")
+      .select(
+        "id, age, sex, weight_kg, height_cm, experience_level, goal, available_days, equipment, available_days_list, running_mode, available_minutes, pain_regions, past_injuries, uncomfortable_movements",
+      )
       .eq("id", userId)
       .single();
-    if (pErr) throw new Error(pErr.message);
-    if (!profile.age || !profile.sex || !profile.weight_kg || !profile.height_cm ||
-        !profile.experience_level || !profile.goal || !profile.available_days) {
+    if (pErr) serverError("Não foi possível concluir a operação. Tente novamente.", pErr);
+    if (
+      !profile.age ||
+      !profile.sex ||
+      !profile.weight_kg ||
+      !profile.height_cm ||
+      !profile.experience_level ||
+      !profile.goal ||
+      !profile.available_days
+    ) {
       throw new Error("Onboarding incompleto: faltam campos do perfil.");
     }
 
@@ -81,6 +111,8 @@ export const generateProgramForCurrentUser = createServerFn({ method: "POST" })
     if (pool.length === 0) throw new Error("Catálogo de exercícios vazio.");
 
     const plan = generatePlan(input, pool);
-    const result = await persistProgram(supabase, userId, input, plan);
+    const result = await persistProgram(supabase, userId, input, plan, {
+      rolling: isRollingEngineEnabled(userId),
+    });
     return result;
   });

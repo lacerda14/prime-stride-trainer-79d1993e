@@ -1,6 +1,9 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { serverError } from "@/lib/server-errors";
+import { materializeNextMesocycle, isRollingEngineEnabled } from "@/lib/engine/pm-engine.server";
+import { needsMaterialization } from "@/lib/engine/rolling";
 
 const localTodaySchema = z.object({
   local_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
@@ -17,6 +20,7 @@ export interface ExerciseLite {
   id: string;
   name: string;
   category: string;
+  equipment: string | null;
 }
 
 export interface SessionExerciseDTO {
@@ -126,10 +130,7 @@ export interface TodayTrainingCalendarDTO {
 // Helpers
 // ============================================================
 
-async function getActiveProgramId(
-  supabase: any,
-  userId: string,
-): Promise<string | null> {
+async function getActiveProgramId(supabase: any, userId: string): Promise<string | null> {
   const { data, error } = await supabase
     .from("training_programs")
     .select("id")
@@ -138,95 +139,19 @@ async function getActiveProgramId(
     .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();
-  if (error) throw new Error(error.message);
+  if (error) serverError("Não foi possível concluir a operação. Tente novamente.", error);
   return data?.id ?? null;
 }
 
-/** Carrega expectativa de dias do perfil do usuário (selected_days + wants_running). */
-async function loadExpectedSchedule(supabase: any, userId: string): Promise<{
-  days: { num: number; kind: "fb" | "run" }[];
-  wantsRunning: boolean;
-  hasProfile: boolean;
-  profile: any | null;
-} | null> {
-  const { data: profile, error } = await supabase
-    .from("profiles")
-    .select("id, age, sex, weight_kg, height_cm, experience_level, goal, available_days, equipment, available_days_list, running_mode, available_minutes, pain_regions, past_injuries, uncomfortable_movements")
-    .eq("id", userId)
-    .maybeSingle();
-  if (error) throw new Error(error.message);
-  if (!profile) return { days: [], wantsRunning: true, hasProfile: false, profile: null };
-  const wantsRunning = profile.running_mode
-    ? profile.running_mode !== "desabilitado"
-    : true;
-  // Deriva os dias esperados do MESMO activeDays que o gerador usa: assim a
-  // validação (nº de dias + presença de corrida) nunca diverge do programa
-  // gerado. Antes usava idx%2, que podia discordar do runDaysCount do motor e
-  // disparar regeneração infinita (ex.: running_mode="principal" com 1 dia).
-  const { buildEngineInput } = await import("@/lib/engine/program.functions");
-  const { activeDays } = await import("@/lib/engine/pm-engine.server");
-  const input = buildEngineInput(profile);
-  const days = activeDays(input).map((d) => ({ num: d.num, kind: d.kind }));
-  return { days, wantsRunning, hasProfile: true, profile };
-}
-
-async function hasValidDistribution(
-  supabase: any,
-  programId: string,
-  expected: { num: number; kind: "fb" | "run" }[],
-): Promise<boolean> {
-  if (expected.length === 0) return true; // sem expectativa, não força regen
-  // Validação LEVE: só estrutura (dias, tipo de sessão, presença de corrida).
-  // O join pesado em session_exercises→exercise_pool foi removido — ele rodava
-  // a cada carregamento de dashboard/semana e era o principal gargalo. A
-  // distribuição de exercícios por categoria já é garantida na geração.
-  const { data, error } = await supabase
-    .from("training_days")
-    .select("day_number,session_type,objective,running_protocols(id),week:weeks!inner(week_number,program_id)")
-    .eq("week.program_id", programId)
-    .in("week.week_number", [1, 2])
-    .order("day_number");
-  if (error) throw new Error(error.message);
-
-  // Motor v2: a estrutura (split/ênfase) é dinâmica por objetivo/frequência/
-  // nível. Só validamos o que é invariante ao perfil: o nº de dias bate e os
-  // dias de corrida têm protocolo. NÃO checamos mais ênfase Pull/Push fixa.
-  // Tolerante a posição: o motor v2 decide QUAIS dias são corrida por modo/
-  // objetivo. Só checamos invariantes: nº de dias bate e a presença de corrida
-  // condiz com a preferência (tem corrida ⇔ o usuário quer corrida).
-  const rows = data ?? [];
-  const days = rows.filter((row: any) => row.week.week_number === 1);
-  if (days.length !== expected.length) return false;
-  const wantsRun = expected.some((e) => e.kind === "run");
-  const actualRun = days.filter((d: any) => (d.running_protocols ?? []).length > 0).length;
-  if (wantsRun && actualRun === 0) return false;
-  if (!wantsRun && actualRun > 0) return false;
-  return true;
-}
-
 async function ensureValidActiveProgram(supabase: any, userId: string): Promise<string | null> {
-  // Programa ativo e perfil são independentes — buscar em paralelo corta uma
-  // ida e volta ao banco.
-  const [programId, schedule] = await Promise.all([
-    getActiveProgramId(supabase, userId),
-    loadExpectedSchedule(supabase, userId),
-  ]);
-  if (!programId) return null;
-
-  if (!schedule || !schedule.hasProfile || !schedule.profile?.age || !schedule.profile?.sex ||
-      !schedule.profile?.weight_kg || !schedule.profile?.height_cm ||
-      !schedule.profile?.experience_level || !schedule.profile?.goal) {
-    return programId;
-  }
-  if (await hasValidDistribution(supabase, programId, schedule.days)) return programId;
-
-  const { buildEngineInput } = await import("@/lib/engine/program.functions");
-  const { generatePlan, loadExercisePool, persistProgram } = await import("@/lib/engine/pm-engine.server");
-  const input = buildEngineInput(schedule.profile);
-  const pool = await loadExercisePool(supabase);
-  if (pool.length === 0) throw new Error("Catálogo de exercícios vazio.");
-  const result = await persistProgram(supabase, userId, input, generatePlan(input, pool));
-  return result.program_id;
+  // READ-ONLY: retorna só o programa ativo. NÃO valida nem regenera aqui.
+  // Antes, quando a validação de distribuição falhava, isto REGENERAVA o programa
+  // de 12 semanas (loadExercisePool + generatePlan + persistProgram + RPC) a CADA
+  // carregamento da home — causa raiz da lentidão extrema ("eternidade") e do
+  // estouro de session_exercises (linhas órfãs, ~5x o esperado). A (re)geração
+  // agora só acontece em ações EXPLÍCITAS: submit-onboarding e salvar perfil
+  // (regenerate_plan), nunca numa leitura.
+  return getActiveProgramId(supabase, userId);
 }
 
 function daysBetweenLocalDates(start: string, end: string): number {
@@ -261,7 +186,7 @@ async function loadProgramSummary(
     )
     .eq("id", programId)
     .maybeSingle();
-  if (pErr) throw new Error(pErr.message);
+  if (pErr) serverError("Não foi possível concluir a operação. Tente novamente.", pErr);
   if (!prog) return null;
 
   const { data: profile, error: profileErr } = await supabase
@@ -269,35 +194,41 @@ async function loadProgramSummary(
     .select("program_start_date,current_week")
     .eq("id", userId)
     .maybeSingle();
-  if (profileErr) throw new Error(profileErr.message);
+  if (profileErr) serverError("Não foi possível concluir a operação. Tente novamente.", profileErr);
 
   const programStartDate = profile?.program_start_date ?? calendar?.local_date ?? null;
-  const computedWeek = programStartDate && calendar
-    ? weekFromStartDate(programStartDate, calendar.local_date, prog.total_weeks)
-    : (profile?.current_week ?? prog.active_week);
+  const computedWeek =
+    programStartDate && calendar
+      ? weekFromStartDate(programStartDate, calendar.local_date, prog.total_weeks)
+      : (profile?.current_week ?? prog.active_week);
   const activeDay = calendar?.day_number ?? prog.active_day;
 
-  const [{ data: macros, error: mErr }, { data: mesos, error: msErr }, { data: weeks, error: wErr }] =
-    await Promise.all([
-      supabase
-        .from("macrocycles")
-        .select("id,name,start_week,end_week,objective,dominant_method,sort_order")
-        .eq("program_id", prog.id)
-        .order("sort_order"),
-      supabase
-        .from("mesocycles")
-        .select("id,name,start_week,end_week,method,objective,sort_order,macrocycle_id,macrocycle:macrocycles!inner(program_id)")
-        .eq("macrocycle.program_id", prog.id)
-        .order("sort_order"),
-      supabase
-        .from("weeks")
-        .select("week_number,week_type,mesocycle_id")
-        .eq("program_id", prog.id)
-        .order("week_number"),
-    ]);
-  if (mErr) throw new Error(mErr.message);
-  if (msErr) throw new Error(msErr.message);
-  if (wErr) throw new Error(wErr.message);
+  const [
+    { data: macros, error: mErr },
+    { data: mesos, error: msErr },
+    { data: weeks, error: wErr },
+  ] = await Promise.all([
+    supabase
+      .from("macrocycles")
+      .select("id,name,start_week,end_week,objective,dominant_method,sort_order")
+      .eq("program_id", prog.id)
+      .order("sort_order"),
+    supabase
+      .from("mesocycles")
+      .select(
+        "id,name,start_week,end_week,method,objective,sort_order,macrocycle_id,macrocycle:macrocycles!inner(program_id)",
+      )
+      .eq("macrocycle.program_id", prog.id)
+      .order("sort_order"),
+    supabase
+      .from("weeks")
+      .select("week_number,week_type,mesocycle_id")
+      .eq("program_id", prog.id)
+      .order("week_number"),
+  ]);
+  if (mErr) serverError("Não foi possível concluir a operação. Tente novamente.", mErr);
+  if (msErr) serverError("Não foi possível concluir a operação. Tente novamente.", msErr);
+  if (wErr) serverError("Não foi possível concluir a operação. Tente novamente.", wErr);
 
   const macroIds = new Set((macros ?? []).map((m: any) => m.id));
   const filteredMesos = (mesos ?? []).filter((m: any) => macroIds.has(m.macrocycle_id));
@@ -369,7 +300,7 @@ async function loadWeekDetail(
     .eq("program_id", programId)
     .eq("week_number", weekNumber)
     .maybeSingle();
-  if (wErr) throw new Error(wErr.message);
+  if (wErr) serverError("Não foi possível concluir a operação. Tente novamente.", wErr);
   if (!week) return null;
 
   const { data: days, error: dErr } = await supabase
@@ -377,7 +308,7 @@ async function loadWeekDetail(
     .select(
       `id,day_number,day_name,session_type,objective,duration_minutes,completed_at,
        session_exercises(id,slot,pair_slot,sets,reps,rpe_target,rest_seconds,notes,
-         exercise:exercise_pool(id,name,category)),
+         exercise:exercise_pool(id,name,category,equipment)),
        running_protocols(id,protocol_type,protocol_name,goal,total_duration_minutes,
          warmup_minutes,cooldown_minutes,blocks,intervals,intervals_per_block,
          work_duration_seconds,rest_duration_seconds,between_blocks_rest_seconds,
@@ -385,7 +316,7 @@ async function loadWeekDetail(
     )
     .eq("week_id", week.id)
     .order("day_number");
-  if (dErr) throw new Error(dErr.message);
+  if (dErr) serverError("Não foi possível concluir a operação. Tente novamente.", dErr);
 
   const meso: any = (week as any).mesocycle;
   const macro: any = meso.macrocycle;
@@ -427,8 +358,13 @@ async function loadWeekDetail(
           rest_seconds: e.rest_seconds,
           notes: e.notes,
           exercise: e.exercise
-            ? { id: e.exercise.id, name: e.exercise.name, category: e.exercise.category }
-            : { id: "", name: "—", category: "unknown" },
+            ? {
+                id: e.exercise.id,
+                name: e.exercise.name,
+                category: e.exercise.category,
+                equipment: e.exercise.equipment ?? null,
+              }
+            : { id: "", name: "—", category: "unknown", equipment: null },
         })),
       running: (d.running_protocols ?? [])[0] ?? null,
     })),
@@ -461,40 +397,72 @@ export const getWeekDetail = createServerFn({ method: "GET" })
 export const getTodayTraining = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => localTodaySchema.parse(input))
-  .handler(async ({ data, context }): Promise<{
-    program: ProgramSummary;
-    week: WeekDetailDTO;
-    today: TrainingDayDTO | null;
-    calendar: TodayTrainingCalendarDTO;
-  } | null> => {
-    const calendarInput = data;
-    const summary = await loadProgramSummary(context.supabase, context.userId, calendarInput);
-    if (!summary) return null;
-    const week = await loadWeekDetail(context.supabase, summary.id, summary.active_week);
-    if (!week) return null;
-    const today = week.days.find((d) => d.day_number === summary.active_day) ?? null;
+  .handler(
+    async ({
+      data,
+      context,
+    }): Promise<{
+      program: ProgramSummary;
+      week: WeekDetailDTO;
+      today: TrainingDayDTO | null;
+      calendar: TodayTrainingCalendarDTO;
+      body_weight_kg: number | null;
+    } | null> => {
+      const calendarInput = data;
+      const summary = await loadProgramSummary(context.supabase, context.userId, calendarInput);
+      if (!summary) return null;
 
-    await context.supabase
-      .from("profiles")
-      .update({ current_week: summary.current_week })
-      .eq("id", context.userId)
-      .neq("current_week", summary.current_week);
+      // Engine v2 / Fase 1 (gated por ROLLING_ENGINE): se o programa é rolante e o
+      // aluno chega perto do fim do que já foi materializado, gera o próximo
+      // mesociclo sob demanda. Best-effort (materialize nunca lança).
+      if (isRollingEngineEnabled(context.userId)) {
+        const { data: prog } = await context.supabase
+          .from("training_programs")
+          .select("generation_cursor")
+          .eq("id", summary.id)
+          .maybeSingle();
+        const cursor = ((prog as { generation_cursor?: number | null } | null)?.generation_cursor ??
+          null) as number | null;
+        if (needsMaterialization(summary.active_week, cursor, summary.total_weeks)) {
+          await materializeNextMesocycle(context.supabase, context.userId);
+        }
+      }
 
-    return {
-      program: summary,
-      week,
-      today,
-      calendar: {
-        local_date: calendarInput.local_date,
-        day_number: calendarInput.day_number,
-        day_name: calendarInput.day_name,
-        timezone: calendarInput.timezone ?? null,
-        program_start_date: summary.program_start_date ?? calendarInput.local_date,
-        current_week: summary.current_week,
-        total_weeks: summary.total_weeks,
-      },
-    };
-  });
+      const week = await loadWeekDetail(context.supabase, summary.id, summary.active_week);
+      if (!week) return null;
+      const today = week.days.find((d) => d.day_number === summary.active_day) ?? null;
+
+      await context.supabase
+        .from("profiles")
+        .update({ current_week: summary.current_week })
+        .eq("id", context.userId)
+        .neq("current_week", summary.current_week);
+
+      // Peso do aluno (onboarding) — usado como carga dos exercícios de peso corporal.
+      const { data: prof } = await context.supabase
+        .from("profiles")
+        .select("weight_kg")
+        .eq("id", context.userId)
+        .maybeSingle();
+      const body_weight_kg = prof?.weight_kg != null ? Number(prof.weight_kg) : null;
+
+      return {
+        body_weight_kg,
+        program: summary,
+        week,
+        today,
+        calendar: {
+          local_date: calendarInput.local_date,
+          day_number: calendarInput.day_number,
+          day_name: calendarInput.day_name,
+          timezone: calendarInput.timezone ?? null,
+          program_start_date: summary.program_start_date ?? calendarInput.local_date,
+          current_week: summary.current_week,
+          total_weeks: summary.total_weeks,
+        },
+      };
+    },
+  );
 
 // ============================================================
 // getRunningSessions — flat list de todas as corridas do programa
@@ -527,7 +495,7 @@ export const getRunningSessions = createServerFn({ method: "GET" })
            week:weeks!inner(week_number,program_id))`,
       )
       .order("id");
-    if (error) throw new Error(error.message);
+    if (error) serverError("Não foi possível concluir a operação. Tente novamente.", error);
 
     return (data ?? [])
       .filter((r: any) => r.training_day?.week?.program_id === programId)
@@ -572,14 +540,12 @@ export const getTopExercises = createServerFn({ method: "GET" })
     const programId = await ensureValidActiveProgram(supabase, userId);
     if (!programId) return [];
 
-    const { data, error } = await supabase
-      .from("session_exercises")
-      .select(
-        `exercise_id,sets,
+    const { data, error } = await supabase.from("session_exercises").select(
+      `exercise_id,sets,
          training_day:training_days!inner(week:weeks!inner(program_id)),
          exercise:exercise_pool(id,name)`,
-      );
-    if (error) throw new Error(error.message);
+    );
+    if (error) serverError("Não foi possível concluir a operação. Tente novamente.", error);
 
     const map = new Map<string, { id: string; name: string; usage: number }>();
     for (const row of data ?? []) {

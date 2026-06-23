@@ -1,0 +1,8 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">PM Hybrid</string>
+    <string name="title_activity_main">PM Hybrid</string>
+    <string name="package_name">com.pmhybrid.app</string>
+    <string name="custom_url_scheme">com.pmhybrid.app</string>
+    <string name="server_client_id">230882994224-htbk9s0fvo33tdl4c1o9p7d12juke4po.apps.googleusercontent.com</string>
+</resources>

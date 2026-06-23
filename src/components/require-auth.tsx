@@ -29,7 +29,9 @@ function EmailConfirmGate({ email }: { email: string | null }) {
     const { data } = await supabase.auth.getUser();
     setBusy(false);
     if (!data.user?.email_confirmed_at && !data.user?.confirmed_at) {
-      toast.message("Ainda não confirmado", { description: "Clique no link do e-mail e tente de novo." });
+      toast.message("Ainda não confirmado", {
+        description: "Clique no link do e-mail e tente de novo.",
+      });
     }
   }
 
@@ -42,8 +44,8 @@ function EmailConfirmGate({ email }: { email: string | null }) {
         <h1 className="mt-5 text-2xl font-semibold tracking-tight">Confirme seu e-mail</h1>
         <p className="mt-2 text-sm text-muted-foreground">
           Enviamos um link de confirmação para{" "}
-          <span className="font-medium text-foreground">{email ?? "seu e-mail"}</span>. Clique nele para
-          liberar o acesso.
+          <span className="font-medium text-foreground">{email ?? "seu e-mail"}</span>. Clique nele
+          para liberar o acesso.
         </p>
         <div className="mt-6 flex flex-col gap-2.5">
           <button
@@ -60,12 +62,16 @@ function EmailConfirmGate({ email }: { email: string | null }) {
           >
             Reenviar e-mail
           </button>
-          <button onClick={() => signOut()} className="py-2 text-xs text-muted-foreground hover:text-foreground">
+          <button
+            onClick={() => signOut()}
+            className="py-2 text-xs text-muted-foreground hover:text-foreground"
+          >
             Sair
           </button>
         </div>
         <p className="mt-4 text-[11px] leading-relaxed text-muted-foreground">
-          Não recebeu? Verifique o spam. Se não chegar, o envio de e-mail pode não estar configurado.
+          Não recebeu? Verifique o spam. Se não chegar, o envio de e-mail pode não estar
+          configurado.
         </p>
       </div>
     </div>

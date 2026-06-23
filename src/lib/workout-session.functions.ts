@@ -4,6 +4,7 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { levelFromXp, XP_REWARDS } from "@/lib/gamification";
 import { runPRDetectionForSession, type PRDetectedItem } from "@/lib/pr-detection.server";
 import type { Json } from "@/integrations/supabase/types";
+import { serverError } from "@/lib/server-errors";
 
 type JsonObject = { [k: string]: Json };
 
@@ -60,7 +61,7 @@ export const getActiveWorkoutSession = createServerFn({ method: "GET" })
       .order("started_at", { ascending: false })
       .limit(1)
       .maybeSingle();
-    if (error) throw new Error(error.message);
+    if (error) serverError("Não foi possível concluir a operação. Tente novamente.", error);
     if (!data) return null;
     return data as unknown as ActiveSessionDTO;
   });
@@ -96,10 +97,9 @@ export const getCompletedSessionForDay = createServerFn({ method: "GET" })
       .order("completed_at", { ascending: false })
       .limit(1)
       .maybeSingle();
-    if (error) throw new Error(error.message);
+    if (error) serverError("Não foi possível concluir a operação. Tente novamente.", error);
     return row ? { id: row.id } : null;
   });
-
 
 // ============================================================
 // Iniciar (ou recuperar) sessão para o treino do dia
@@ -166,7 +166,7 @@ export const startWorkoutSession = createServerFn({ method: "POST" })
       })
       .select("*")
       .single();
-    if (error) throw new Error(error.message);
+    if (error) serverError("Não foi possível concluir a operação. Tente novamente.", error);
     return created as unknown as ActiveSessionDTO;
   });
 
@@ -210,7 +210,7 @@ export const updateWorkoutSessionState = createServerFn({ method: "POST" })
       })
       .eq("id", data.session_id)
       .eq("user_id", userId);
-    if (error) throw new Error(error.message);
+    if (error) serverError("Não foi possível concluir a operação. Tente novamente.", error);
     return { ok: true };
   });
 
@@ -236,23 +236,21 @@ export const appendSetLog = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
-    const { error } = await supabase
-      .from("workout_set_logs")
-      .upsert(
-        {
-          user_id: userId,
-          workout_session_id: data.session_id,
-          exercise_id: data.exercise_id ?? null,
-          exercise_index: data.exercise_index,
-          exercise_name: data.exercise_name,
-          set_number: data.set_number,
-          planned_reps: data.planned_reps ?? null,
-          actual_reps: data.actual_reps ?? null,
-          actual_load_kg: data.actual_load_kg ?? null,
-        },
-        { onConflict: "workout_session_id,exercise_index,set_number" },
-      );
-    if (error) throw new Error(error.message);
+    const { error } = await supabase.from("workout_set_logs").upsert(
+      {
+        user_id: userId,
+        workout_session_id: data.session_id,
+        exercise_id: data.exercise_id ?? null,
+        exercise_index: data.exercise_index,
+        exercise_name: data.exercise_name,
+        set_number: data.set_number,
+        planned_reps: data.planned_reps ?? null,
+        actual_reps: data.actual_reps ?? null,
+        actual_load_kg: data.actual_load_kg ?? null,
+      },
+      { onConflict: "workout_session_id,exercise_index,set_number" },
+    );
+    if (error) serverError("Não foi possível concluir a operação. Tente novamente.", error);
     return { ok: true };
   });
 
@@ -262,9 +260,7 @@ export const appendSetLog = createServerFn({ method: "POST" })
 
 export const abandonWorkoutSession = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input) =>
-    z.object({ session_id: z.string().uuid() }).parse(input),
-  )
+  .inputValidator((input) => z.object({ session_id: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
     const { error } = await supabase
@@ -276,7 +272,7 @@ export const abandonWorkoutSession = createServerFn({ method: "POST" })
       })
       .eq("id", data.session_id)
       .eq("user_id", userId);
-    if (error) throw new Error(error.message);
+    if (error) serverError("Não foi possível concluir a operação. Tente novamente.", error);
     return { ok: true };
   });
 
@@ -318,8 +314,6 @@ export const completeWorkoutSession = createServerFn({ method: "POST" })
     const { supabase, userId } = context;
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
-
-
     // 1) finaliza a sessão — guarda de idempotência: só transiciona se AINDA
     //    não estava concluída. Se outra chamada/retry já concluiu, `sess` vem
     //    null e retornamos sem recreditar XP/streak (evita XP duplicado).
@@ -338,7 +332,7 @@ export const completeWorkoutSession = createServerFn({ method: "POST" })
       .neq("status", "completed")
       .select("id")
       .maybeSingle();
-    if (uErr) throw new Error(uErr.message);
+    if (uErr) serverError("Não foi possível concluir a operação. Tente novamente.", uErr);
 
     if (!sess) {
       // Já concluída anteriormente — no-op idempotente.
@@ -378,7 +372,7 @@ export const completeWorkoutSession = createServerFn({ method: "POST" })
       .select("xp_total, streak_current, streak_longest, streak_last_date")
       .eq("id", userId)
       .single();
-    if (pErr) throw new Error(pErr.message);
+    if (pErr) serverError("Não foi possível concluir a operação. Tente novamente.", pErr);
 
     let newXp = (profile.xp_total ?? 0) + xpGain;
     const oldLevel = levelFromXp(profile.xp_total ?? 0);
@@ -496,12 +490,14 @@ export const listWorkoutHistory = createServerFn({ method: "GET" })
     const { supabase, userId } = context;
     const { data, error } = await supabase
       .from("workout_sessions")
-      .select("id, week_number, day_key, started_at, finished_at, duration_seconds, status, completed_at")
+      .select(
+        "id, week_number, day_key, started_at, finished_at, duration_seconds, status, completed_at",
+      )
       .eq("user_id", userId)
       .not("completed_at", "is", null)
       .order("completed_at", { ascending: false, nullsFirst: false })
       .limit(50);
-    if (error) throw new Error(error.message);
+    if (error) serverError("Não foi possível concluir a operação. Tente novamente.", error);
     return (data ?? []).map((r) => ({
       id: r.id,
       week_number: r.week_number,

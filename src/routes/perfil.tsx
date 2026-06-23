@@ -1,12 +1,30 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { AppShell } from "@/components/app-shell";
 import { useServerFn } from "@tanstack/react-start";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
-import { getProfile, updateProfile } from "@/lib/profile.functions";
+import {
+  getProfile,
+  updateProfile,
+  setUsername,
+  getCompletedWorkoutCount,
+} from "@/lib/profile.functions";
+import { UsernameInput } from "@/components/username-input";
+import { AvatarUpload } from "@/components/avatar-upload";
+import { FREQUENCY_OPTIONS, isFrequencyLocked, isIntenseFrequency } from "@/lib/training-frequency";
 import { SPORTS_OPTIONS, PREFERENCES_OPTIONS, MOTIVATIONS_OPTIONS } from "@/lib/onboarding-options";
 import { toast } from "sonner";
-import { Loader2, Save, User, Target, Calendar, Heart, Shield, ChevronRight, Trophy } from "lucide-react";
+import {
+  Loader2,
+  Save,
+  User,
+  Target,
+  Calendar,
+  Heart,
+  Shield,
+  ChevronRight,
+  Trophy,
+} from "lucide-react";
 import { useIsAdmin } from "@/hooks/use-is-admin";
 
 export const Route = createFileRoute("/perfil")({
@@ -41,13 +59,23 @@ function PerfilPage() {
     queryKey: ["profile-edit"],
     queryFn: () => fetch(),
   });
+  const fetchWorkoutCount = useServerFn(getCompletedWorkoutCount);
+  const { data: completedWorkouts = 0 } = useQuery({
+    queryKey: ["completed-workout-count"],
+    queryFn: () => fetchWorkoutCount(),
+  });
+  const experience = (p?.experience_level as string | null) ?? null;
 
   const [form, setForm] = useState({
-    name: "", weight_kg: "" as number | "", height_cm: "" as number | "",
+    name: "",
+    weight_kg: "" as number | "",
+    height_cm: "" as number | "",
     goal: "" as Goal | "",
-    available_days: "" as 3 | 4 | 5 | "",
+    available_days: "" as 2 | 3 | 4 | 5 | 6 | "",
     available_minutes: "" as 30 | 45 | 60 | 90 | "",
-    sports: [] as string[], preferences: [] as string[], motivations: [] as string[],
+    sports: [] as string[],
+    preferences: [] as string[],
+    motivations: [] as string[],
   });
   const [saving, setSaving] = useState(false);
   const [regen, setRegen] = useState(false);
@@ -59,7 +87,7 @@ function PerfilPage() {
         weight_kg: p.weight_kg ? Number(p.weight_kg) : "",
         height_cm: p.height_cm ? Number(p.height_cm) : "",
         goal: (p.goal as Goal) ?? "",
-        available_days: (p.available_days as 3 | 4 | 5) ?? "",
+        available_days: (p.available_days as 2 | 3 | 4 | 5 | 6) ?? "",
         available_minutes: (p.available_minutes as 30 | 45 | 60 | 90) ?? "",
         sports: (p.sports as string[]) ?? [],
         preferences: (p.preferences as string[]) ?? [],
@@ -106,7 +134,9 @@ function PerfilPage() {
   if (isLoading) {
     return (
       <AppShell eyebrow="Perfil" title="Carregando">
-        <div className="flex items-center justify-center py-20"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
+        <div className="flex items-center justify-center py-20">
+          <Loader2 className="h-6 w-6 animate-spin text-primary" />
+        </div>
       </AppShell>
     );
   }
@@ -114,6 +144,24 @@ function PerfilPage() {
   return (
     <AppShell eyebrow="Conta" title="Perfil">
       <div className="space-y-5 px-5 pb-32 pt-4">
+        {/* Foto de perfil — toque para trocar (upload pro bucket avatars) */}
+        <div className="flex flex-col items-center gap-3 pt-1">
+          <AvatarUpload
+            uid={p?.id}
+            currentUrl={p?.avatar_url}
+            name={p?.name}
+            onUpdated={() => {
+              qc.invalidateQueries({ queryKey: ["profile-edit"] });
+              qc.invalidateQueries({ queryKey: ["profile"] });
+              qc.invalidateQueries({ queryKey: ["dashboard"] });
+            }}
+          />
+          <div className="text-center">
+            <div className="text-[16px] font-semibold tracking-tight">{p?.name ?? "Atleta"}</div>
+            <div className="text-[11.5px] text-muted-foreground">Toque na foto para trocar</div>
+          </div>
+        </div>
+
         <Link
           to="/performance"
           className="glass flex items-center justify-between rounded-3xl p-5 transition-colors hover:bg-surface/60"
@@ -124,7 +172,9 @@ function PerfilPage() {
             </div>
             <div>
               <div className="text-[15px] font-semibold tracking-tight">PRs & Performance</div>
-              <div className="text-[12px] text-muted-foreground">Seus recordes de força e corrida</div>
+              <div className="text-[12px] text-muted-foreground">
+                Seus recordes de força e corrida
+              </div>
             </div>
           </div>
           <ChevronRight className="h-4 w-4 text-muted-foreground" />
@@ -132,17 +182,41 @@ function PerfilPage() {
 
         <Card icon={User} title="Dados pessoais">
           <Field label="Nome">
-            <input className={inputCls} value={form.name} maxLength={80}
-              onChange={(e) => setForm({ ...form, name: e.target.value })} />
+            <input
+              className={inputCls}
+              value={form.name}
+              maxLength={80}
+              onChange={(e) => setForm({ ...form, name: e.target.value })}
+            />
           </Field>
+          <UsernameEditor current={(p?.username as string | null) ?? null} />
           <div className="grid grid-cols-2 gap-3">
             <Field label="Peso · kg">
-              <input type="number" step="0.1" className={inputCls} value={form.weight_kg}
-                onChange={(e) => setForm({ ...form, weight_kg: e.target.value === "" ? "" : Number(e.target.value) })} />
+              <input
+                type="number"
+                step="0.1"
+                className={inputCls}
+                value={form.weight_kg}
+                onChange={(e) =>
+                  setForm({
+                    ...form,
+                    weight_kg: e.target.value === "" ? "" : Number(e.target.value),
+                  })
+                }
+              />
             </Field>
             <Field label="Altura · cm">
-              <input type="number" className={inputCls} value={form.height_cm}
-                onChange={(e) => setForm({ ...form, height_cm: e.target.value === "" ? "" : Number(e.target.value) })} />
+              <input
+                type="number"
+                className={inputCls}
+                value={form.height_cm}
+                onChange={(e) =>
+                  setForm({
+                    ...form,
+                    height_cm: e.target.value === "" ? "" : Number(e.target.value),
+                  })
+                }
+              />
             </Field>
           </div>
         </Card>
@@ -150,7 +224,14 @@ function PerfilPage() {
         <Card icon={Target} title="Objetivo">
           <div className="grid gap-1.5">
             {GOAL_OPTIONS.map((g) => (
-              <Row key={g.v} active={form.goal === g.v} onClick={() => { setForm({ ...form, goal: g.v }); setRegen(true); }}>
+              <Row
+                key={g.v}
+                active={form.goal === g.v}
+                onClick={() => {
+                  setForm({ ...form, goal: g.v });
+                  setRegen(true);
+                }}
+              >
                 {g.label}
               </Row>
             ))}
@@ -159,27 +240,78 @@ function PerfilPage() {
 
         <Card icon={Calendar} title="Agenda">
           <Field label="Dias por semana">
-            <div className="grid grid-cols-3 gap-1.5">
-              {([3, 4, 5] as const).map((n) => (
-                <Pill key={n} active={form.available_days === n}
-                  onClick={() => { setForm({ ...form, available_days: n }); setRegen(true); }}>{n} dias</Pill>
-              ))}
+            <div className="grid grid-cols-5 gap-1.5">
+              {FREQUENCY_OPTIONS.map((n) => {
+                const locked = isFrequencyLocked(n, experience, completedWorkouts);
+                const intense = isIntenseFrequency(n);
+                const active = form.available_days === n && !locked;
+                return (
+                  <button
+                    key={n}
+                    type="button"
+                    disabled={locked}
+                    onClick={() => {
+                      setForm({ ...form, available_days: n });
+                      setRegen(true);
+                    }}
+                    className={`h-11 rounded-xl border text-[13px] font-semibold transition active:scale-[0.97] ${
+                      active
+                        ? intense
+                          ? "border-red-500/60 bg-red-500/15 text-red-400"
+                          : "border-primary/60 bg-primary/[0.10] text-foreground"
+                        : locked
+                          ? "cursor-not-allowed border-border/40 bg-surface/20 text-muted-foreground/40"
+                          : intense
+                            ? "border-red-500/30 bg-surface/40 text-red-400/90"
+                            : "border-border bg-surface/40 text-muted-foreground"
+                    }`}
+                  >
+                    {n}x
+                  </button>
+                );
+              })}
             </div>
+            {experience === "beginner" && completedWorkouts < 20 && (
+              <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
+                <span className="text-red-400">5x e 6x</span> liberam após 20 treinos (
+                {completedWorkouts}/20).
+              </p>
+            )}
           </Field>
           <Field label="Tempo por treino">
             <div className="grid grid-cols-4 gap-1.5">
               {([30, 45, 60, 90] as const).map((n) => (
-                <Pill key={n} active={form.available_minutes === n}
-                  onClick={() => setForm({ ...form, available_minutes: n })}>{n}min</Pill>
+                <Pill
+                  key={n}
+                  active={form.available_minutes === n}
+                  onClick={() => setForm({ ...form, available_minutes: n })}
+                >
+                  {n}min
+                </Pill>
               ))}
             </div>
           </Field>
         </Card>
 
         <Card icon={Heart} title="Personalização">
-          <Multi label="Esportes" items={SPORTS} selected={form.sports} onToggle={(v) => toggle("sports", v)} />
-          <Multi label="Preferências" items={PREFERENCES} selected={form.preferences} onToggle={(v) => toggle("preferences", v)} />
-          <Multi label="Motivação" items={MOTIVATIONS} selected={form.motivations} onToggle={(v) => toggle("motivations", v)} />
+          <Multi
+            label="Esportes"
+            items={SPORTS}
+            selected={form.sports}
+            onToggle={(v) => toggle("sports", v)}
+          />
+          <Multi
+            label="Preferências"
+            items={PREFERENCES}
+            selected={form.preferences}
+            onToggle={(v) => toggle("preferences", v)}
+          />
+          <Multi
+            label="Motivação"
+            items={MOTIVATIONS}
+            selected={form.motivations}
+            onToggle={(v) => toggle("motivations", v)}
+          />
         </Card>
 
         {isAdmin && (
@@ -201,16 +333,17 @@ function PerfilPage() {
           </Card>
         )}
 
-
-
         {regen && (
           <div className="rounded-2xl border border-primary/40 bg-primary/[0.06] p-4 text-[13px] text-foreground">
             Você mudou o objetivo ou a agenda — seu programa será regenerado ao salvar.
           </div>
         )}
 
-        <button onClick={onSave} disabled={saving}
-          className="flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-titanium text-[15px] font-semibold text-primary-foreground shadow-glow disabled:opacity-60 active:scale-[0.99]">
+        <button
+          onClick={onSave}
+          disabled={saving}
+          className="flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-titanium text-[15px] font-semibold text-primary-foreground shadow-glow disabled:opacity-60 active:scale-[0.99]"
+        >
           {saving ? <Loader2 className="h-5 w-5 animate-spin" /> : <Save className="h-5 w-5" />}
           {saving ? "Salvando..." : "Salvar alterações"}
         </button>
@@ -219,13 +352,76 @@ function PerfilPage() {
   );
 }
 
-const inputCls = "h-12 w-full rounded-xl border border-border bg-surface/40 px-4 text-[15px] font-medium outline-none focus:border-primary/50 transition-colors";
+const inputCls =
+  "h-12 w-full rounded-xl border border-border bg-surface/40 px-4 text-[15px] font-medium outline-none focus:border-primary/50 transition-colors";
 
-function Card({ icon: Icon, title, children }: { icon: React.ComponentType<{ className?: string }>; title: string; children: React.ReactNode }) {
+// Placeholder = username auto-gerado no signup (atleta_<hash>) ou ainda vazio.
+function isPlaceholderUsername(u: string | null): boolean {
+  return !u || /^atleta_/.test(u);
+}
+
+// Editor de @username pra quem já passou do onboarding (placeholder/NULL).
+// Salva isolado do "Salvar alterações" do perfil — tem unicidade + checagem própria.
+function UsernameEditor({ current }: { current: string | null }) {
+  const qc = useQueryClient();
+  const saveFn = useServerFn(setUsername);
+  const placeholder = isPlaceholderUsername(current);
+  const [value, setValue] = useState(placeholder ? "" : (current ?? ""));
+  const [available, setAvailable] = useState(false);
+
+  const m = useMutation({
+    mutationFn: () => saveFn({ data: { username: value } }),
+    onSuccess: (res) => {
+      toast.success(`@${res.username} salvo!`);
+      void qc.invalidateQueries({ queryKey: ["profile"] });
+      void qc.invalidateQueries({ queryKey: ["profile-edit"] });
+      void qc.invalidateQueries({ queryKey: ["friends-overview"] });
+    },
+    onError: (e: Error) =>
+      toast.error(
+        e.message === "username_taken" ? "Esse @ já está em uso." : "Não foi possível salvar.",
+      ),
+  });
+
+  const changed = value.toLowerCase() !== (current ?? "").toLowerCase();
+  const canSave = available && changed && !m.isPending;
+
+  return (
+    <Field label="Nome de usuário">
+      {placeholder && (
+        <p className="mb-2 text-[12px] text-muted-foreground">
+          Você ainda não escolheu um @. Crie um pros amigos te encontrarem.
+        </p>
+      )}
+      <UsernameInput value={value} onChange={setValue} onStatusChange={setAvailable} />
+      <button
+        type="button"
+        disabled={!canSave}
+        onClick={() => m.mutate()}
+        className="mt-2.5 inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-primary px-4 text-[13px] font-semibold text-primary-foreground transition active:scale-[0.99] disabled:opacity-40"
+      >
+        {m.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+        Salvar @
+      </button>
+    </Field>
+  );
+}
+
+function Card({
+  icon: Icon,
+  title,
+  children,
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  title: string;
+  children: React.ReactNode;
+}) {
   return (
     <section className="glass animate-fade-in rounded-3xl p-5 space-y-4">
       <div className="flex items-center gap-2.5">
-        <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary/10"><Icon className="h-4 w-4 text-primary" /></div>
+        <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary/10">
+          <Icon className="h-4 w-4 text-primary" />
+        </div>
         <div className="text-[15px] font-semibold tracking-tight">{title}</div>
       </div>
       <div className="space-y-4">{children}</div>
@@ -236,42 +432,91 @@ function Card({ icon: Icon, title, children }: { icon: React.ComponentType<{ cla
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
-      <div className="mb-2 text-[10px] font-medium uppercase tracking-[0.22em] text-muted-foreground">{label}</div>
+      <div className="mb-2 text-[10px] font-medium uppercase tracking-[0.22em] text-muted-foreground">
+        {label}
+      </div>
       {children}
     </div>
   );
 }
 
-function Row({ active, children, onClick }: { active: boolean; children: React.ReactNode; onClick: () => void }) {
+function Row({
+  active,
+  children,
+  onClick,
+}: {
+  active: boolean;
+  children: React.ReactNode;
+  onClick: () => void;
+}) {
   return (
-    <button onClick={onClick}
+    <button
+      onClick={onClick}
       className={`w-full rounded-xl border px-4 py-3 text-left text-[14px] font-medium transition-all active:scale-[0.99] ${
-        active ? "border-primary/60 bg-primary/[0.10] text-foreground" : "border-border bg-surface/40 text-muted-foreground"
-      }`}>{children}</button>
+        active
+          ? "border-primary/60 bg-primary/[0.10] text-foreground"
+          : "border-border bg-surface/40 text-muted-foreground"
+      }`}
+    >
+      {children}
+    </button>
   );
 }
 
-function Pill({ active, children, onClick }: { active: boolean; children: React.ReactNode; onClick: () => void }) {
+function Pill({
+  active,
+  children,
+  onClick,
+}: {
+  active: boolean;
+  children: React.ReactNode;
+  onClick: () => void;
+}) {
   return (
-    <button onClick={onClick}
+    <button
+      onClick={onClick}
       className={`h-11 rounded-xl border text-[13px] font-medium transition-all ${
-        active ? "border-primary/60 bg-primary/[0.10] text-foreground" : "border-border bg-surface/40 text-muted-foreground"
-      }`}>{children}</button>
+        active
+          ? "border-primary/60 bg-primary/[0.10] text-foreground"
+          : "border-border bg-surface/40 text-muted-foreground"
+      }`}
+    >
+      {children}
+    </button>
   );
 }
 
-function Multi({ label, items, selected, onToggle }: { label: string; items: string[]; selected: string[]; onToggle: (v: string) => void }) {
+function Multi({
+  label,
+  items,
+  selected,
+  onToggle,
+}: {
+  label: string;
+  items: string[];
+  selected: string[];
+  onToggle: (v: string) => void;
+}) {
   return (
     <div>
-      <div className="mb-2 text-[10px] font-medium uppercase tracking-[0.22em] text-muted-foreground">{label}</div>
+      <div className="mb-2 text-[10px] font-medium uppercase tracking-[0.22em] text-muted-foreground">
+        {label}
+      </div>
       <div className="flex flex-wrap gap-1.5">
         {items.map((v) => {
           const on = selected.includes(v);
           return (
-            <button key={v} onClick={() => onToggle(v)}
+            <button
+              key={v}
+              onClick={() => onToggle(v)}
               className={`rounded-full border px-3.5 py-1.5 text-[12.5px] font-medium transition-all ${
-                on ? "border-primary/60 bg-primary/[0.12] text-foreground" : "border-border bg-surface/40 text-muted-foreground"
-              }`}>{v}</button>
+                on
+                  ? "border-primary/60 bg-primary/[0.12] text-foreground"
+                  : "border-border bg-surface/40 text-muted-foreground"
+              }`}
+            >
+              {v}
+            </button>
           );
         })}
       </div>

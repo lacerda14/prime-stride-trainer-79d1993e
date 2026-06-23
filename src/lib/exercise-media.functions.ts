@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { isOwnerEmail } from "@/lib/owner";
+import { serverError } from "@/lib/server-errors";
 
 // ============================================================
 // Admin guard
@@ -17,7 +18,7 @@ async function ensureAdmin(context: any) {
     .eq("user_id", userId)
     .eq("role", "admin")
     .maybeSingle();
-  if (error) throw new Error(error.message);
+  if (error) serverError("Não foi possível concluir a operação. Tente novamente.", error);
   if (!data) throw new Error("Forbidden: admin only");
 }
 
@@ -27,7 +28,9 @@ async function ensureAdmin(context: any) {
 export const getMyRole = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<{ isAdmin: boolean }> => {
-    const { supabase, userId, claims } = context as typeof context & { claims?: { email?: string } };
+    const { supabase, userId, claims } = context as typeof context & {
+      claims?: { email?: string };
+    };
     if (isOwnerEmail(claims?.email)) return { isAdmin: true };
     const { data } = await supabase
       .from("user_roles")
@@ -85,7 +88,7 @@ export const getExerciseDetail = createServerFn({ method: "POST" })
       .select("id,name,category,instructions,common_mistakes,primary_muscles")
       .eq("id", data.exercise_id)
       .single();
-    if (exErr) throw new Error(exErr.message);
+    if (exErr) serverError("Não foi possível concluir a operação. Tente novamente.", exErr);
 
     const { data: media } = await supabase
       .from("exercise_media")
@@ -128,21 +131,25 @@ export interface ExerciseRowDTO {
 export const listExercisesWithStatus = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<ExerciseRowDTO[]> => {
-    const { supabase, userId } = context;
+    const { supabase } = context;
     await ensureAdmin(context);
 
     const { data: exercises, error } = await supabase
       .from("exercise_pool")
       .select("id,name,category")
       .order("name");
-    if (error) throw new Error(error.message);
+    if (error) serverError("Não foi possível concluir a operação. Tente novamente.", error);
 
     const { data: media } = await supabase
       .from("exercise_media")
       .select("exercise_id,is_approved,is_primary");
 
     const byEx: Record<string, { total: number; approved: number; primary: boolean }> = {};
-    for (const m of (media ?? []) as { exercise_id: string; is_approved: boolean; is_primary: boolean }[]) {
+    for (const m of (media ?? []) as {
+      exercise_id: string;
+      is_approved: boolean;
+      is_primary: boolean;
+    }[]) {
       const e = (byEx[m.exercise_id] ??= { total: 0, approved: 0, primary: false });
       e.total += 1;
       if (m.is_approved) e.approved += 1;
@@ -166,7 +173,7 @@ export const listCandidates = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => z.object({ exercise_id: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }): Promise<ExerciseMediaDTO[]> => {
-    const { supabase, userId } = context;
+    const { supabase } = context;
     await ensureAdmin(context);
 
     const { data: media, error } = await supabase
@@ -176,7 +183,7 @@ export const listCandidates = createServerFn({ method: "POST" })
       .order("is_approved", { ascending: false })
       .order("is_primary", { ascending: false })
       .order("source_quality_score", { ascending: false });
-    if (error) throw new Error(error.message);
+    if (error) serverError("Não foi possível concluir a operação. Tente novamente.", error);
     return (media ?? []) as ExerciseMediaDTO[];
   });
 
@@ -193,7 +200,7 @@ export interface PendingQueueItemDTO {
 export const listPendingQueue = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<PendingQueueItemDTO[]> => {
-    const { supabase, userId } = context;
+    const { supabase } = context;
     await ensureAdmin(context);
 
     const { data: pending, error } = await supabase
@@ -202,7 +209,7 @@ export const listPendingQueue = createServerFn({ method: "GET" })
       .eq("is_approved", false)
       .eq("embed_allowed", true)
       .order("source_quality_score", { ascending: false });
-    if (error) throw new Error(error.message);
+    if (error) serverError("Não foi possível concluir a operação. Tente novamente.", error);
 
     const items = (pending ?? []) as (ExerciseMediaDTO & { exercise_id: string })[];
     if (items.length === 0) return [];
@@ -307,7 +314,8 @@ function scoreVideo(detail: YouTubeVideoDetail, durationSec: number): number {
   if (TRUSTED_CHANNELS.some((t) => channel.includes(t))) score += 25;
 
   // PT-BR boost — título/descrição em português
-  const ptHints = /(como fazer|execução|técnica|forma correta|passo a passo|aprenda|erros comuns|dicas)/i;
+  const ptHints =
+    /(como fazer|execução|técnica|forma correta|passo a passo|aprenda|erros comuns|dicas)/i;
   if (ptHints.test(title)) score += 15;
   else if (ptHints.test(description)) score += 5;
 
@@ -315,7 +323,12 @@ function scoreVideo(detail: YouTubeVideoDetail, durationSec: number): number {
   if (/(how to|tutorial|technique|form|execution|proper|guide|demo)/i.test(title)) score += 6;
 
   // junk filter
-  if (/(challenge|desafio|prank|pegadinha|reaction|reação|vlog|treino completo|workout vlog)/i.test(title)) score -= 25;
+  if (
+    /(challenge|desafio|prank|pegadinha|reaction|reação|vlog|treino completo|workout vlog)/i.test(
+      title,
+    )
+  )
+    score -= 25;
 
   // views/likes
   const views = parseInt(detail.statistics.viewCount ?? "0", 10);
@@ -339,15 +352,21 @@ export interface SearchVideosResultDTO {
 
 function youtubeApiError(status: number, body: string): SearchVideosResultDTO["error"] {
   const normalized = body.toLowerCase();
-  if (status === 429 || normalized.includes("quota exceeded") || normalized.includes("ratelimitexceeded")) {
+  if (
+    status === 429 ||
+    normalized.includes("quota exceeded") ||
+    normalized.includes("ratelimitexceeded")
+  ) {
     return {
       code: "quota_exceeded",
-      message: "A cota diária de buscas do YouTube acabou. Os candidatos já salvos continuam disponíveis; tente novas buscas amanhã ou adicione um vídeo manualmente.",
+      message:
+        "A cota diária de buscas do YouTube acabou. Os candidatos já salvos continuam disponíveis; tente novas buscas amanhã ou adicione um vídeo manualmente.",
     };
   }
   return {
     code: "youtube_unavailable",
-    message: "O YouTube não respondeu como esperado agora. Tente novamente em alguns minutos ou adicione o vídeo manualmente.",
+    message:
+      "O YouTube não respondeu como esperado agora. Tente novamente em alguns minutos ou adicione o vídeo manualmente.",
   };
 }
 
@@ -399,7 +418,12 @@ async function upsertCandidate(
     .select("*")
     .single();
   if (insErr) {
-    console.warn("upsertCandidate insert error", insErr.message, "for video", candidate.external_id);
+    console.warn(
+      "upsertCandidate insert error",
+      insErr.message,
+      "for video",
+      candidate.external_id,
+    );
     return null;
   }
   return inserted as ExerciseMediaDTO;
@@ -417,124 +441,133 @@ export const searchVideosForExercise = createServerFn({ method: "POST" })
       })
       .parse(input),
   )
-  .handler(async ({ data, context }): Promise<SearchVideosResultDTO & { auto_approved?: number }> => {
-    const { supabase, userId } = context;
-    await ensureAdmin(context);
+  .handler(
+    async ({ data, context }): Promise<SearchVideosResultDTO & { auto_approved?: number }> => {
+      const { supabase, userId } = context;
+      await ensureAdmin(context);
 
-    const apiKey = process.env.YOUTUBE_API_KEY;
-    if (!apiKey) throw new Error("YOUTUBE_API_KEY not configured");
+      const apiKey = process.env.YOUTUBE_API_KEY;
+      if (!apiKey) throw new Error("YOUTUBE_API_KEY not configured");
 
-    const { data: ex, error: exErr } = await supabase
-      .from("exercise_pool")
-      .select("id,name")
-      .eq("id", data.exercise_id)
-      .single();
-    if (exErr) throw new Error(exErr.message);
+      const { data: ex, error: exErr } = await supabase
+        .from("exercise_pool")
+        .select("id,name")
+        .eq("id", data.exercise_id)
+        .single();
+      if (exErr) serverError("Não foi possível concluir a operação. Tente novamente.", exErr);
 
-    // Search — PT-BR
-    const q = `${ex.name} como fazer execução técnica correta`;
-    const searchUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&videoEmbeddable=true&safeSearch=strict&relevanceLanguage=pt&regionCode=BR&maxResults=${data.max_results}&q=${encodeURIComponent(q)}&key=${apiKey}`;
-    const searchRes = await fetch(searchUrl);
-    if (!searchRes.ok) {
-      const txt = await searchRes.text();
-      console.warn(`YouTube search failed: ${searchRes.status} ${txt}`);
-      return { saved: 0, candidates: [], error: youtubeApiError(searchRes.status, txt) };
-    }
-    const searchJson = (await searchRes.json()) as { items: YouTubeItem[] };
-    const ids = (searchJson.items ?? []).map((it) => it.id.videoId).filter(Boolean);
-    if (ids.length === 0) return { saved: 0, candidates: [] };
-
-    // Details (need duration + embeddable + stats)
-    const detailUrl = `https://www.googleapis.com/youtube/v3/videos?part=contentDetails,status,statistics,snippet&id=${ids.join(",")}&key=${apiKey}`;
-    const detailRes = await fetch(detailUrl);
-    if (!detailRes.ok) {
-      const txt = await detailRes.text();
-      console.warn(`YouTube details failed: ${detailRes.status} ${txt}`);
-      return { saved: 0, candidates: [], error: youtubeApiError(detailRes.status, txt) };
-    }
-    const detailJson = (await detailRes.json()) as { items: YouTubeVideoDetail[] };
-
-    // Score & upsert
-    const candidates = detailJson.items.map((v) => {
-      const durationSec = parseIsoDuration(v.contentDetails.duration);
-      const score = scoreVideo(v, durationSec);
-      const thumb =
-        searchJson.items.find((s) => s.id.videoId === v.id)?.snippet.thumbnails?.high?.url ??
-        searchJson.items.find((s) => s.id.videoId === v.id)?.snippet.thumbnails?.medium?.url ??
-        null;
-      return {
-        exercise_id: data.exercise_id,
-        media_type: "youtube_embed" as const,
-        source: "youtube",
-        external_id: v.id,
-        title: v.snippet.title,
-        url: `https://www.youtube.com/watch?v=${v.id}`,
-        embed_url: `https://www.youtube.com/embed/${v.id}`,
-        thumbnail_url: thumb,
-        duration_seconds: durationSec,
-        channel_name: v.snippet.channelTitle,
-        instructor_name: v.snippet.channelTitle,
-        source_quality_score: score,
-        embed_allowed: v.status.embeddable,
-        is_primary: false,
-        is_approved: false,
-        created_by_agent: true,
-        reason_for_recommendation: `Score ${score}/100. ${TRUSTED_CHANNELS.some((t) => v.snippet.channelTitle.toLowerCase().includes(t)) ? "Canal confiável. " : ""}Duração ${durationSec}s.`,
-        safety_notes:
-          score < 70
-            ? "Score abaixo de 70 — revisar manualmente antes de aprovar."
-            : null,
-      };
-    });
-
-    let saved = 0;
-    const saved_rows: ExerciseMediaDTO[] = [];
-    for (const c of candidates) {
-      const row = await upsertCandidate(supabase, c);
-      if (row) {
-        saved += 1;
-        saved_rows.push(row);
+      // Search — PT-BR
+      const q = `${ex.name} como fazer execução técnica correta`;
+      const searchUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&videoEmbeddable=true&safeSearch=strict&relevanceLanguage=pt&regionCode=BR&maxResults=${data.max_results}&q=${encodeURIComponent(q)}&key=${apiKey}`;
+      const searchRes = await fetch(searchUrl);
+      if (!searchRes.ok) {
+        const txt = await searchRes.text();
+        console.warn(`YouTube search failed: ${searchRes.status} ${txt}`);
+        return { saved: 0, candidates: [], error: youtubeApiError(searchRes.status, txt) };
       }
-    }
+      const searchJson = (await searchRes.json()) as { items: YouTubeItem[] };
+      const ids = (searchJson.items ?? []).map((it) => it.id.videoId).filter(Boolean);
+      if (ids.length === 0) return { saved: 0, candidates: [] };
 
-    // Auto-aprovação opcional: melhor candidato acima do threshold vira primário
-    let auto_approved = 0;
-    if (data.auto_approve && saved_rows.length > 0) {
-      const eligible = saved_rows
-        .filter((r) => r.embed_allowed && (r.source_quality_score ?? 0) >= data.auto_approve_min_score)
-        .sort((a, b) => (b.source_quality_score ?? 0) - (a.source_quality_score ?? 0));
+      // Details (need duration + embeddable + stats)
+      const detailUrl = `https://www.googleapis.com/youtube/v3/videos?part=contentDetails,status,statistics,snippet&id=${ids.join(",")}&key=${apiKey}`;
+      const detailRes = await fetch(detailUrl);
+      if (!detailRes.ok) {
+        const txt = await detailRes.text();
+        console.warn(`YouTube details failed: ${detailRes.status} ${txt}`);
+        return { saved: 0, candidates: [], error: youtubeApiError(detailRes.status, txt) };
+      }
+      const detailJson = (await detailRes.json()) as { items: YouTubeVideoDetail[] };
 
-      if (eligible.length > 0) {
-        // aprova todos
-        await supabase
-          .from("exercise_media")
-          .update({ is_approved: true, reviewed_by: userId, reviewed_at: new Date().toISOString() })
-          .in("id", eligible.map((r) => r.id));
-        auto_approved = eligible.length;
+      // Score & upsert
+      const candidates = detailJson.items.map((v) => {
+        const durationSec = parseIsoDuration(v.contentDetails.duration);
+        const score = scoreVideo(v, durationSec);
+        const thumb =
+          searchJson.items.find((s) => s.id.videoId === v.id)?.snippet.thumbnails?.high?.url ??
+          searchJson.items.find((s) => s.id.videoId === v.id)?.snippet.thumbnails?.medium?.url ??
+          null;
+        return {
+          exercise_id: data.exercise_id,
+          media_type: "youtube_embed" as const,
+          source: "youtube",
+          external_id: v.id,
+          title: v.snippet.title,
+          url: `https://www.youtube.com/watch?v=${v.id}`,
+          embed_url: `https://www.youtube.com/embed/${v.id}`,
+          thumbnail_url: thumb,
+          duration_seconds: durationSec,
+          channel_name: v.snippet.channelTitle,
+          instructor_name: v.snippet.channelTitle,
+          source_quality_score: score,
+          embed_allowed: v.status.embeddable,
+          is_primary: false,
+          is_approved: false,
+          created_by_agent: true,
+          reason_for_recommendation: `Score ${score}/100. ${TRUSTED_CHANNELS.some((t) => v.snippet.channelTitle.toLowerCase().includes(t)) ? "Canal confiável. " : ""}Duração ${durationSec}s.`,
+          safety_notes:
+            score < 70 ? "Score abaixo de 70 — revisar manualmente antes de aprovar." : null,
+        };
+      });
 
-        // garante um primário (o melhor) se ainda não houver
-        const { data: existingPrimary } = await supabase
-          .from("exercise_media")
-          .select("id")
-          .eq("exercise_id", data.exercise_id)
-          .eq("is_approved", true)
-          .eq("is_primary", true)
-          .maybeSingle();
-        if (!existingPrimary) {
-          await supabase
-            .from("exercise_media")
-            .update({ is_primary: false })
-            .eq("exercise_id", data.exercise_id);
-          await supabase
-            .from("exercise_media")
-            .update({ is_primary: true })
-            .eq("id", eligible[0].id);
+      let saved = 0;
+      const saved_rows: ExerciseMediaDTO[] = [];
+      for (const c of candidates) {
+        const row = await upsertCandidate(supabase, c);
+        if (row) {
+          saved += 1;
+          saved_rows.push(row);
         }
       }
-    }
 
-    return { saved, candidates: saved_rows, auto_approved };
-  });
+      // Auto-aprovação opcional: melhor candidato acima do threshold vira primário
+      let auto_approved = 0;
+      if (data.auto_approve && saved_rows.length > 0) {
+        const eligible = saved_rows
+          .filter(
+            (r) => r.embed_allowed && (r.source_quality_score ?? 0) >= data.auto_approve_min_score,
+          )
+          .sort((a, b) => (b.source_quality_score ?? 0) - (a.source_quality_score ?? 0));
+
+        if (eligible.length > 0) {
+          // aprova todos
+          await supabase
+            .from("exercise_media")
+            .update({
+              is_approved: true,
+              reviewed_by: userId,
+              reviewed_at: new Date().toISOString(),
+            })
+            .in(
+              "id",
+              eligible.map((r) => r.id),
+            );
+          auto_approved = eligible.length;
+
+          // garante um primário (o melhor) se ainda não houver
+          const { data: existingPrimary } = await supabase
+            .from("exercise_media")
+            .select("id")
+            .eq("exercise_id", data.exercise_id)
+            .eq("is_approved", true)
+            .eq("is_primary", true)
+            .maybeSingle();
+          if (!existingPrimary) {
+            await supabase
+              .from("exercise_media")
+              .update({ is_primary: false })
+              .eq("exercise_id", data.exercise_id);
+            await supabase
+              .from("exercise_media")
+              .update({ is_primary: true })
+              .eq("id", eligible[0].id);
+          }
+        }
+      }
+
+      return { saved, candidates: saved_rows, auto_approved };
+    },
+  );
 
 // ============================================================
 // Admin: busca em massa para todos os exercícios sem vídeo primário
@@ -570,7 +603,7 @@ export const bulkSearchMissingVideos = createServerFn({ method: "POST" })
       .from("exercise_pool")
       .select("id,name")
       .order("name");
-    if (error) throw new Error(error.message);
+    if (error) serverError("Não foi possível concluir a operação. Tente novamente.", error);
 
     const { data: media } = await supabase
       .from("exercise_media")
@@ -607,7 +640,11 @@ export const bulkSearchMissingVideos = createServerFn({ method: "POST" })
       if (!searchRes.ok) {
         const txt = await searchRes.text();
         const err = youtubeApiError(searchRes.status, txt);
-        result.errors.push({ exercise_id: ex.id, exercise_name: ex.name, message: err?.message ?? "erro" });
+        result.errors.push({
+          exercise_id: ex.id,
+          exercise_name: ex.name,
+          message: err?.message ?? "erro",
+        });
         if (err?.code === "quota_exceeded") {
           result.stopped_reason = "quota_exceeded";
           break;
@@ -626,7 +663,11 @@ export const bulkSearchMissingVideos = createServerFn({ method: "POST" })
       if (!detailRes.ok) {
         const txt = await detailRes.text();
         const err = youtubeApiError(detailRes.status, txt);
-        result.errors.push({ exercise_id: ex.id, exercise_name: ex.name, message: err?.message ?? "erro" });
+        result.errors.push({
+          exercise_id: ex.id,
+          exercise_name: ex.name,
+          message: err?.message ?? "erro",
+        });
         if (err?.code === "quota_exceeded") {
           result.stopped_reason = "quota_exceeded";
           break;
@@ -686,14 +727,14 @@ export const bulkSearchMissingVideos = createServerFn({ method: "POST" })
       );
 
       // 2) insert em lote (1 query) — retorna as linhas criadas
-      let insertedRows: ExerciseMediaDTO[] = [];
+      let insertedRows: (ExerciseMediaDTO & { exercise_id: string })[] = [];
       if (toInsert.length > 0) {
         const { data: ins, error: insErr } = await supabase
           .from("exercise_media")
           .insert(toInsert)
           .select("*");
         if (insErr) throw new Error(`insert candidates: ${insErr.message}`);
-        insertedRows = (ins ?? []) as ExerciseMediaDTO[];
+        insertedRows = (ins ?? []) as (ExerciseMediaDTO & { exercise_id: string })[];
         result.total_saved = insertedRows.length;
       }
 
@@ -706,12 +747,19 @@ export const bulkSearchMissingVideos = createServerFn({ method: "POST" })
           // aprova todos os elegíveis de uma vez (1 query)
           await supabase
             .from("exercise_media")
-            .update({ is_approved: true, reviewed_by: userId, reviewed_at: new Date().toISOString() })
-            .in("id", eligible.map((r) => r.id));
+            .update({
+              is_approved: true,
+              reviewed_by: userId,
+              reviewed_at: new Date().toISOString(),
+            })
+            .in(
+              "id",
+              eligible.map((r) => r.id),
+            );
           result.total_auto_approved = eligible.length;
 
           // melhor candidato por exercício vira primário
-          const bestByExercise = new Map<string, ExerciseMediaDTO>();
+          const bestByExercise = new Map<string, ExerciseMediaDTO & { exercise_id: string }>();
           for (const r of eligible) {
             const cur = bestByExercise.get(r.exercise_id);
             if (!cur || (r.source_quality_score ?? 0) > (cur.source_quality_score ?? 0)) {
@@ -762,7 +810,7 @@ export const approveCandidate = createServerFn({ method: "POST" })
       .eq("id", data.media_id)
       .select("id,exercise_id")
       .single();
-    if (error) throw new Error(error.message);
+    if (error) serverError("Não foi possível concluir a operação. Tente novamente.", error);
 
     if (data.set_primary) {
       // unset other primaries for the exercise
@@ -771,10 +819,7 @@ export const approveCandidate = createServerFn({ method: "POST" })
         .update({ is_primary: false })
         .eq("exercise_id", m.exercise_id)
         .neq("id", m.id);
-      await supabase
-        .from("exercise_media")
-        .update({ is_primary: true })
-        .eq("id", m.id);
+      await supabase.from("exercise_media").update({ is_primary: true }).eq("id", m.id);
     }
     return { ok: true };
   });
@@ -783,10 +828,10 @@ export const rejectCandidate = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => z.object({ media_id: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {
-    const { supabase, userId } = context;
+    const { supabase } = context;
     await ensureAdmin(context);
     const { error } = await supabase.from("exercise_media").delete().eq("id", data.media_id);
-    if (error) throw new Error(error.message);
+    if (error) serverError("Não foi possível concluir a operação. Tente novamente.", error);
     return { ok: true };
   });
 
@@ -794,24 +839,21 @@ export const setPrimaryMedia = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => z.object({ media_id: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {
-    const { supabase, userId } = context;
+    const { supabase } = context;
     await ensureAdmin(context);
     const { data: m, error } = await supabase
       .from("exercise_media")
       .select("id,exercise_id,is_approved")
       .eq("id", data.media_id)
       .single();
-    if (error) throw new Error(error.message);
+    if (error) serverError("Não foi possível concluir a operação. Tente novamente.", error);
     if (!m.is_approved) throw new Error("Aprove o candidato antes de marcar como primário.");
 
     await supabase
       .from("exercise_media")
       .update({ is_primary: false })
       .eq("exercise_id", m.exercise_id);
-    await supabase
-      .from("exercise_media")
-      .update({ is_primary: true })
-      .eq("id", data.media_id);
+    await supabase.from("exercise_media").update({ is_primary: true }).eq("id", data.media_id);
     return { ok: true };
   });
 
@@ -838,7 +880,9 @@ export const addManualMedia = createServerFn({ method: "POST" })
     let embed_url: string | null = null;
     let external_id: string | null = null;
     let source = "external";
-    const yt = /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([\w-]{11})/.exec(data.url);
+    const yt = /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([\w-]{11})/.exec(
+      data.url,
+    );
     if (yt) {
       media_type = "youtube_embed";
       external_id = yt[1];
@@ -874,7 +918,7 @@ export const addManualMedia = createServerFn({ method: "POST" })
       })
       .select("id,exercise_id")
       .single();
-    if (error) throw new Error(error.message);
+    if (error) serverError("Não foi possível concluir a operação. Tente novamente.", error);
 
     if (data.set_primary) {
       await supabase
@@ -899,7 +943,7 @@ export const updateExerciseCues = createServerFn({ method: "POST" })
       .parse(input),
   )
   .handler(async ({ data, context }) => {
-    const { supabase, userId } = context;
+    const { supabase } = context;
     await ensureAdmin(context);
     const patch: {
       instructions?: string;
@@ -912,6 +956,6 @@ export const updateExerciseCues = createServerFn({ method: "POST" })
     if (Object.keys(patch).length === 0) return { ok: true };
 
     const { error } = await supabase.from("exercise_pool").update(patch).eq("id", data.exercise_id);
-    if (error) throw new Error(error.message);
+    if (error) serverError("Não foi possível concluir a operação. Tente novamente.", error);
     return { ok: true };
   });

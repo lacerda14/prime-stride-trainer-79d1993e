@@ -14,6 +14,8 @@ import { reportLovableError } from "../lib/lovable-error-reporting";
 import { AuthProvider } from "../hooks/use-auth";
 import { Toaster } from "../components/ui/sonner";
 import { initNative } from "../integrations/native";
+import { LocalNotificationsSync } from "@/components/local-notifications-sync";
+import { PushRegistration } from "@/components/push-registration";
 import { Capacitor } from "@capacitor/core";
 import { WatchBridge } from "../lib/watch-bridge";
 
@@ -81,9 +83,16 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   head: () => ({
     meta: [
       { charSet: "utf-8" },
-      { name: "viewport", content: "width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" },
+      {
+        name: "viewport",
+        content: "width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no",
+      },
       { title: "PM Hybrid" },
-      { name: "description", content: "PM Hybrid — periodização anual de força, condicionamento e corrida. Premium hybrid training." },
+      {
+        name: "description",
+        content:
+          "PM Hybrid — periodização anual de força, condicionamento e corrida. Premium hybrid training.",
+      },
       { name: "author", content: "PM Hybrid" },
       { name: "theme-color", content: "#000000" },
       { name: "apple-mobile-web-app-capable", content: "yes" },
@@ -92,11 +101,17 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "mobile-web-app-capable", content: "yes" },
       { name: "format-detection", content: "telephone=no" },
       { property: "og:title", content: "PM Hybrid" },
-      { property: "og:description", content: "Periodização anual hybrid: força, condicionamento e corrida." },
+      {
+        property: "og:description",
+        content: "Periodização anual hybrid: força, condicionamento e corrida.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
       { name: "twitter:title", content: "PM Hybrid" },
-      { name: "twitter:description", content: "Periodização anual hybrid: força, condicionamento e corrida." },
+      {
+        name: "twitter:description",
+        content: "Periodização anual hybrid: força, condicionamento e corrida.",
+      },
     ],
     links: [
       {
@@ -156,10 +171,18 @@ function RootComponent() {
     let remove: (() => void) | undefined;
     WatchBridge.addListener("watchEvent", (d) => {
       if (d.event === "started") {
-        try { sessionStorage.setItem("pm-watch-start", "1"); } catch { /* noop */ }
+        try {
+          sessionStorage.setItem("pm-watch-start", "1");
+        } catch {
+          /* noop */
+        }
         router.navigate({ to: "/treino" });
       }
-    }).then((h) => { remove = () => { void h.remove(); }; });
+    }).then((h) => {
+      remove = () => {
+        void h.remove();
+      };
+    });
     return () => remove?.();
   }, [router]);
 
@@ -169,6 +192,8 @@ function RootComponent() {
         {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
         <Outlet />
         <Toaster />
+        <LocalNotificationsSync />
+        <PushRegistration />
       </AuthProvider>
     </QueryClientProvider>
   );

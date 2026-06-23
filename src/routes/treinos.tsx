@@ -2,7 +2,12 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { AppShell } from "@/components/app-shell";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { getTodayTraining, getProgramSummary, getWeekDetail, type TrainingDayDTO } from "@/lib/program.queries";
+import {
+  getTodayTraining,
+  getProgramSummary,
+  getWeekDetail,
+  type TrainingDayDTO,
+} from "@/lib/program.queries";
 import { useAuth } from "@/hooks/use-auth";
 import { useLocalToday } from "@/hooks/use-local-today";
 import {
@@ -33,10 +38,10 @@ export const Route = createFileRoute("/treinos")({
 type TabKey = "hoje" | "semana" | "calendario" | "biblioteca";
 
 const TABS: { key: TabKey; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
-  { key: "hoje",      label: "Hoje",       icon: Play },
-  { key: "semana",    label: "Semana",     icon: CalendarDays },
-  { key: "calendario",label: "Calendário", icon: CalendarDays },
-  { key: "biblioteca",label: "Biblioteca", icon: BookOpen },
+  { key: "hoje", label: "Hoje", icon: Play },
+  { key: "semana", label: "Semana", icon: CalendarDays },
+  { key: "calendario", label: "Calendário", icon: CalendarDays },
+  { key: "biblioteca", label: "Biblioteca", icon: BookOpen },
 ];
 
 function TreinosPage() {
@@ -66,7 +71,9 @@ function TreinosPage() {
       {/* Conteúdo da tab */}
       {tab === "hoje" && <TreinoHojeTab />}
       {tab === "semana" && <TreinoSemanaTab />}
-      {(tab === "calendario" || tab === "biblioteca") && <ComingSoonTab label={tab === "calendario" ? "Calendário" : "Biblioteca"} />}
+      {(tab === "calendario" || tab === "biblioteca") && (
+        <ComingSoonTab label={tab === "calendario" ? "Calendário" : "Biblioteca"} />
+      )}
     </AppShell>
   );
 }
@@ -102,8 +109,8 @@ function TreinoHojeTab() {
         </div>
         <div className="text-[15px] font-semibold">Dia de descanso</div>
         <p className="mt-1.5 text-[13px] text-muted-foreground">
-          {data?.calendar.day_name ?? "Hoje"} não tem treino programado.
-          Descanse, hidrate-se e prepare-se para amanhã.
+          {data?.calendar.day_name ?? "Hoje"} não tem treino programado. Descanse, hidrate-se e
+          prepare-se para amanhã.
         </p>
       </div>
     );
@@ -121,7 +128,7 @@ function TreinoHojeTab() {
         <div className="pointer-events-none absolute -right-12 -top-12 h-40 w-40 rounded-full bg-primary/20 blur-3xl" />
         <div className="relative">
           <div className="text-[10px] font-medium uppercase tracking-[0.22em] text-muted-foreground">
-            {data.calendar.day_name} · Semana {String(week.week_number).padStart(2, "0")} de {data.calendar.total_weeks}
+            {data.calendar.day_name} · Semana {String(week.week_number).padStart(2, "0")}
           </div>
           <h2 className="mt-1.5 text-[20px] font-semibold leading-tight tracking-tight">
             {today.objective ?? week.meso.name}
@@ -142,7 +149,8 @@ function TreinoHojeTab() {
             )}
             {today.running && (
               <span className="flex items-center gap-1.5">
-                <Footprints className="h-3.5 w-3.5" /> {today.running.total_duration_minutes} min corrida
+                <Footprints className="h-3.5 w-3.5" /> {today.running.total_duration_minutes} min
+                corrida
               </span>
             )}
           </div>
@@ -171,7 +179,10 @@ function TreinoHojeTab() {
           </div>
           <div className="space-y-1.5">
             {strength.map((e, i) => (
-              <div key={e.id} className="flex items-center gap-3 rounded-xl border border-border/60 bg-surface/40 px-4 py-3">
+              <div
+                key={e.id}
+                className="flex items-center gap-3 rounded-xl border border-border/60 bg-surface/40 px-4 py-3"
+              >
                 <div className="num flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-border bg-surface text-[11px] font-semibold text-muted-foreground">
                   {String(i + 1).padStart(2, "0")}
                 </div>
@@ -199,9 +210,14 @@ function TreinoHojeTab() {
           </div>
           <div className="space-y-1.5">
             {core.map((e) => (
-              <div key={e.id} className="flex items-center justify-between rounded-xl border border-border/60 bg-surface/40 px-4 py-3">
+              <div
+                key={e.id}
+                className="flex items-center justify-between rounded-xl border border-border/60 bg-surface/40 px-4 py-3"
+              >
                 <span className="text-[13px] font-medium">{e.exercise.name}</span>
-                <span className="num text-[12px] text-muted-foreground">{e.sets}×{e.reps}</span>
+                <span className="num text-[12px] text-muted-foreground">
+                  {e.sets}×{e.reps}
+                </span>
               </div>
             ))}
           </div>
@@ -215,7 +231,10 @@ function TreinoHojeTab() {
           </div>
           <div className="num flex items-center gap-3 text-[13px]">
             <Timer className="h-4 w-4 text-primary" />
-            <span>{today.running.protocol_type.toUpperCase()} · {today.running.total_duration_minutes} min</span>
+            <span>
+              {today.running.protocol_type.toUpperCase()} · {today.running.total_duration_minutes}{" "}
+              min
+            </span>
           </div>
         </div>
       )}
@@ -241,7 +260,9 @@ function DayCard({ day }: { day: TrainingDayDTO }) {
           <Coffee className="h-4 w-4 text-muted-foreground" />
         </div>
         <div>
-          <div className="text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">{day.day_name}</div>
+          <div className="text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
+            {day.day_name}
+          </div>
           <div className="mt-0.5 text-[13px] font-semibold tracking-tight">OFF · Recuperação</div>
         </div>
       </div>
@@ -249,7 +270,9 @@ function DayCard({ day }: { day: TrainingDayDTO }) {
   }
 
   return (
-    <div className={`overflow-hidden rounded-2xl border ${completed ? "border-primary/30 bg-primary/5" : "border-border/60 bg-surface/40"}`}>
+    <div
+      className={`overflow-hidden rounded-2xl border ${completed ? "border-primary/30 bg-primary/5" : "border-border/60 bg-surface/40"}`}
+    >
       <button
         onClick={() => setOpen((v) => !v)}
         className="flex w-full items-center justify-between px-5 py-4 text-left hover:bg-white/[0.02]"
@@ -261,24 +284,39 @@ function DayCard({ day }: { day: TrainingDayDTO }) {
             </div>
           )}
           <div>
-            <div className="text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">{day.day_name}</div>
-            <div className="mt-0.5 text-[14px] font-semibold tracking-tight">{day.objective ?? day.session_type}</div>
+            <div className="text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
+              {day.day_name}
+            </div>
+            <div className="mt-0.5 text-[14px] font-semibold tracking-tight">
+              {day.objective ?? day.session_type}
+            </div>
           </div>
         </div>
-        <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${open ? "rotate-180" : ""}`} />
+        <ChevronDown
+          className={`h-4 w-4 text-muted-foreground transition-transform ${open ? "rotate-180" : ""}`}
+        />
       </button>
 
-      <div className={`grid transition-[grid-template-rows] duration-300 ease-out ${open ? "grid-rows-[1fr]" : "grid-rows-[0fr]"}`}>
+      <div
+        className={`grid transition-[grid-template-rows] duration-300 ease-out ${open ? "grid-rows-[1fr]" : "grid-rows-[0fr]"}`}
+      >
         <div className="overflow-hidden">
           <div className="space-y-3 border-t border-border/60 px-5 pb-5 pt-4">
             {strength.length > 0 && (
               <div>
-                <div className="mb-1.5 text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">Força</div>
+                <div className="mb-1.5 text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                  Força
+                </div>
                 <div className="space-y-1">
                   {strength.map((e) => (
-                    <div key={e.id} className="flex items-center justify-between rounded-lg border border-border/60 bg-surface/40 px-3 py-2 text-[12px]">
+                    <div
+                      key={e.id}
+                      className="flex items-center justify-between rounded-lg border border-border/60 bg-surface/40 px-3 py-2 text-[12px]"
+                    >
                       <span className="font-medium">{e.exercise.name}</span>
-                      <span className="text-muted-foreground num">{e.sets}×{e.reps}</span>
+                      <span className="text-muted-foreground num">
+                        {e.sets}×{e.reps}
+                      </span>
                     </div>
                   ))}
                 </div>
@@ -286,12 +324,19 @@ function DayCard({ day }: { day: TrainingDayDTO }) {
             )}
             {core.length > 0 && (
               <div>
-                <div className="mb-1.5 text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">Core</div>
+                <div className="mb-1.5 text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                  Core
+                </div>
                 <div className="space-y-1">
                   {core.map((e) => (
-                    <div key={e.id} className="flex items-center justify-between rounded-lg border border-border/60 bg-surface/40 px-3 py-2 text-[12px]">
+                    <div
+                      key={e.id}
+                      className="flex items-center justify-between rounded-lg border border-border/60 bg-surface/40 px-3 py-2 text-[12px]"
+                    >
                       <span className="font-medium">{e.exercise.name}</span>
-                      <span className="text-muted-foreground num">{e.sets}×{e.reps}</span>
+                      <span className="text-muted-foreground num">
+                        {e.sets}×{e.reps}
+                      </span>
                     </div>
                   ))}
                 </div>
@@ -299,7 +344,8 @@ function DayCard({ day }: { day: TrainingDayDTO }) {
             )}
             {day.running && (
               <div className="num rounded-lg border border-border/60 bg-surface/40 px-3 py-2 text-[12px]">
-                Corrida · {day.running.protocol_type.toUpperCase()} · {day.running.total_duration_minutes} min
+                Corrida · {day.running.protocol_type.toUpperCase()} ·{" "}
+                {day.running.total_duration_minutes} min
               </div>
             )}
           </div>
@@ -360,7 +406,9 @@ function TreinoSemanaTab() {
               {week?.meso.objective ?? "Carregando…"}
             </div>
           </div>
-          <ChevronDown className={`h-5 w-5 text-muted-foreground transition-transform ${pickerOpen ? "rotate-180" : ""}`} />
+          <ChevronDown
+            className={`h-5 w-5 text-muted-foreground transition-transform ${pickerOpen ? "rotate-180" : ""}`}
+          />
         </button>
 
         {pickerOpen && (
@@ -371,9 +419,14 @@ function TreinoSemanaTab() {
                 return (
                   <button
                     key={n}
-                    onClick={() => { setSelected(n); setPickerOpen(false); }}
+                    onClick={() => {
+                      setSelected(n);
+                      setPickerOpen(false);
+                    }}
                     className={`num relative rounded-lg px-3 py-3 text-sm font-semibold transition-all ${
-                      n === selected ? "bg-primary text-primary-foreground shadow-glow" : "text-muted-foreground hover:bg-surface-elevated hover:text-foreground"
+                      n === selected
+                        ? "bg-primary text-primary-foreground shadow-glow"
+                        : "text-muted-foreground hover:bg-surface-elevated hover:text-foreground"
                     }`}
                   >
                     {String(n).padStart(2, "0")}
@@ -395,11 +448,15 @@ function TreinoSemanaTab() {
               <div className="mt-0.5 font-semibold">Semana {week.week_type}</div>
             </div>
             <div>
-              <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Método</div>
+              <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                Método
+              </div>
               <div className="mt-0.5 font-semibold">{week.meso.method ?? "—"}</div>
             </div>
             <div>
-              <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Macro</div>
+              <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                Macro
+              </div>
               <div className="mt-0.5 font-semibold">{week.macro.name}</div>
             </div>
           </div>
@@ -413,7 +470,9 @@ function TreinoSemanaTab() {
         </div>
       ) : (
         <div className="space-y-2.5">
-          {week?.days.map((d) => <DayCard key={d.id} day={d} />)}
+          {week?.days.map((d) => (
+            <DayCard key={d.id} day={d} />
+          ))}
         </div>
       )}
     </div>

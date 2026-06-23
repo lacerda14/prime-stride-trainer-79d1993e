@@ -1,33 +1,25 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useCallback, useState } from "react";
-import { Loader2, Check, Sparkles, Zap, Crown, X } from "lucide-react";
+import { useCallback, useState, useEffect } from "react";
+import { Loader2, Check, Sparkles, X } from "lucide-react";
 import { toast } from "sonner";
 import { loadStripe } from "@stripe/stripe-js";
 import { EmbeddedCheckoutProvider, EmbeddedCheckout } from "@stripe/react-stripe-js";
 import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { TierCrown } from "@/components/tier-crown";
+import { TIERS, TIER_ORDER, tierFromPlan, formatBRL, type TierId } from "@/lib/tiers";
 import {
   getMySubscription,
   startFreeTrial,
   createStripeEmbeddedCheckout,
   cancelStripeSubscription,
-  getPremiumPrice,
 } from "@/lib/subscription.functions";
 import { useAuth } from "@/hooks/use-auth";
 import { revenueCatAvailable, purchasePremium, restorePurchases } from "@/lib/revenuecat";
+import { track } from "@/lib/analytics.functions";
 
-// "R$ 39,90" a partir do valor numérico.
-function formatBRL(amount: number): string {
-  return `R$ ${amount.toFixed(2).replace(".", ",")}`;
-}
-function intervalLabel(interval: string): string {
-  return interval === "year" ? "ano" : "mês";
-}
-
-// Chave pública da Stripe (pode ir no bundle — é pública por design).
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY as string);
 
 export const Route = createFileRoute("/assinaturas")({
@@ -35,26 +27,36 @@ export const Route = createFileRoute("/assinaturas")({
   head: () => ({ meta: [{ title: "Planos · PM Hybrid" }] }),
 });
 
-const FREE_FEATURES = [
-  "Programa de 48 semanas",
-  "Treinos diários personalizados",
-  "Registro de séries e cargas",
-  "Histórico de treinos",
-  "Evolução básica",
-];
-
-const PREMIUM_FEATURES = [
-  "Tudo do plano Grátis",
-  "Chat com seu coach",
-  "Treinos personalizados com seu coach",
-  "5 coaches especializados",
-  "Análise de recuperação",
-  "Periodização inteligente",
-  "Insights avançados",
-  "Histórico completo",
-  "Suporte prioritário",
-  "Sem anúncios",
-];
+// Copy outcome-first por tier (vende transformação, não feature). Pro lista
+// DOMÍNIOS, nunca nomes de coach.
+const TIER_COPY: Record<TierId, { bullets: string[]; cta: string }> = {
+  free: {
+    bullets: [
+      "Treine com o Coach Pedro (5 conversas/dia)",
+      "Plano adaptativo que evolui com você",
+      "Registro e histórico de treinos",
+    ],
+    cta: "Começar grátis",
+  },
+  plus: {
+    bullets: [
+      "Coach Pedro liberado — 100 conversas/dia",
+      "Seu plano se adapta conforme seu corpo responde",
+      "Análises avançadas + histórico completo",
+      "Sem anúncios",
+    ],
+    cta: "Destravar o Pedro",
+  },
+  pro: {
+    bullets: [
+      "Tudo do Plus",
+      "Time completo de especialistas — Força, Corrida, Nutrição, Recuperação, Mentalidade e mais",
+      "Conversas com a IA ilimitadas",
+      "Comunidade: feed, ranking, grupos e desafios",
+    ],
+    cta: "Destravar time completo",
+  },
+};
 
 function formatDate(iso: string | null): string {
   if (!iso) return "";
@@ -67,32 +69,21 @@ function AssinaturasPage() {
   const trialFn = useServerFn(startFreeTrial);
   const embedFn = useServerFn(createStripeEmbeddedCheckout);
   const cancelFn = useServerFn(cancelStripeSubscription);
-  const priceFn = useServerFn(getPremiumPrice);
   const qc = useQueryClient();
   const onIOS = revenueCatAvailable();
 
-  // Preço vem da Stripe (fonte única) — nunca diverge do que é cobrado.
-  const { data: price } = useQuery({
-    queryKey: ["premium-price"],
-    queryFn: () => priceFn(),
-    staleTime: 60 * 60_000,
-  });
-  const priceText = price?.amount != null ? formatBRL(price.amount) : null;
-  const intervalText = intervalLabel(price?.interval ?? "month");
-
   const [trialBusy, setTrialBusy] = useState(false);
   const [cancelBusy, setCancelBusy] = useState(false);
-  const [showCheckout, setShowCheckout] = useState(false);
   const [iosBusy, setIosBusy] = useState(false);
+  const [checkoutPlan, setCheckoutPlan] = useState<"plus" | "pro" | null>(null);
 
-  // Busca o client_secret da sessão embutida (chamado pelo EmbeddedCheckout).
+  useEffect(() => track("paywall_viewed", { source_screen: "paywall" }), []);
+
   const fetchClientSecret = useCallback(
-    () => embedFn().then((d) => d.client_secret),
-    [embedFn],
+    () => embedFn({ data: { plan: checkoutPlan ?? "pro" } }).then((d) => d.client_secret),
+    [embedFn, checkoutPlan],
   );
 
-  // Voltou do checkout? O webhook é assíncrono — fazemos polling até o premium
-  // aparecer (com teto de ~16s para não girar pra sempre).
   const justPaid =
     typeof window !== "undefined" &&
     new URLSearchParams(window.location.search).get("status") === "success";
@@ -103,29 +94,36 @@ function AssinaturasPage() {
     refetchInterval: (query) => {
       if (!justPaid) return false;
       const d = query.state.data as { plan?: string; billing_status?: string } | undefined;
-      const prem = d?.plan === "premium_ai" && d?.billing_status === "active";
-      if (prem) return false;
-      if (query.state.dataUpdateCount > 8) return false; // desiste após ~16s
+      const paid = d?.plan && d.plan !== "free" && d.billing_status === "active";
+      if (paid) return false;
+      if (query.state.dataUpdateCount > 8) return false;
       return 2000;
     },
   });
 
-  const isPremium = sub?.plan === "premium_ai" && sub?.billing_status === "active";
-  const confirmingPayment = justPaid && !isPremium;
+  const currentTier: TierId = tierFromPlan(sub?.plan);
+  const isPaid = currentTier !== "free" && sub?.billing_status === "active";
+  const confirmingPayment = justPaid && !isPaid;
   const isTrialing = sub?.billing_status === "trialing";
-  const trialAvailable = !sub?.trial_used && !isPremium && !isTrialing;
-  const cancelScheduled = !!sub?.cancelled_at && isPremium;
+  const trialAvailable = !sub?.trial_used && !isPaid && !isTrialing;
+  const cancelScheduled = !!sub?.cancelled_at && isPaid;
+
+  // Conversão concluída (voltou do checkout e o premium ativou).
+  useEffect(() => {
+    if (justPaid && isPaid) track("checkout_completed", { plan: sub?.plan });
+  }, [justPaid, isPaid, sub?.plan]);
 
   async function onCancel() {
-    if (!confirm("Cancelar a assinatura? Você continua com acesso Premium até o fim do ciclo atual.")) return;
+    if (!confirm("Cancelar a assinatura? Você mantém o acesso até o fim do ciclo atual.")) return;
     setCancelBusy(true);
     try {
       const data = await cancelFn();
-      toast.success(`Assinatura cancelada. Acesso Premium até ${formatDate(data.access_until)}.`);
+      toast.success(`Assinatura cancelada. Acesso até ${formatDate(data.access_until)}.`);
       qc.invalidateQueries({ queryKey: ["subscription", "me"] });
     } catch (e) {
       const msg = e instanceof Error ? e.message : "";
-      if (msg.includes("no_active_subscription")) toast.error("Nenhuma assinatura ativa encontrada.");
+      if (msg.includes("no_active_subscription"))
+        toast.error("Nenhuma assinatura ativa encontrada.");
       else toast.error("Não foi possível cancelar. Tente novamente.");
     } finally {
       setCancelBusy(false);
@@ -133,6 +131,7 @@ function AssinaturasPage() {
   }
 
   async function onStartTrial() {
+    track("trial_started", { source_screen: "paywall" });
     setTrialBusy(true);
     try {
       const data = await trialFn();
@@ -141,20 +140,24 @@ function AssinaturasPage() {
     } catch (e) {
       const msg = e instanceof Error ? e.message : "";
       if (msg.includes("trial_already_used")) toast.error("Você já usou o período de trial.");
-      else if (msg.includes("already_premium")) toast.info("Você já tem acesso Premium.");
+      else if (msg.includes("already_premium")) toast.info("Você já tem acesso premium.");
       else toast.error("Não foi possível ativar o trial. Tente novamente.");
     } finally {
       setTrialBusy(false);
     }
   }
 
-  async function onSubscribe() {
-    // iOS: compra nativa da Apple (RevenueCat) — exigência da Apple.
+  async function onSubscribe(plan: "plus" | "pro") {
+    track("checkout_started", {
+      target_plan: plan,
+      source_screen: "paywall",
+      billing_period: "monthly",
+    });
     if (onIOS) {
       if (!user) return;
       setIosBusy(true);
       try {
-        const r = await purchasePremium(user.id);
+        const r = await purchasePremium(user.id, plan);
         if (r.success) {
           toast.success("Assinatura ativada! 👑");
           qc.invalidateQueries({ queryKey: ["subscription", "me"] });
@@ -166,8 +169,7 @@ function AssinaturasPage() {
       }
       return;
     }
-    // Web: checkout embutido da Stripe.
-    setShowCheckout(true);
+    setCheckoutPlan(plan); // Web: abre o checkout embutido da Stripe p/ o plano.
   }
 
   async function onRestore() {
@@ -188,7 +190,7 @@ function AssinaturasPage() {
 
   if (isLoading) {
     return (
-      <AppShell title="Assinatura" eyebrow="Plano">
+      <AppShell title="Planos" eyebrow="Assinatura">
         <div className="flex items-center justify-center py-16">
           <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
         </div>
@@ -197,74 +199,37 @@ function AssinaturasPage() {
   }
 
   return (
-    <AppShell title="Assinatura" eyebrow="Plano">
-      <div className="space-y-4 pb-4">
+    <AppShell title="Planos" eyebrow="Assinatura">
+      <div className="space-y-4 pb-6">
+        {/* Headline (outcome) */}
+        <div className="px-1 pt-1 text-center">
+          <h1 className="text-xl font-semibold tracking-tight">Seu coach híbrido, no seu bolso</h1>
+          <p className="mx-auto mt-1 max-w-[300px] text-[13px] leading-relaxed text-muted-foreground">
+            Treine com orientação que se adapta a você — e evolua mais rápido.
+          </p>
+        </div>
+
         {confirmingPayment && (
           <div className="glass flex items-center gap-3 rounded-2xl p-4 ring-1 ring-primary/20">
             <Loader2 className="h-5 w-5 shrink-0 animate-spin text-primary" />
             <div className="flex-1">
               <p className="text-sm font-semibold tracking-tight">Confirmando pagamento…</p>
-              <p className="text-xs text-muted-foreground">
-                Pode levar alguns segundos. Se demorar, toque em atualizar.
-              </p>
+              <p className="text-xs text-muted-foreground">Pode levar alguns segundos.</p>
             </div>
             <button
               onClick={() => qc.invalidateQueries({ queryKey: ["subscription", "me"] })}
-              className="shrink-0 rounded-full border border-border/60 px-3 py-1.5 text-xs font-medium text-foreground hover:bg-surface"
+              className="shrink-0 rounded-full border border-border/60 px-3 py-1.5 text-xs font-medium hover:bg-surface"
             >
               Atualizar
             </button>
           </div>
         )}
 
-        {isPremium && (
-          <div className="glass rounded-2xl p-4 ring-1 ring-primary/20">
-            <div className="flex items-center gap-3">
-              <Crown className="h-5 w-5 shrink-0 text-primary" />
-              <div className="flex-1">
-                <div className="flex items-center gap-2">
-                  <p className="text-sm font-semibold tracking-tight">Assinatura ativa</p>
-                  <Badge variant="secondary" className="gap-1">
-                    <Zap className="h-3 w-3" /> Premium AI
-                  </Badge>
-                </div>
-                {cancelScheduled ? (
-                  <p className="text-xs text-amber-400/90">
-                    Cancelada · acesso até {formatDate(sub?.current_period_end ?? null)}
-                  </p>
-                ) : (
-                  sub?.current_period_end && (
-                    <p className="text-xs text-muted-foreground">
-                      Renova em {formatDate(sub.current_period_end)}
-                    </p>
-                  )
-                )}
-              </div>
-            </div>
-
-            {!cancelScheduled && (
-              <button
-                onClick={onCancel}
-                disabled={cancelBusy}
-                className="mt-3 w-full rounded-xl border border-border/60 py-2.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground disabled:opacity-50"
-              >
-                {cancelBusy ? "Cancelando…" : "Cancelar assinatura"}
-              </button>
-            )}
-            {cancelScheduled && (
-              <p className="mt-3 rounded-xl bg-surface/40 px-3 py-2 text-center text-[11px] leading-relaxed text-muted-foreground">
-                Sua assinatura não será renovada. Você mantém o Premium até{" "}
-                <span className="text-foreground">{formatDate(sub?.current_period_end ?? null)}</span>.
-              </p>
-            )}
-          </div>
-        )}
-
-        {isTrialing && !isPremium && (
+        {isTrialing && !isPaid && (
           <div className="glass flex items-center gap-3 rounded-2xl p-4 ring-1 ring-white/10">
             <Sparkles className="h-5 w-5 text-muted-foreground" />
             <div className="flex-1">
-              <p className="text-sm font-semibold tracking-tight">Trial Premium ativo</p>
+              <p className="text-sm font-semibold tracking-tight">Trial ativo</p>
               {sub?.trial_ends_at && (
                 <p className="text-xs text-muted-foreground">
                   Expira em {formatDate(sub.trial_ends_at)}
@@ -274,98 +239,147 @@ function AssinaturasPage() {
           </div>
         )}
 
-        {/* Free plan card */}
-        <div className={`glass rounded-2xl p-5 ${!isPremium && !isTrialing ? "ring-2 ring-primary/50" : ""}`}>
-          <div className="mb-4 flex items-baseline justify-between">
-            <div>
-              {!isPremium && !isTrialing && (
-                <Badge className="mb-1 gap-1">
-                  <Check className="h-3 w-3" /> Seu plano atual
-                </Badge>
+        {/* Cards dos 3 tiers */}
+        {TIER_ORDER.map((tier) => {
+          const meta = TIERS[tier];
+          const copy = TIER_COPY[tier];
+          const isCurrent =
+            currentTier === tier && (tier === "free" ? !isPaid && !isTrialing : isPaid);
+          const highlight = tier === "pro";
+          return (
+            <div
+              key={tier}
+              className={`glass relative overflow-hidden rounded-2xl p-5 ring-2 ${
+                isCurrent ? "ring-primary/60" : highlight ? "ring-amber-400/30" : "ring-white/5"
+              }`}
+            >
+              {highlight && (
+                <div className="pointer-events-none absolute -right-12 -top-12 h-40 w-40 rounded-full bg-amber-400/10 blur-3xl" />
               )}
-              <p className="mt-1 text-lg font-semibold tracking-tight">Grátis</p>
-            </div>
-            <p className="text-sm text-muted-foreground">R$ 0/mês</p>
-          </div>
-          <ul className="space-y-2">
-            {FREE_FEATURES.map((f) => (
-              <li key={f} className="flex items-start gap-2 text-sm">
-                <Check className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
-                <span>{f}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
 
-        {/* Premium card */}
-        <div className={`glass relative overflow-hidden rounded-2xl p-5 ring-2 ${isPremium || isTrialing ? "ring-primary/60" : "ring-primary/20"}`}>
-          <div className="pointer-events-none absolute -right-12 -top-12 h-40 w-40 rounded-full bg-primary/10 blur-3xl" />
-          <div className="mb-4">
-            <div className="mb-2 flex items-center gap-2">
-              <Badge variant="secondary" className="gap-1">
-                <Zap className="h-3 w-3" />
-                Premium
-              </Badge>
-              {(isPremium || isTrialing) && (
-                <Badge className="gap-1">
-                  <Check className="h-3 w-3" /> Seu plano atual
-                </Badge>
-              )}
-            </div>
-            <p className="text-lg font-semibold tracking-tight">Premium AI</p>
-            <div className="mt-1 flex items-baseline gap-1">
-              <span className="text-2xl font-semibold tracking-tight">{priceText ?? "—"}</span>
-              <span className="text-sm text-muted-foreground">/{intervalText}</span>
-            </div>
-          </div>
-
-          <ul className="mb-5 space-y-2">
-            {PREMIUM_FEATURES.map((f) => (
-              <li key={f} className="flex items-start gap-2 text-sm">
-                <Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-                <span>{f}</span>
-              </li>
-            ))}
-          </ul>
-
-          {!isPremium && (
-            <div className="space-y-2">
-              {trialAvailable && (
-                <Button onClick={onStartTrial} disabled={trialBusy} className="w-full" size="lg">
-                  {trialBusy ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
+              {/* Header: coroa + nome + preço */}
+              <div className="mb-3 flex items-start justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <TierCrown tier={tier} className="h-6 w-6" />
+                  <div>
+                    <p className="text-lg font-semibold leading-none tracking-tight">{meta.name}</p>
+                    <p className="mt-1 text-[11px] text-muted-foreground">{meta.tagline}</p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  {tier === "free" ? (
+                    <p className="text-sm font-semibold">Grátis</p>
                   ) : (
-                    <Sparkles className="h-4 w-4" />
+                    <>
+                      <p className="text-xl font-semibold leading-none tracking-tight">
+                        {formatBRL(meta.priceMonthly!)}
+                      </p>
+                      <p className="text-[10px] text-muted-foreground">/mês</p>
+                      {meta.priceAnnual && (
+                        <p className="mt-1 text-[10px] text-muted-foreground">
+                          ou {formatBRL(meta.priceAnnual)}/ano
+                        </p>
+                      )}
+                    </>
                   )}
-                  Experimentar grátis por 14 dias
-                </Button>
+                </div>
+              </div>
+
+              {isCurrent && (
+                <div className="mb-3 inline-flex items-center gap-1 rounded-full border border-primary/40 bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">
+                  <Check className="h-3 w-3" /> Seu plano atual
+                </div>
               )}
-              <Button
-                onClick={onSubscribe}
-                disabled={iosBusy}
-                variant={trialAvailable ? "outline" : "default"}
-                className="w-full"
-                size="lg"
-              >
-                {iosBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Crown className="h-4 w-4" />}
-                {isTrialing
-                  ? "Assinar após o trial"
-                  : priceText
-                    ? `Assinar agora — ${priceText}/${intervalText}`
-                    : "Assinar agora"}
-              </Button>
-              {onIOS && (
-                <button
-                  onClick={onRestore}
-                  disabled={iosBusy}
-                  className="w-full py-2 text-xs font-medium text-muted-foreground hover:text-foreground disabled:opacity-50"
-                >
-                  Restaurar compras
-                </button>
+
+              {/* Bullets (outcome) */}
+              <ul className="mb-4 space-y-2">
+                {copy.bullets.map((f) => (
+                  <li key={f} className="flex items-start gap-2 text-[13px]">
+                    <Check
+                      className={`mt-0.5 h-4 w-4 shrink-0 ${highlight ? "text-amber-400" : "text-primary"}`}
+                    />
+                    <span>{f}</span>
+                  </li>
+                ))}
+              </ul>
+
+              {/* CTA */}
+              {tier !== "free" && !isCurrent && (
+                <div className="space-y-2">
+                  {tier === "pro" && trialAvailable && (
+                    <Button
+                      onClick={onStartTrial}
+                      disabled={trialBusy}
+                      className="w-full"
+                      size="lg"
+                    >
+                      {trialBusy ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Sparkles className="h-4 w-4" />
+                      )}
+                      Experimentar grátis por 14 dias
+                    </Button>
+                  )}
+                  <Button
+                    onClick={() => onSubscribe(tier)}
+                    disabled={iosBusy}
+                    variant={tier === "pro" && trialAvailable ? "outline" : "default"}
+                    className="w-full"
+                    size="lg"
+                  >
+                    {iosBusy ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <TierCrown tier={tier} className="h-4 w-4" />
+                    )}
+                    {copy.cta}
+                  </Button>
+                </div>
+              )}
+
+              {/* Gestão da assinatura ativa (no card do tier atual pago) */}
+              {isCurrent && isPaid && tier !== "free" && (
+                <>
+                  {cancelScheduled ? (
+                    <p className="rounded-xl bg-surface/40 px-3 py-2 text-center text-[11px] leading-relaxed text-muted-foreground">
+                      Não será renovada. Acesso até{" "}
+                      <span className="text-foreground">
+                        {formatDate(sub?.current_period_end ?? null)}
+                      </span>
+                      .
+                    </p>
+                  ) : (
+                    <>
+                      {sub?.current_period_end && (
+                        <p className="mb-2 text-center text-[11px] text-muted-foreground">
+                          Renova em {formatDate(sub.current_period_end)}
+                        </p>
+                      )}
+                      <button
+                        onClick={onCancel}
+                        disabled={cancelBusy}
+                        className="w-full rounded-xl border border-border/60 py-2.5 text-xs font-medium text-muted-foreground hover:text-foreground disabled:opacity-50"
+                      >
+                        {cancelBusy ? "Cancelando…" : "Cancelar assinatura"}
+                      </button>
+                    </>
+                  )}
+                </>
               )}
             </div>
-          )}
-        </div>
+          );
+        })}
+
+        {onIOS && !isPaid && (
+          <button
+            onClick={onRestore}
+            disabled={iosBusy}
+            className="w-full py-2 text-xs font-medium text-muted-foreground hover:text-foreground disabled:opacity-50"
+          >
+            Restaurar compras
+          </button>
+        )}
 
         <p className="px-2 text-center text-[11px] leading-relaxed text-muted-foreground">
           🔒 {onIOS ? "Pagamento seguro via App Store." : "Pagamento seguro via Stripe."}
@@ -374,15 +388,17 @@ function AssinaturasPage() {
         </p>
       </div>
 
-      {/* Checkout embutido — formulário de cartão dentro do app, sem redirecionar */}
-      {showCheckout && (
+      {/* Checkout embutido (web) */}
+      {checkoutPlan && (
         <div className="fixed inset-0 z-50 flex flex-col bg-background safe-pad">
           <div className="flex items-center justify-between border-b border-border/40 px-4 py-3">
-            <p className="text-sm font-semibold tracking-tight">Finalizar assinatura</p>
+            <p className="text-sm font-semibold tracking-tight">
+              Assinar {TIERS[checkoutPlan].name}
+            </p>
             <button
-              onClick={() => setShowCheckout(false)}
+              onClick={() => setCheckoutPlan(null)}
               aria-label="Fechar"
-              className="flex h-9 w-9 items-center justify-center rounded-full bg-surface/70 text-foreground transition-colors hover:bg-surface"
+              className="flex h-9 w-9 items-center justify-center rounded-full bg-surface/70 hover:bg-surface"
             >
               <X className="h-5 w-5" />
             </button>

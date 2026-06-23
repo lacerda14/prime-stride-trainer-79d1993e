@@ -30,7 +30,9 @@ function HistoricoPage() {
 
   // tenta drenar a fila offline ao abrir o histórico — assim sessões
   // concluídas sem internet aparecem assim que reconectar
-  useEffect(() => { void flushQueue(); }, []);
+  useEffect(() => {
+    void flushQueue();
+  }, []);
 
   const sessions = data ?? [];
   const totalSeconds = sessions.reduce((acc, s) => acc + (s.duration_seconds ?? 0), 0);
@@ -42,11 +44,14 @@ function HistoricoPage() {
       <div className="space-y-5 p-4">
         <OfflineNotice />
         <div className="grid grid-cols-3 gap-2">
-
           <Stat label="Sessões" value={String(sessions.length)} hint="concluídas" />
           <Stat
             label="Tempo total"
-            value={totalHours > 0 ? `${totalHours}h${String(totalMinutes).padStart(2, "0")}` : `${totalMinutes}min`}
+            value={
+              totalHours > 0
+                ? `${totalHours}h${String(totalMinutes).padStart(2, "0")}`
+                : `${totalMinutes}min`
+            }
             hint="treinando"
           />
           <Stat
@@ -68,7 +73,8 @@ function HistoricoPage() {
             <div>
               <div className="text-sm font-semibold tracking-tight">Sem sessões registradas</div>
               <p className="mt-1 text-xs text-muted-foreground">
-                Conclua um treino em <span className="text-foreground">Hoje</span> para começar seu histórico.
+                Conclua um treino em <span className="text-foreground">Hoje</span> para começar seu
+                histórico.
               </p>
             </div>
           </div>
@@ -82,7 +88,8 @@ function HistoricoPage() {
                       {s.day_key} · Semana {String(s.week_number).padStart(2, "0")}
                     </div>
                     <div className="num mt-1 text-[11px] text-muted-foreground">
-                      {formatDateTime(s.started_at)} {s.finished_at ? `→ ${formatTime(s.finished_at)}` : ""}
+                      {formatDateTime(s.started_at)}{" "}
+                      {s.finished_at ? `→ ${formatTime(s.finished_at)}` : ""}
                     </div>
                   </div>
                   <div className="num inline-flex items-center gap-1 rounded-full bg-primary/15 px-2.5 py-1 text-[11px] font-semibold text-primary shrink-0">
@@ -101,7 +108,9 @@ function HistoricoPage() {
 function Stat({ label, value, hint }: { label: string; value: string; hint: string }) {
   return (
     <div className="rounded-xl border border-border/60 bg-surface/40 p-3">
-      <div className="text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">{label}</div>
+      <div className="text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
+        {label}
+      </div>
       <div className="num mt-1.5 text-xl font-semibold tracking-tight truncate">{value}</div>
       <div className="mt-0.5 text-[10px] text-muted-foreground">{hint}</div>
     </div>
@@ -119,7 +128,12 @@ function formatDuration(seconds: number): string {
 function formatDateTime(iso: string | null): string {
   if (!iso) return "";
   const d = new Date(iso);
-  return d.toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+  return d.toLocaleString("pt-BR", {
+    day: "2-digit",
+    month: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 }
 
 function formatTime(iso: string | null): string {

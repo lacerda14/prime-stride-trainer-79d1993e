@@ -33,7 +33,15 @@ export default tseslint.config(
         },
       ],
       "react-refresh/only-export-components": ["warn", { allowConstantExport: true }],
-      "@typescript-eslint/no-unused-vars": "off",
+      // Dead code VISÍVEL (warn): pega vars/imports não usados. `args:"none"` evita
+      // ruído de params; prefixo `_` marca intencional. Era "off" (nada pegava — daí
+      // dava p/ deixar helpers órfãos). Limpeza dos pendentes é incremental.
+      "@typescript-eslint/no-unused-vars": ["warn", { args: "none", varsIgnorePattern: "^_", caughtErrors: "none" }],
+      // `any` em mappers de resultado é pragmático: o Supabase infere tipos
+      // frágeis em selects relacionais profundos (ex.: mesocycle:mesocycles!inner).
+      // Mantemos VISÍVEL (warn) sem travar o gate de erros. Em billing/auth,
+      // preferir tipos reais (ver subscription/admin/coach/analytics.functions).
+      "@typescript-eslint/no-explicit-any": "warn",
     },
   },
   eslintPluginPrettier,
